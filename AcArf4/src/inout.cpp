@@ -42,14 +42,12 @@ namespace bitsery {
 /* Inout APIs */
 int Ar::LoadArf(lua_State* L) {
 	/* Usage:
-	 * local before_or_false, objcnt, wgo_required, hgo_required, ego_required = Arf4.LoadArf(path, is_auto)
+	 * local before_or_false, objcnt, wgo_req, hgo_req, ego_req = Arf4.LoadArf(path, is_auto, [proof])
 	 */
 	lua_pushnumber(L, 2744634527);									// Args -> hash"__script_context"
 	lua_gettable(L, LUA_GLOBALSINDEX);								// Args -> context
-	const auto pContext = (PseudoContext*)lua_touserdata(L, 3);
-	const auto isAuto = lua_toboolean(L, 2);
+	const auto pContext = (PseudoContext*)lua_touserdata(L, -1);	lua_pop(L, 1);
 	const auto path = luaL_checkstring(L, 1);
-	lua_pop(L, 3);
 
 	// Acquire Buffer
 	uint8_t* pBuf;														// free() this.
@@ -71,6 +69,29 @@ int Ar::LoadArf(lua_State* L) {
 		fclose(pFile);
 	}
 
+	// Use Proof to Decrypt
+	if( lua_type(L, 3) == LUA_TSTRING ) {
+			size_t proofSize;
+		const auto proofStr = (const uint8_t*)lua_tolstring(L, 3, &proofSize);
+		   uint8_t proof16[16], proofMd5[16], proofSha1[20];
+
+		if( proofSize > 15 )
+			for( size_t i=0; i<16; ++i )
+				proof16[i] = proofStr[i];
+		else {
+			for( size_t i=0; i<proofSize; ++i )
+				proof16[i] = proofStr[i];
+			for( size_t i=proofSize; i<16; ++i )
+				proof16[i] = i*3 + 73;
+		}
+		dmCrypt::HashMd5 ( proofStr, (uint32_t)proofSize, proofMd5  );
+		dmCrypt::HashSha1( proofStr, (uint32_t)proofSize, proofSha1 );
+
+		Decrypt(dmCrypt::ALGORITHM_XTEA, pBuf, bufSize, proofSha1, 16);
+		Decrypt(dmCrypt::ALGORITHM_XTEA, pBuf, bufSize, proofMd5, 16);
+		Decrypt(dmCrypt::ALGORITHM_XTEA, pBuf, bufSize, proof16, 16);
+	}
+
 	// Decode & Return
 	auto decodeState = bitsery::GetArf4Decoder(pBuf, bufSize);
 	const bool readError =  decodeState.adapter().error() != bitsery::ReaderError::NoError,
@@ -79,9 +100,9 @@ int Ar::LoadArf(lua_State* L) {
 		return lua_pushboolean(L, false), free(pBuf), 1;
 	decodeState.object( Arf = {} );   // Lazy clear only when the buffer is loaded successfully.
 
+	Arf.isAuto = lua_toboolean(L, 2);
 	Arf.maxDt = (InputDelta>63 ? 63 : InputDelta) + 37;
 	Arf.minDt = Arf.maxDt - 74;
-	Arf.isAuto = isAuto;
 
 	return lua_pushinteger(L, Arf.before),			lua_pushinteger(L, Arf.objectCount),
 		   lua_pushinteger(L, Arf.wgoRequired),		lua_pushinteger(L, Arf.hgoRequired),

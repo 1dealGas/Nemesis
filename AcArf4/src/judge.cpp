@@ -148,13 +148,13 @@ static Echo scanEcho(Echo echo, const int32_t deltaMs, const Duo validTouches[])
 #include <span>
 #include <dmsdk/dlib/time.h>
 static void judgeArfInternal(const Duo validTouches[], const bool anyPressed, const bool anyRel) noexcept {
-	using namespace std;
+	using Span = std::span;
 	const uint64_t msTime = Arf.msTime + dmTime::GetMonotonicTime() - UsysTime, G = msTime >> 9;
 
 	if(anyRel)
 		blockPos.clear();
 	if(uint32_t minJudgedMs = NULL;  anyPressed) {
-		for(const Info eIdx = Arf.eIdx[G];  Echo& echo : span( Arf.echoes.begin() + eIdx.f, eIdx.c )) {
+		for(const Info eIdx = Arf.eIdx[G];  Echo& echo : Span( Arf.echoes.begin() + eIdx.f, eIdx.c )) {
 			const int32_t deltaMs = Arf.msTime - echo.ms;
 			if( deltaMs < -370 )		break;
 			if( deltaMs > +470 )		continue;
@@ -173,7 +173,7 @@ static void judgeArfInternal(const Duo validTouches[], const bool anyPressed, co
 					Arf.eHit += (echo.status == SPECIAL_LIT);
 				}
 		}
-		for(const Info hIdx = Arf.hIdx[G];  Hint& hint : span( Arf.hints.begin() + hIdx.f, hIdx.c )) {
+		for(const Info hIdx = Arf.hIdx[G];  Hint& hint : Span( Arf.hints.begin() + hIdx.f, hIdx.c )) {
 			const int32_t deltaMs = Arf.msTime - hint.ms;
 			if( deltaMs < -370 )		break;
 			if( deltaMs > +470 )		 continue;
@@ -199,13 +199,13 @@ static void judgeArfInternal(const Duo validTouches[], const bool anyPressed, co
 		}
 	}
 	else {
-		for(const Info eIdx = Arf.eIdx[G];  Echo& echo : span( Arf.echoes.begin() + eIdx.f, eIdx.c )) {
+		for(const Info eIdx = Arf.eIdx[G];  Echo& echo : Span( Arf.echoes.begin() + eIdx.f, eIdx.c )) {
 			const int32_t deltaMs = Arf.msTime - echo.ms;
 			if( deltaMs < -370 )		break;
 			if( deltaMs > +470 )		continue;
 			echo = scanEcho(echo, deltaMs, validTouches);
 		}
-		for(const Info hIdx = Arf.hIdx[G];  Hint& hint : span( Arf.hints.begin() + hIdx.f, hIdx.c )) {
+		for(const Info hIdx = Arf.hIdx[G];  Hint& hint : Span( Arf.hints.begin() + hIdx.f, hIdx.c )) {
 			const int32_t deltaMs = Arf.msTime - hint.ms;
 			if( deltaMs < -370 )		break;
 			if( deltaMs > +470 )		continue;

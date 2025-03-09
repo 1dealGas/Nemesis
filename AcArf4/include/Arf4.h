@@ -61,7 +61,6 @@ namespace Arf4 {
 		)
 	};
 	struct Info { Ar32(u32 c:10, f:22) };
-	using  Vec  = std::vector;
 
 /* Fumen */
 	struct Fumen {
@@ -82,6 +81,7 @@ namespace Arf4 {
 		uint64_t				msTime:20, judgeRange:7 = 37;
 		uint64_t				sHit:6, hHit:15, eHit:15, early:15, late:15, lost:15;
 		uint64_t				isAuto:1, isAnyX:1, isAnyY:1, isDaymode:1;
+		/*------------------------*/
 		float					xScale = 112.5/8, yScale = xScale;
 		float					xDelta, cameraSpeed = 1;					// cameraSpeed ∈ [0,1.25]
 	};

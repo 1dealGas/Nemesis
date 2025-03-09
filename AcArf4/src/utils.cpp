@@ -6,11 +6,10 @@ using namespace Ar;
 #include <constants.h>
 float Ar::Eased(const float ratio, const uint8_t type) noexcept {
 	switch(type) {
-		default:
-		case STATIC:	return 0;
-		case LINEAR:	return ratio;
-		case INSINE:	return inSine [(uint16_t)(ratio * 4096)];
-		case OUTSINE:	return outSine[(uint16_t)(ratio * 4096)];
+	  default:	case STATIC:	return 0;
+	[[likely]]	case LINEAR:	return ratio;
+				case INSINE:	return inSine [(uint16_t)(ratio * 4096)];
+				case OUTSINE:	return outSine[(uint16_t)(ratio * 4096)];
 	}
 }
 
@@ -51,7 +50,7 @@ int Ar::Ease(lua_State* L) noexcept {
 	if		(ratio < 0)		  ratio = 0;
 	else if (ratio > 1)		  ratio = 1;
 	return lua_pushnumber(L,
-		from + delta * Eased( (float)ratio, lua_tointeger(L, 2) )
+		from + delta * Eased( ratio, lua_tointeger(L, 2) )
 	), 1;
 }
 
@@ -76,7 +75,7 @@ int Ar::SetSpeed(lua_State* L) noexcept {
 	 */
 	lua_Number scale = lua_tonumber(L, 1);
 			   scale = scale < 0.5 ? 0.5 : scale > 10 ? 10 : scale;
-	PlayerSpeed = (scale + 11) / 1500.0f;
+	PlayerSpeed = (scale + 11) / 1500;
 	return 0;
 }
 
@@ -84,12 +83,13 @@ int Ar::SetDaymode(lua_State* L) noexcept {
 	/* Usage:
 	 * Arf4.SetDaymode(is_daymode)
 	 */
-	return Arf.isDaymode = lua_toboolean(L, 1), 0;
+	Arf.isDaymode = lua_toboolean(L, 1);
+	return 0;
 }
 
 int Ar::SetJudgeZone(lua_State* L) noexcept {
 	/* Usage:
-	 * Arf4.SetJudgeZone(ms, any_x, any_y)   -- ms ∈ [1,100]
+	 * Arf4.SetJudgeZone(ms, is_any_x, is_any_y)   -- ms ∈ [1,100]
 	 */
 	const uint8_t zone = lua_tointeger(L, 1);
 	Arf.judgeRange = zone > 99 ? 100 : zone < 1 ? 1 : zone;
