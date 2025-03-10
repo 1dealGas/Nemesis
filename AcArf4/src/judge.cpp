@@ -10,13 +10,15 @@ using namespace Ar;
  *     Catch Path / Drag Path
  * [3] Lost Behavior
  */
-static bool hasTouchNear(const int16_t x, const int16_t y, const Duo validTouches[]) noexcept {
+static constexpr uint16_t OBJECT_SIZE = 456,
+							HALF_SIZE = OBJECT_SIZE >> 1;
+static bool hasTouchNear(const int16_t cdx, const int16_t cdy, const Duo validTouches[]) noexcept {
 	switch( Arf.isAnyX | Arf.isAnyY<<1 ) {
 		case 3:
 			return true;
 		case 2: /* isAnyY */ {
 			uint8_t whichTouch = 0;
-			const float d = (540.0f - 228) + y * Arf.yScale, u = d + 456;
+			const float d = (540.0f - HALF_SIZE) + cdy * Arf.yScale, u = d + OBJECT_SIZE;
 			while(~ validTouches[whichTouch].val ) {   // Using {.a=NaN, .b=NaN} as the ending identifier
 				const float touchY = validTouches[whichTouch].b;
 				if( touchY >= d  &&  touchY <= u )
@@ -27,7 +29,7 @@ static bool hasTouchNear(const int16_t x, const int16_t y, const Duo validTouche
 		}
 		case 1: /* isAnyX */ {
 			uint8_t whichTouch = 0;
-			const float l = (900.0f - 228) + x * Arf.xScale + Arf.xDelta, r = l + 456;
+			const float l = (900.0f - HALF_SIZE) + cdx * Arf.xScale + Arf.xDelta, r = l + OBJECT_SIZE;
 			while(~ validTouches[whichTouch].val ) {
 				const float touchX = validTouches[whichTouch].a;
 				if( touchX >= l  &&  touchX <= r )
@@ -38,8 +40,8 @@ static bool hasTouchNear(const int16_t x, const int16_t y, const Duo validTouche
 		}
 		[[likely]] default: {
 			uint8_t whichTouch = 0;
-			const float l = (900.0f - 228) + x * Arf.xScale + Arf.xDelta, r = l + 456;
-			const float d = (540.0f - 228) + y * Arf.yScale, u = d + 456;
+			const float l = (900.0f - HALF_SIZE) + cdx * Arf.xScale + Arf.xDelta, r = l + OBJECT_SIZE;
+			const float d = (540.0f - HALF_SIZE) + cdy * Arf.yScale, u = d + OBJECT_SIZE;
 			while(~ validTouches[whichTouch].val ) {
 				const float touchX = validTouches[whichTouch].a;
 				if( touchX >= l  &&  touchX <= r ) {
@@ -55,34 +57,32 @@ static bool hasTouchNear(const int16_t x, const int16_t y, const Duo validTouche
 }
 
 #include <vector>
-static std::vector<Info> blockPos;
-static bool testAnmitsuSafety(const int16_t x, const int16_t y) noexcept {
+static std::vector<Duo> blockPos;
+static bool testAnmitsuSafety(const int16_t cdx, const int16_t cdy) noexcept {
+	const float x = 900.0f + cdx * Arf.xScale + Arf.xDelta,  y = 540.0f + cdy * Arf.yScale;
+	const float l = x - OBJECT_SIZE,  r = x + OBJECT_SIZE,  d = y - OBJECT_SIZE,  u = y + OBJECT_SIZE;
+
 	switch( Arf.isAnyX | Arf.isAnyY<<1 ) {
 		case 3:
 			return false;
-		case 2: /* isAnyY */ {
-			const int16_t l = x - 57, r = x + 57;
+		case 2: /* isAnyY */
 			for(const auto i : blockPos)
-				if( i.c > l && i.c < r )
+				if( i.a > l && i.a < r )
 					return false;
 			break;
-		}
-		case 1: /* isAnyX */ {
-			const int16_t d = y - 57, u = y + 57;
+		case 1: /* isAnyX */
 			for(const auto i : blockPos)
-				if( i.f > d && i.f < u )
+				if( i.b > d && i.b < u )
 					return false;
 			break;
-		}
-		[[likely]] default: {
-			const int16_t l = x - 57, r = x + 57, d = y - 57, u = y + 57;
+		[[likely]] default:
 			for(const auto i : blockPos)
-				if( i.c > l && i.c < r )
-					if( i.f > d && i.f < u )
+				if( i.a > l && i.a < r )
+					if( i.b > d && i.b < u )
 						return false;
-		}
 	}
-	blockPos.push_back({ .c = (uint32_t)x, .f = (uint32_t)y });   // Push "Safe when Anmitsu" Hints
+
+	blockPos.push_back({ .a = x, .b = y });   // Push "Safe when Anmitsu" Hints
 	return true;
 }
 

@@ -7,10 +7,10 @@ namespace Arf4 {
 	#define	Ar32(...)  using i32 = int32_t; using u32 = uint32_t;  union{ struct{__VA_ARGS__;}; u32 val; };
 	#define Ar64(...)  using i64 = int64_t; using u64 = uint64_t;  union{ struct{__VA_ARGS__;}; u64 val; };
 
-	enum  TableIndex : uint8_t  {	   WGO = 3, HGO, EGO, EHGO, AGOL, AGOR, WTINT, HTINT, ETINT, ATINT  };
-	enum  EaseType   : uint8_t  {   STATIC = 0, LINEAR, INSINE, OUTSINE									};
+	enum  TableIndex : uint8_t  {	   WGO = 3, HGO, EGO, EHGO, AGO, WTINT, HTINT, ETINT, EHTINT, ATINT  };
+	enum  EaseType   : uint8_t  {   STATIC = 0, LINEAR, INSINE, OUTSINE									 };
 	enum  Status     : uint8_t  {  NJUDGED = 0, SPECIAL, NJUDGED_LIT, SPECIAL_LIT, HIT, HIT_LIT, LOST,
-								  SPECIAL_LOST, EARLY, EARLY_LIT, LATE, LATE_LIT						};
+								  SPECIAL_LOST, EARLY, EARLY_LIT, LATE, LATE_LIT						 };
 
 /* Wish */
 	struct Point {
@@ -22,14 +22,14 @@ namespace Arf4 {
 	struct Child {
 		Ar64(
 			u64  radius:5, initLoop:6;		i64  deltaLoop:5;
-			u64  dt:33;														// dt = ms * v
+			u64  oDt:33;														// oDt = ms * v
 		)
 	};
 	struct Wish {
 		Ar64(
-			u64  nCount:5,  nSince:15;		u64  isSpecial:1;				// deltaGroup:
-			u64  cCount:10, cSince:15;		u64  deltaGroup:3;				// 1-7  Group 1~7
-			u64  nIndex:5,  cIndex:10;										//   0  Group {0,1}
+			u64  nCount:5,  nSince:15;		u64  isSpecial:1;
+			u64  cCount:10, cSince:15;		u64  deltaGroup:3;
+			u64  nIndex:5,  cIndex:10;
 		)
 	};
 
@@ -50,8 +50,8 @@ namespace Arf4 {
 /* Misc */
 	struct Delta {
 		Ar64(																// v [-8,8)      1/1024
-			u64  t:18;						i64  v:14;						// t [0,1048576) 4/1ms
-			u64  base:31;													// base = t * v
+			u64  t:18;						u64  absV:13;					// t [0,1048576) 4/1ms
+			u64  base:33;													// base = t * v
 		)
 	};
 	struct Duo {
@@ -65,7 +65,7 @@ namespace Arf4 {
 /* Fumen */
 	struct Fumen {
 		std::vector<Point>		nodes;
-		std::vector<Delta>		deltas;										// [0] Sizes: 10+9+9+9+9+9+9
+		std::vector<Delta>		deltas;										// [0] L->H  Sizes of 7->1, 9*7
 		std::vector<Child>		wishChilds;
 		std::vector<Info>		wIdx, hIdx, eIdx;
 		std::vector<Wish>		wishes;
@@ -83,10 +83,10 @@ namespace Arf4 {
 		uint64_t				isAuto:1, isAnyX:1, isAnyY:1, isDaymode:1;
 		/*------------------------*/
 		float					xScale = 112.5/8, yScale = xScale;
-		float					xDelta, cameraSpeed = 1;					// cameraSpeed ∈ [0,1.25]
+		float					xDelta, cSpeed = 1;							// cS ∈ [0,1.25]  pS ∈ [0.5,10]
 	};
 }
-extern  float					PlayerSpeed;								// (k+11) / 1500, k ∈ [0.5,10]
+extern  float					PlayerSpeed;								// Finally  (pS*cS + 11) / 1500
 extern  int8_t					InputDelta;
 extern  uint64_t				UsysTime;
 extern  Arf4::Fumen				Arf;
@@ -110,9 +110,9 @@ namespace Ar {
 	int  Move(lua_State* L) noexcept;
 
 	/* Internal */
-  float  Eased(float, uint8_t) noexcept;
+  float  Eased(double, uint8_t) noexcept;
    void  JudgeArfSweep() noexcept;
-	Duo  SinCos(Duo) noexcept;
+	Duo  CosSin(Duo) noexcept;
 
 	/* Operation */
 	int  LoadArf(lua_State* L);

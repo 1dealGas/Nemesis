@@ -4,7 +4,7 @@ using namespace Ar;
 
 /* Ease Utils */
 #include <constants.h>
-float Ar::Eased(const float ratio, const uint8_t type) noexcept {
+float Ar::Eased(const double ratio, const uint8_t type) noexcept {
 	switch(type) {
 	  default:	case STATIC:	return 0;
 	[[likely]]	case LINEAR:	return ratio;
@@ -13,17 +13,17 @@ float Ar::Eased(const float ratio, const uint8_t type) noexcept {
 	}
 }
 
-Duo Ar::SinCos(Duo d) noexcept {
+Duo Ar::CosSin(Duo d) noexcept {   // Pass Degree into d.a
 	switch( d.as ) {
 		case 0: default: {
 			uint64_t deg16  = (d.ae+=4, d.a);		 const uint64_t deg16div1440 = deg16 / 1440;
 					 deg16 -= deg16div1440 * 1440;
 			switch( deg16div1440 & 0b11 ) {
 				default:
-				case 0: return d.a =  degreeSin[     deg16], d.b =  degreeSin[1440-deg16], d;   // 0~90
-				case 1: return d.a =  degreeSin[1440-deg16], d.b = -degreeSin[     deg16], d;   // 90~180
-				case 2: return d.a = -degreeSin[     deg16], d.b = -degreeSin[1440-deg16], d;   // 180~270
-				case 3: return d.a = -degreeSin[1440-deg16], d.b =  degreeSin[     deg16], d;   // 270~360
+				case 0: return d.b =  degreeSin[     deg16], d.a =  degreeSin[1440-deg16], d;   // 0~90
+				case 1: return d.b =  degreeSin[1440-deg16], d.a = -degreeSin[     deg16], d;   // 90~180
+				case 2: return d.b = -degreeSin[     deg16], d.a = -degreeSin[1440-deg16], d;   // 180~270
+				case 3: return d.b = -degreeSin[1440-deg16], d.a =  degreeSin[     deg16], d;   // 270~360
 			}
 		}
 		case 1: {   // d.f < 0, sin(-x) = -sin(x), cos(-x) = cos(x)
@@ -31,10 +31,10 @@ Duo Ar::SinCos(Duo d) noexcept {
 					 deg16 -= deg16div1440 * 1440;
 			switch( deg16div1440 & 0b11 ) {
 				default:
-				case 0: return d.a = -degreeSin[     deg16], d.b =  degreeSin[1440-deg16], d;
-				case 1: return d.a = -degreeSin[1440-deg16], d.b = -degreeSin[     deg16], d;
-				case 2: return d.a =  degreeSin[     deg16], d.b = -degreeSin[1440-deg16], d;
-				case 3: return d.a =  degreeSin[1440-deg16], d.b =  degreeSin[     deg16], d;
+				case 0: return d.b = -degreeSin[     deg16], d.a =  degreeSin[1440-deg16], d;
+				case 1: return d.b = -degreeSin[1440-deg16], d.a = -degreeSin[     deg16], d;
+				case 2: return d.b =  degreeSin[     deg16], d.a = -degreeSin[1440-deg16], d;
+				case 3: return d.b =  degreeSin[1440-deg16], d.a =  degreeSin[     deg16], d;
 			}
 		}
 	}
@@ -54,7 +54,6 @@ int Ar::Ease(lua_State* L) noexcept {
 	), 1;
 }
 
-
 /* Misc Utils */
 int Ar::SetCam(lua_State* L) noexcept {
 	/* Usage:										 -- xScale / yScale: Mainly for Runtime Mirroring
@@ -64,8 +63,8 @@ int Ar::SetCam(lua_State* L) noexcept {
 	Arf.yScale = lua_tonumber(L, 2) * 14.0625;
 	Arf.xDelta = lua_tonumber(L, 3);
 
-	const lua_Number  cSpeed = lua_tonumber(L, 4);
-	Arf.cameraSpeed = cSpeed < 0 ? 0 : cSpeed > 1.25 ? 1.25 : cSpeed;
+	const lua_Number cSpeed = lua_tonumber(L, 4);
+	Arf.cSpeed = cSpeed < 0 ? 0 : cSpeed > 1.25 ? 1.25 : cSpeed;
 	return 0;
 }
 
@@ -73,9 +72,8 @@ int Ar::SetSpeed(lua_State* L) noexcept {
 	/* Usage:
 	 * Arf4.SetSpeed(scale)
 	 */
-	lua_Number scale = lua_tonumber(L, 1);
-			   scale = scale < 0.5 ? 0.5 : scale > 10 ? 10 : scale;
-	PlayerSpeed = (scale + 11) / 1500;
+	const lua_Number  pSpeed = lua_tonumber(L, 1);
+		PlayerSpeed = pSpeed < 0.5 ? 0.5 : pSpeed > 10 ? 10 : pSpeed;
 	return 0;
 }
 
@@ -83,8 +81,7 @@ int Ar::SetDaymode(lua_State* L) noexcept {
 	/* Usage:
 	 * Arf4.SetDaymode(is_daymode)
 	 */
-	Arf.isDaymode = lua_toboolean(L, 1);
-	return 0;
+	return Arf.isDaymode = lua_toboolean(L, 1), 0;
 }
 
 int Ar::SetJudgeZone(lua_State* L) noexcept {
