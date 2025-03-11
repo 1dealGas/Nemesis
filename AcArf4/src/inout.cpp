@@ -50,20 +50,20 @@ int Ar::LoadArf(lua_State* L) {
 	const auto path = luaL_checkstring(L, 1);
 
 	// Acquire Buffer
-	uint8_t* pBuf;														// free() this.
+	uint8_t* pBuf;													// free() this.
 	uint32_t bufSize;
 	if( const auto loadResult = dmResource::GetRaw(pContext->pFactory, path, (void**)&pBuf, &bufSize);
 		loadResult != dmResource::RESULT_OK
 	) {
-		FILE* pFile = fopen(path, "rb");					// Open
+		FILE* pFile = fopen(path, "rb");							// Open
 		if( pFile == nullptr )
 			return lua_pushboolean(L, false), 1;
 
-		fseek(pFile, 0, SEEK_END);							// Size
+		fseek(pFile, 0, SEEK_END);									// Size
 		bufSize = ftell(pFile);
 		fseek(pFile, 0, SEEK_SET);
 
-		pBuf = (uint8_t*)malloc(bufSize);								// Copying
+		pBuf = (uint8_t*)malloc(bufSize);							// Copying
 		if( fread( pBuf, 1, bufSize, pFile ) != bufSize )
 			return lua_pushboolean(L, false), free(pBuf), fclose(pFile), 1;
 		fclose(pFile);

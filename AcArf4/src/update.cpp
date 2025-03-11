@@ -17,7 +17,7 @@ struct AuInfo {
 
 /* Utils & Render Methods */
 static const Qt maxQuat(0, 0, 0.594822786751341, 0.803856860617217);
-static Qt rotationToQuat(const float degree) noexcept {
+static auto rotationToQuat(const float degree) noexcept {
 	const auto cosSin = CosSin({ .a = degree * 0.5f });
 	return Qt(0, 0, cosSin.b, cosSin.a);
 }
@@ -58,7 +58,7 @@ static AuInfo renderWish(lua_State* L, AuInfo info, Duo Pos, Duo zw) {
 
 static constexpr auto dtPred = [](const Delta a, const Delta b) noexcept { return a.t < b.t; };
 static AuInfo renderAnim(lua_State* L, AuInfo info, Duo Pos, const int16_t msPast) {
-	if( msPast > 370 )			return info;
+	if( msPast > 370 )	return info;
 	const auto tint = ( lua_rawgeti(L, ATINT, ++info.aUsed), dmScript::CheckVector4(L, -1) );
 	const auto lAgo = ( lua_rawgeti(L, AL, info.aUsed), dmScript::CheckGOInstance(L, -1) ),
 			   rAgo = ( lua_rawgeti(L, AR, info.aUsed), dmScript::CheckGOInstance(L, -1) );
@@ -102,7 +102,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 		if( Arf.msTime >= Arf.before )			return 0;
 			Arf.msTime = max(Arf.msTime, 2);	UsysTime = dmTime::GetMonotonicTime();
 	#ifndef AR_BUILD_VIEWER
-		if (! Arf.isAuto )						JudgeArfSweep();
+		if(! Arf.isAuto )						JudgeArfSweep();
 	#endif
 
 	/* Info */
@@ -210,37 +210,40 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 
 			const Duo hintPos  = { .a = 900 + h.cdx * Arf.xScale + Arf.xDelta,
 								   .b = 540 + h.cdy * Arf.yScale };
-			const GO  hintGo   = ( lua_rawgeti(L, HGO,   ++info.hUsed), dmScript::CheckGOInstance(L,-1) );
-			const v4  hintTint = ( lua_rawgeti(L, HTINT, info.hUsed--), dmScript::CheckVector4(L,-1)    );
+			const GO  hintGo   = ( lua_rawgeti(L, HGO, ++info.hUsed), dmScript::CheckGOInstance(L,-1) );
+			const v4  hintTint = ( lua_rawgeti(L, HTINT, info.hUsed), dmScript::CheckVector4(L,-1)    );
 			lua_pop(L, 2);
 
 			if( float V;  lifeMs < -370 )
 				V = lifeMs * 0.0001 - 0.037,			SetPosition( hintGo, P3(hintPos.a, hintPos.b, V) ),
-				V = 0.3 + (lifeMs + 510) * 0.0005,		hintTint -> setX(V).setY(V).setZ(V),
-				info.hUsed++;
+				V = 0.3 + (lifeMs + 510) * 0.0005,		hintTint -> setX(V).setY(V).setZ(V);
 			else if( lifeMs < 0 )
-				hintTint -> setX(0.37).setY(0.37).setZ(0.37),
 				SetPosition( hintGo, P3(hintPos.a, hintPos.b, -0.0573) ),
-				info.hUsed++;
+				hintTint -> setX(0.37).setY(0.37).setZ(0.37);
 			else
 				info = renderAnim(L, info, hintPos, lifeMs),
 				( lifeMs < 101 )?
-					SetPosition( hintGo, P3(hintPos.a, hintPos.b, -0.0073) ),
-					hintTint -> setXYZ(Arf.oTint) : 0,
+					SetPosition( hintGo, P3(hintPos.a, hintPos.b, -0.0073) ), hintTint -> setXYZ(Arf.oTint):
+					--info.hUsed,   // Hint Go acquired, but not used
 				info.playH = lifeMs < info.frameDt;
 		}
 		for( const Info ei = Arf.eIdx[timer.t];  const Echo e : Span(Arf.echoes.begin() + ei.f, ei.c) ) {
-			const int16_t lifeMs = Arf.msTime - e.ms;			double R = 1;
+			const int16_t lifeMs = Arf.msTime - e.ms;
 			if( lifeMs > 370 )
 				continue;
 
 			Duo mPos, ePos;
 				mPos.a = 900 + e.cdx * Arf.xScale + Arf.xDelta;
 				mPos.b = 540 + e.cdy * Arf.yScale;
-			if( !e.radius  ||  lifeMs >= 0 )
-				ePos = mPos, R = (lifeMs + 510) / 151.0;
+			double R = 1;
+
+			if( lifeMs >= 0 )
+				ePos = mPos;
+			else if( !e.radius )
+				if( lifeMs > -511 )		ePos = mPos, R = (lifeMs + 510) / 151.0;
+				else					continue;
 			else if( const double x8d =- lifeMs * eSpeed * 8;  R -= x8d / (e.radius << 1), R < 0 )
-				goto MISC_UPDATE;
+				goto MISC_UPDATE_AUTO;
 			else
 				ePos.a = 360 * (e.initLoop / 64.0 + e.deltaLoop / 8.0 * R),  ePos = CosSin(ePos),
 				ePos.a = mPos.a + x8d * ePos.a * Arf.xScale,
@@ -265,7 +268,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 				}
 				if( lifeMs < 0 ) {
 					echoTint -> setX(0.37).setY(0.37).setZ(0.37).setW(R);
-					E_ASET_SCL:  SetScale( echoGo, 1.074 - 0.437 * R * (2-R) );
+	E_ASET_SCL:		SetScale( echoGo, 1.074 - 0.437 * R * (2-R) );
 				}
 				else
 					echoTint -> setXYZ( Arf.oTint ).setW(R),
@@ -273,12 +276,14 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 				SetPosition( echoGo, P3(ePos.a, ePos.b, 0.02) );
 			}
 
-			/**/ MISC_UPDATE:
+			/**/ MISC_UPDATE_AUTO:
 			if( lifeMs > 0 )
-				info = renderAnim(L, info, mPos, lifeMs);
+				info = renderAnim(L, info, mPos, lifeMs),
+				info.playE = (lifeMs < info.frameDt) && (e.status == SPECIAL);
 			else if( lifeMs > -511 ) {
 				const GO helper = ( lua_rawgeti(L, EH, ++info.xUsed), dmScript::CheckGOInstance(L,-1) );
 				lua_pushnumber( L, R = -lifeMs / 510.0 ), lua_rawseti(L, EHTINT, info.xUsed);
+				SetPosition( helper, P3(mPos.a, mPos.b, 0.0625) );
 				SetScale( helper, 1.637 - R * (2-R) );
 				lua_pop(L, 1);
 			}
@@ -298,45 +303,38 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 
 			if( float V;  lifeMs < -370 )
 				V = lifeMs * 0.0001 - 0.037,			SetPosition( hintGo, P3(hintPos.a, hintPos.b, V) ),
-				V = 0.3 + (lifeMs + 510) * 0.0005,		hintTint -> setX(V).setY(V).setZ(V),
-				info.hUsed++;
+				V = 0.3 + (lifeMs + 510) * 0.0005,		hintTint -> setX(V).setY(V).setZ(V),  ++info.hUsed;
 			else if( lifeMs < 370 ) switch( h.status ) {
 	[[likely]]	case NJUDGED:		case SPECIAL:
 					hintTint -> setX(0.37).setY(0.37).setZ(0.37);
-					dmGameObject::SetPosition( hintGo, P3(hintPos.a, hintPos.b, -0.0637) );
-					info.hUsed++;
+					SetPosition( hintGo, P3(hintPos.a, hintPos.b, -0.0637) ),  ++info.hUsed;
 					break;
 				case NJUDGED_LIT:	case SPECIAL_LIT:
 					hintTint -> setX(0.573).setY(0.573).setZ(0.573);
-					dmGameObject::SetPosition( hintGo, P3(hintPos.a, hintPos.b, -0.0573) );
-					info.hUsed++;
+					SetPosition( hintGo, P3(hintPos.a, hintPos.b, -0.0573) ),  ++info.hUsed;
 					break;
 				case HIT_LIT:
 					hintTint -> setXYZ(Arf.oTint);
-					dmGameObject::SetPosition( hintGo, P3(hintPos.a, hintPos.b, -0.0073) );
-					info.hUsed++;
+					SetPosition( hintGo, P3(hintPos.a, hintPos.b, -0.0073) ),  ++info.hUsed;
 				case HIT:
 					info = renderAnim(L, info, hintPos, lifeMs - h.deltaMs);
 					break;
   [[unlikely]]  case EARLY_LIT:
 					hintTint -> setXYZ(HintEarly);
-					dmGameObject::SetPosition( hintGo, P3(hintPos.a, hintPos.b, -0.0037) );
-					info.hUsed++;
+					SetPosition( hintGo, P3(hintPos.a, hintPos.b, -0.0037) ),  ++info.hUsed;
   [[unlikely]]  case EARLY:
 					info.sType = 1, info = renderAnim(L, info, hintPos, lifeMs - h.deltaMs), info.sType = 0;
 					break;
   [[unlikely]]  case LATE_LIT:		/**/ HCASE_LATE_LIT:
 					hintTint -> setXYZ(HintLate);
-					dmGameObject::SetPosition( hintGo, P3(hintPos.a, hintPos.b, -0.0037) );
-					info.hUsed++;
+					SetPosition( hintGo, P3(hintPos.a, hintPos.b, -0.0037) ),  ++info.hUsed;
   [[unlikely]]  case LATE:			/**/ HCASE_LATE:
 					info.sType = 2, info = renderAnim(L, info, hintPos, lifeMs - h.deltaMs), info.sType = 0;
 					break;
   [[unlikely]]  default:   // LOST
-					SetPosition( hintGo, P3(hintPos.a, hintPos.b, -lifeMs * 0.00011) );
+					SetPosition( hintGo, P3(hintPos.a, hintPos.b, -lifeMs * 0.00011) ),  ++info.hUsed;
 					V = 0.573 - lifeMs * 0.00037,	hintTint -> setX(V);
 					V*= 0.51,						hintTint -> setY(V).setZ(V);
-					info.hUsed++;
 			}
 			else if( h.deltaMs > 0 ) switch( h.status ) {   // `goto` is used to reduce boilerplate lines
   [[unlikely]]  case LATE_LIT:		goto HCASE_LATE_LIT;
@@ -354,10 +352,13 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 				mPos.b = 540 + e.cdy * Arf.yScale;
 			if( lifeMs > 370 )
 				goto UPDATE_ANIM;
-
 			double R = 1;
-			if( !e.radius  ||  lifeMs >= 0 )   // Reduce branches for less mispredictions
-				ePos = mPos, R = (lifeMs + 510) / 151.0;
+
+			if( lifeMs >= 0 )
+				ePos = mPos;
+			else if( !e.radius )
+				if( lifeMs > -511 )		ePos = mPos, R = (lifeMs + 510) / 151.0;
+				else					continue;
 			else if( const double x8d =- lifeMs * eSpeed * 8;  R -= x8d / (e.radius << 1), R < 0 )
 				goto MISC_UPDATE;
 			else
@@ -393,7 +394,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 	E_NSET_TSF:		SetPosition( echoGo, P3(ePos.a, ePos.b, 0.02) );
 					SetScale( echoGo, 1.074 - 0.437 * R * (2-R) );
 					break;
-   [[unlikely]] case LOST:
+				case LOST:
 					R = 0.573 - lifeMs * 0.00037,	echoTint -> setX(R).setW(1);
 					R*= 0.51,						echoTint -> setY(R).setZ(R);
 					goto E_LSET_TSF;
@@ -412,12 +413,11 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 					const GO helper = ( lua_rawgeti(L, EH, ++info.xUsed), dmScript::CheckGOInstance(L,-1) );
 					if( lifeMs < 0 )
 						lua_pushnumber( L, R = -lifeMs / 510.0 ), lua_rawseti(L, EHTINT, info.xUsed),
-						SetPosition( helper, P3(mPos.a, mPos.b, 0.0625) ),
 						SetScale( helper, 1.637 - R * (2-R) );
 					else
 						lua_pushnumber(L, 1), lua_rawseti(L, EHTINT, info.xUsed),
-						SetPosition( helper, P3(mPos.a, mPos.b, 0.0625) ),
 						SetScale( helper, 0.637 );
+					SetPosition( helper, P3(mPos.a, mPos.b, 0.0625) );
 					lua_pop(L, 1);
 				}
 			else UPDATE_ANIM:

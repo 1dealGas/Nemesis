@@ -114,7 +114,7 @@ int Ar::SetInputDelta(lua_State* L) noexcept {
 	const int8_t inputDeltaParam = lua_tointeger(L, 1);
 	InputDelta = inputDeltaParam > 63 ? 63 : inputDeltaParam < -63 ? -63 : inputDeltaParam;
 
-	Arf.minDt = InputDelta - Arf.judgeRange;		Arf.minDt = Arf.minDt < -100 ? -100 : Arf.minDt ;
-	Arf.maxDt = InputDelta + Arf.judgeRange;		Arf.maxDt = Arf.maxDt >  100 ?  100 : Arf.maxDt ;
+	Arf.minDt = InputDelta - Arf.judgeRange;		Arf.minDt = Arf.minDt < -100 ? -100 : Arf.minDt;
+	Arf.maxDt = InputDelta + Arf.judgeRange;		Arf.maxDt = Arf.maxDt >  100 ?  100 : Arf.maxDt;
 	return 0;
 }

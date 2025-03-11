@@ -18,10 +18,10 @@ static bool hasTouchNear(const int16_t cdx, const int16_t cdy, const Duo validTo
 			return true;
 		case 2: /* isAnyY */ {
 			uint8_t whichTouch = 0;
-			const float d = (540.0f - HALF_SIZE) + cdy * Arf.yScale, u = d + OBJECT_SIZE;
+			const float l = (900.0f - HALF_SIZE) + cdx * Arf.xScale + Arf.xDelta, r = l + OBJECT_SIZE;
 			while(~ validTouches[whichTouch].val ) {   // Using {.a=NaN, .b=NaN} as the ending identifier
-				const float touchY = validTouches[whichTouch].b;
-				if( touchY >= d  &&  touchY <= u )
+				const float touchX = validTouches[whichTouch].a;
+				if( touchX >= l  &&  touchX <= r )
 					return true;
 				++whichTouch;
 			}
@@ -29,10 +29,10 @@ static bool hasTouchNear(const int16_t cdx, const int16_t cdy, const Duo validTo
 		}
 		case 1: /* isAnyX */ {
 			uint8_t whichTouch = 0;
-			const float l = (900.0f - HALF_SIZE) + cdx * Arf.xScale + Arf.xDelta, r = l + OBJECT_SIZE;
+			const float d = (540.0f - HALF_SIZE) + cdy * Arf.yScale, u = d + OBJECT_SIZE;
 			while(~ validTouches[whichTouch].val ) {
-				const float touchX = validTouches[whichTouch].a;
-				if( touchX >= l  &&  touchX <= r )
+				const float touchY = validTouches[whichTouch].b;
+				if( touchY >= d  &&  touchY <= u )
 					return true;
 				++whichTouch;
 			}
@@ -67,18 +67,18 @@ static bool testAnmitsuSafety(const int16_t cdx, const int16_t cdy) noexcept {
 			return false;
 		case 2: /* isAnyY */
 			for(const auto i : blockPos)
-				if( i.a > l && i.a < r )
+				if( i.a > l  &&  i.a < r )
 					return false;
 			break;
 		case 1: /* isAnyX */
 			for(const auto i : blockPos)
-				if( i.b > d && i.b < u )
+				if( i.b > d  &&  i.b < u )
 					return false;
 			break;
 		[[likely]] default:
 			for(const auto i : blockPos)
-				if( i.a > l && i.a < r )
-					if( i.b > d && i.b < u )
+				if( i.a > l  &&  i.a < r )
+					if( i.b > d  &&  i.b < u )
 						return false;
 	}
 
@@ -123,7 +123,7 @@ static Echo scanEcho(Echo echo, const int32_t deltaMs, const Duo validTouches[])
 				echo.status = SPECIAL_LIT;
 			return echo;
 		case HIT_LIT:
-			echo.status = hasTouchNear(echo.cdx, echo.cdy, validTouches) ? HIT_LIT : HIT ;
+			echo.status = hasTouchNear(echo.cdx, echo.cdy, validTouches)  ?  HIT_LIT : HIT ;
 			return echo;
 
 		/* [2] Echo Behavior -- Drag Path */
@@ -148,12 +148,12 @@ static Echo scanEcho(Echo echo, const int32_t deltaMs, const Duo validTouches[])
 #include <span>
 #include <dmsdk/dlib/time.h>
 static void judgeArfInternal(const Duo validTouches[], const bool anyPressed, const bool anyRel) noexcept {
-	using Span = std::span;
 	const uint64_t msTime = Arf.msTime + dmTime::GetMonotonicTime() - UsysTime, G = msTime >> 9;
+	using Span = std::span;
 
-	if(anyRel)
+	if( anyRel )
 		blockPos.clear();
-	if(uint32_t minJudgedMs = NULL;  anyPressed) {
+	if( uint32_t minJudgedMs = NULL;  anyPressed ) {
 		for(const Info eIdx = Arf.eIdx[G];  Echo& echo : Span( Arf.echoes.begin() + eIdx.f, eIdx.c )) {
 			const int32_t deltaMs = Arf.msTime - echo.ms;
 			if( deltaMs < -370 )		break;
@@ -176,7 +176,7 @@ static void judgeArfInternal(const Duo validTouches[], const bool anyPressed, co
 		for(const Info hIdx = Arf.hIdx[G];  Hint& hint : Span( Arf.hints.begin() + hIdx.f, hIdx.c )) {
 			const int32_t deltaMs = Arf.msTime - hint.ms;
 			if( deltaMs < -370 )		break;
-			if( deltaMs > +470 )		 continue;
+			if( deltaMs > +470 )		continue;
 			hint = scanHint(hint, validTouches);
 
 			if( hint.status == NJUDGED_LIT  ||  hint.status == SPECIAL_LIT )
