@@ -5,21 +5,13 @@
 #include <algorithm>
 #include <span>
 
-static constexpr auto H_EARLY_R = 0.37675f, H_EARLY_G = 0.67815f, H_EARLY_B = 0.767628125f;
-static constexpr auto H_LATE_R = 0.767628125f, H_LATE_G = 0.466228125f, H_LATE_B = 0.37675f;
-static constexpr auto H_HIT_R = 0.88f, H_HIT_G = 0.7528125f, H_HIT_B = 0.5534375f;
-
-static constexpr auto A_EARLY_R = 0.3125f, A_EARLY_G = 0.5625f, A_EARLY_B = 0.63671875f;
-static constexpr auto A_LATE_R = 0.63671875f, A_LATE_G = 0.38671875f, A_LATE_B = 0.3125f;
-static constexpr auto A_HIT_R = 1.0f, A_HIT_G = 0.85546875f, A_HIT_B = 0.62890625f;
-
 typedef dmGameObject::HInstance GO;				using namespace Ar;
 typedef dmVMath::Vector3 v3i, *v3;				typedef dmVMath::Point3 p3;
 typedef dmVMath::Vector4 v4i, *v4;				typedef dmVMath::Quat Qt;
 
 struct AuInfo {
-	uint64_t frameDt:11 = 0, aUsed:11 = 0, wUsed:10 = 0, eUsed:10 = 0, xUsed:10 = 0, hUsed:9 = 0;
-	uint64_t playH:1 = false, playE:1 = false, wishSpecial = false;
+	uint64_t frameDt:10 = 0, aUsed:11 = 0, wUsed:10 = 0, eUsed:10 = 0, xUsed:10 = 0, hUsed:9 = 0;
+	uint64_t sType:2 = false, playH:1 = false, playE:1 = false;
 };
 
 
@@ -42,7 +34,7 @@ static AuInfo renderWish(lua_State* L, AuInfo info, Duo Pos, Duo zw) {
 				SetScale   ( wGo, (zw.b = 1 - zw.b,  0.637f + 0.437f * zw.b * zw.b) );
 
 				// Tint
-				lua_pushnumber(L, info.wishSpecial ? -zw.b : zw.b), lua_rawseti(L, WTINT, info.wUsed);
+				lua_pushnumber(L, info.sType ? -zw.b : zw.b), lua_rawseti(L, WTINT, info.wUsed);
 				lua_pop(L, 1);
 			}
 			else {
@@ -55,13 +47,9 @@ static AuInfo renderWish(lua_State* L, AuInfo info, Duo Pos, Duo zw) {
 				if(( lua_rawgeti(L, WTINT, idx), lua_tonumber(L, -1) ) < 0)
 					lua_pushnumber(L, -1), lua_rawseti(L, WTINT, idx);
 				else
-					lua_pushnumber(L, info.wishSpecial ? -1 : 1), lua_rawseti(L, WTINT, idx);
+					lua_pushnumber(L, info.sType ? -1 : 1), lua_rawseti(L, WTINT, idx);
 				lua_pop(L, 2);
 			}
-	return info;
-}
-
-static AuInfo renderHint(AuInfo info) {
 	return info;
 }
 
@@ -69,7 +57,11 @@ static AuInfo renderEcho(AuInfo info) {
 	return info;
 }
 
-static AuInfo renderAnim(AuInfo info) {
+static AuInfo renderEchoHelper(AuInfo info) {
+	return info;
+}
+
+static AuInfo renderAnim(lua_State* L, AuInfo info, Duo Pos, const int8_t msPast) {
 	return info;
 }
 
@@ -79,6 +71,7 @@ static constexpr auto dtPred = [](const Delta a, const Delta b) noexcept {
 
 
 /* Main */
+using Span = std::span;
 int Ar::UpdateArf(lua_State* L) noexcept {
 	/* Usage:
 	 * local wgo_used, hgo_used, ego_used, ehgo_used, ago_used, h_playhs, e_playhs = Arf4.UpdateArf(
@@ -93,40 +86,42 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 
 	/* Info */
 	const double eSpeed = (PlayerSpeed * Arf.cSpeed + 11) / 1500.0, echoDt = Arf.msTime * eSpeed,
-				 dSpeed = eSpeed / 1024 /* 1/1024 -> 1 */;			double oDt[8] = { Arf.msTime * 1024.0 };
+				 dSpeed = eSpeed / 1024 /* 1/1024 -> 1 */;			double zDt[8] = { Arf.msTime * 1024.0 };
 	AuInfo info = { .frameDt = (uint64_t)(lua_tonumber(L, 2) * 1000) };
 	Delta timer = { .t = Arf.msTime >> 2 };
 
-	/* Delta */
+	/* Delta
+	 * zDt = Scale * 1024, Dt = Scale * Speed
+	 */
 	if( auto pFirst = Arf.deltas.begin() + 1; true ) {   // To limit the scope of some vars
 		for( uint64_t sizes = Arf.deltas[0].val,  i = 7; i; --i,  sizes >>= 9 )
 			if( const uint64_t size = sizes & 0x1ff;  size == 0 )
-				oDt[i] = oDt[0];
+				zDt[i] = zDt[0];
 			else {
 				const auto pEnd  = pFirst + size,
 						   pNext = std::upper_bound(pFirst, pEnd, timer, dtPred);
 				if( const Delta thisDt = *(pNext-1);  pNext != pEnd  &&  pNext->base < thisDt.base )
-					oDt[i] = thisDt.base - (Arf.msTime - thisDt.t * 4.0) * thisDt.absV;
+					zDt[i] = thisDt.base - (Arf.msTime - thisDt.t * 4.0) * thisDt.absV;
 				else
-					oDt[i] = thisDt.base + (Arf.msTime - thisDt.t * 4.0) * thisDt.absV;
+					zDt[i] = thisDt.base + (Arf.msTime - thisDt.t * 4.0) * thisDt.absV;
 				pFirst = pEnd;
 			}
 		const auto pEnd  = Arf.deltas.end(),
 				   pNext = std::upper_bound(pFirst, pEnd, timer, dtPred);
 		if( const Delta thisDt = *(pNext-1);  pNext != pEnd  &&  pNext->base < thisDt.base )
-			oDt[0] = thisDt.base - (Arf.msTime - thisDt.t * 4.0) * thisDt.absV;
+			zDt[0] = thisDt.base - (Arf.msTime - thisDt.t * 4.0) * thisDt.absV;
 		else
-			oDt[0] = thisDt.base + (Arf.msTime - thisDt.t * 4.0) * thisDt.absV;
+			zDt[0] = thisDt.base + (Arf.msTime - thisDt.t * 4.0) * thisDt.absV;
 		timer.t >>= 7;
 	}
 
 	/* Wish */
 	lastWgo.clear();		   // timer.t == Arf.msTime >> 9 since here
-	for(const Info wi = Arf.wIdx[timer.t];  Wish& wish : std::span(Arf.wishes.begin() + wi.f, wi.c)) {
+	for(const Info wi = Arf.wIdx[timer.t];  Wish& wish : Span(Arf.wishes.begin() + wi.f, wi.c)) {
 		Wish w = wish;
 
 		/* Nodes */
-		const auto nodes = std::span(Arf.nodes.begin() + w.nSince, w.nCount);
+		const auto nodes = Span(Arf.nodes.begin() + w.nSince, w.nCount);
 		if( Arf.msTime < nodes.front().ms  ||  Arf.msTime >= nodes.back().ms )
 			continue;
 
@@ -137,7 +132,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 		else if( uint8_t nextIdx = w.nIndex + 1;  next = nodes[nextIdx],  Arf.msTime >= next.ms )
 			do	 ++w.nIndex, ++nextIdx;
 			while( next = nodes[nextIdx], Arf.msTime >= next.ms );
-		info.wishSpecial = w.isSpecial;
+		info.sType = w.isSpecial;
 
 		const float tint = (Arf.msTime - nodes[0].ms) / 151.0f,
 					ratio = Eased( (double)(Arf.msTime - thiz.ms) / (next.ms - thiz.ms), thiz.ease ),
@@ -148,23 +143,23 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 		info = renderWish(L, info, nodePos, {.a = 0.01f, .b = max(tint, 1.0f) });
 
 		/* WishChild */
-		if( double wOdt;  w.cCount )
-			if(const auto wChilds = std::span(Arf.wishChilds.begin() + w.cSince, w.cCount);
-				(wOdt = oDt[w.deltaGroup]) < wChilds.back().oDt  &&  (wChilds[0].oDt - wOdt) * dSpeed < 8) {
+		if( double wZdt;  w.cCount )
+			if( const auto wChilds = Span(Arf.wishChilds.begin() + w.cSince, w.cCount);
+				(wZdt = zDt[w.delGroup]) < wChilds.back().zDt  &&  (wChilds[0].zDt - wZdt) * dSpeed < 8 ) {
 
 				// Manage cIndex
-				if( uint16_t prevCidx = w.cIndex - 1;  w.cIndex  &&  wOdt < wChilds[prevCidx].oDt )
+				if( uint16_t prevCidx = w.cIndex - 1;  w.cIndex  &&  wZdt < wChilds[prevCidx].zDt )
 					do	 --w.cIndex, --prevCidx;
-					while( w.cIndex  &&  wOdt < wChilds[prevCidx].oDt );
+					while( w.cIndex  &&  wZdt < wChilds[prevCidx].zDt );
 				else {
 					const uint16_t lastCidx = w.cCount - 1;
-					while( w.cIndex < lastCidx  &&  wOdt >= wChilds[w.cIndex].oDt )
+					while( w.cIndex < lastCidx  &&  wZdt >= wChilds[w.cIndex].zDt )
 						++w.cIndex;
 				}
 
 				// Traverse Subspan
 				for(const auto child : wChilds.subspan(w.cIndex)) {
-					const auto distX8 = (child.oDt - wOdt) * dSpeed * 8;
+					const auto distX8 = (child.zDt - wZdt) * dSpeed * 8;
 					if( distX8 > 64 /* 8x8 */ )
 						break;
 
@@ -173,27 +168,116 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 						continue;
 
 					Duo childPos = CosSin({
-						.a = 360 * (float)(child.initLoop / 64.0 + child.deltaLoop / 8.0 * cRatio)
+						.a = (float)( 360 * (child.initLoop / 64.0 + child.deltaLoop / 8.0 * cRatio) )
 					});
 					childPos.a = nodePos.a + distX8 * childPos.a;
 					childPos.b = nodePos.b + distX8 * childPos.b;
 
-					const float cTint = ratio / 0.237;
+					const float cTint = cRatio / 0.237;
 					info = renderWish(L, info, childPos, { .a = 0.03f, .b = max(cTint, 1.0f) });
 				}
 			}
 		wish = w;   // `w` is a value, while `wish` is a ref
 	}
 
-	/* Hint */
-	for( const Info hi = Arf.hIdx[timer.t];  Hint& hint : std::span(Arf.hints.begin() + hi.f, hi.c) ) {
+	/* Hint & Echo */
+	if( Arf.isAuto ) {   // There are much more boilerplate lines...
+		for( const Info hi = Arf.hIdx[timer.t];  const Hint h : Span(Arf.hints.begin() + hi.f, hi.c) ) {
+			const int16_t lifeMs = Arf.msTime - h.ms;
+			if( lifeMs > +370 )		continue;   // +470 if not Auto
+			if( lifeMs < -510 )		break;
 
+			const Duo hintPos = { .a = 900 + h.cdx * Arf.xScale + Arf.xDelta,
+								  .b = 540 + h.cdy * Arf.yScale };
+			const GO hintGo   = ( lua_rawgeti(L, HGO,   ++info.hUsed), dmScript::CheckGOInstance(L,-1) );
+			const v4 hintTint = ( lua_rawgeti(L, HTINT, info.hUsed--), dmScript::CheckVector4(L,-1)    );
+			lua_pop(L, 2);
+
+			if( float V;  lifeMs < -370 )
+				V = lifeMs * 0.0001 - 0.037,				SetPosition( hintGo, p3(hintPos.a, hintPos.b, V) ),
+				V = 0.3f + (lifeMs + 510) * 0.0005f,		hintTint -> setX(V).setY(V).setZ(V),
+				info.hUsed++;
+			else if( lifeMs < 0 )
+				hintTint -> setX(0.37).setY(0.37).setZ(0.37),
+				SetPosition( hintGo, p3(hintPos.a, hintPos.b, -0.0573) ),
+				info.hUsed++;
+			else
+				info = renderAnim(L, info, hintPos, lifeMs),
+				( lifeMs < 101 )?
+					SetPosition( hintGo, p3(hintPos.a, hintPos.b, -0.0073) ),
+					hintTint -> setXYZ(Arf.hitTint) : 0,
+				info.playH = lifeMs < info.frameDt;
+		}
+		for( const Info ei = Arf.eIdx[timer.t];  const Echo e : Span(Arf.echoes.begin() + ei.f, ei.c) ) {
+
+		}
+	}
+	else {
+		for( const Info hi = Arf.hIdx[timer.t];  const Hint h : Span(Arf.hints.begin() + hi.f, hi.c) ) {
+			const int16_t lifeMs = Arf.msTime - h.ms;
+			if( lifeMs > +470 )		continue;
+			if( lifeMs < -510 )		break;
+
+			const Duo hintPos = { .a = 900 + h.cdx * Arf.xScale + Arf.xDelta,
+								  .b = 540 + h.cdy * Arf.yScale };
+			const GO hintGo   = ( lua_rawgeti(L, HGO,   ++info.hUsed), dmScript::CheckGOInstance(L,-1) );
+			const v4 hintTint = ( lua_rawgeti(L, HTINT, info.hUsed--), dmScript::CheckVector4(L,-1)    );
+			lua_pop(L, 2);
+
+			if( float V;  lifeMs < -370 )
+				V = lifeMs * 0.0001 - 0.037,				SetPosition( hintGo, p3(hintPos.a, hintPos.b, V) ),
+				V = 0.3f + (lifeMs + 510) * 0.0005f,		hintTint -> setX(V).setY(V).setZ(V),
+				info.hUsed++;
+			else if( lifeMs < 370 ) switch( h.status ) {
+				case NJUDGED:		case SPECIAL:
+					hintTint -> setX(0.37).setY(0.37).setZ(0.37);
+					dmGameObject::SetPosition( hintGo, p3(hintPos.a, hintPos.b, -0.0637) );
+					info.hUsed++;
+					break;
+				case NJUDGED_LIT:	case SPECIAL_LIT:
+					hintTint -> setX(0.573).setY(0.573).setZ(0.573);
+					dmGameObject::SetPosition( hintGo, p3(hintPos.a, hintPos.b, -0.0573) );
+					info.hUsed++;
+					break;
+				case HIT_LIT:
+					hintTint -> setXYZ(Arf.hitTint);
+					dmGameObject::SetPosition( hintGo, p3(hintPos.a, hintPos.b, -0.0073) );
+					info.hUsed++;
+				case HIT:
+					info.sType = 0, info = renderAnim(L, info, hintPos, lifeMs);
+					break;
+				case EARLY_LIT:
+					hintTint -> setX(H_EARLY_R).setY(H_EARLY_G).setZ(H_EARLY_B);
+					dmGameObject::SetPosition( hintGo, p3(hintPos.a, hintPos.b, -0.0037) );
+					info.hUsed++;
+				case EARLY:
+					info.sType = 1, info = renderAnim(L, info, hintPos, lifeMs);
+					break;
+				case LATE_LIT:		HCASE_LATE_LIT:;
+					hintTint -> setX(H_EARLY_R).setY(H_LATE_G).setZ(H_LATE_B);
+					dmGameObject::SetPosition( hintGo, p3(hintPos.a, hintPos.b, -0.0037) );
+					info.hUsed++;
+				case LATE:			HCASE_LATE:;
+					info.sType = 2, info = renderAnim(L, info, hintPos, lifeMs);
+					break;
+				default:   // LOST
+					SetPosition( hintGo, p3(hintPos.a, hintPos.b, -lifeMs * 0.00011) );
+					V =  0.573 - lifeMs * 0.00037,		hintTint -> setX(V);
+					V *= 0.51,							hintTint -> setY(V).setZ(V);
+					info.hUsed++;
+			}
+			else if( h.deltaMs > 0 ) switch( h.status ) {   // `goto` is used to reduce boilerplate lines
+				case LATE_LIT:		goto HCASE_LATE_LIT;
+				case LATE:			goto HCASE_LATE;
+				default:;
+			}
+		}
+		for( const Info ei = Arf.eIdx[timer.t];  const Echo e : Span(Arf.echoes.begin() + ei.f, ei.c) ) {
+
+		}
 	}
 
-	/* Echo */
-	for( const Info ei = Arf.eIdx[timer.t];  Echo& echo : std::span(Arf.echoes.begin() + ei.f, ei.c) ) {
-
-	}
+	/* Do Returns */
 	return lua_pushinteger(L, info.wUsed), lua_pushinteger(L, info.hUsed), lua_pushinteger(L, info.eUsed),
 		   lua_pushinteger(L, info.xUsed), lua_pushinteger(L, info.aUsed), lua_pushboolean(L, info.playH),
 		   lua_pushboolean(L, info.playE), 7;

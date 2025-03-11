@@ -64,7 +64,7 @@ int Ar::SetCam(lua_State* L) noexcept {
 	Arf.xDelta = lua_tonumber(L, 3);
 
 	const lua_Number cSpeed = lua_tonumber(L, 4);
-	Arf.cSpeed = cSpeed < 0 ? 0 : cSpeed > 1.25 ? 1.25 : cSpeed;
+		Arf.cSpeed = cSpeed < 0 ? 0 : cSpeed > 1.25 ? 1.25 : cSpeed;
 	return 0;
 }
 
@@ -81,7 +81,10 @@ int Ar::SetDaymode(lua_State* L) noexcept {
 	/* Usage:
 	 * Arf4.SetDaymode(is_daymode)
 	 */
-	return Arf.isDaymode = lua_toboolean(L, 1), 0;
+	( Arf.isDaymode = lua_toboolean(L, 1) )?
+		Arf.hitTint.setX(H_HIT_R).setY(H_HIT_G).setZ(H_HIT_B):
+		Arf.hitTint.setX(H_HIT_R).setY(H_HIT_R).setZ(H_HIT_R);
+	return 0;
 }
 
 int Ar::SetJudgeZone(lua_State* L) noexcept {

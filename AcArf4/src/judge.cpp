@@ -235,11 +235,7 @@ void Ar::JudgeArfSweep() noexcept {
 	for( const Info hIdx = Arf.hIdx[G];  Hint& hint : std::span( Arf.hints.begin() + hIdx.f, hIdx.c ))
 		if( const int32_t deltaMs = Arf.msTime - hint.ms;  deltaMs > 255 ) {}
 		else if( deltaMs > 100 )
-			switch( hint.status ) {
-				case SPECIAL: case SPECIAL_LIT:		hint.status = SPECIAL_LOST;	Arf.lost++;  break;
-				case NJUDGED: case NJUDGED_LIT:		hint.status = LOST;			Arf.lost++;
-				default:;
-			}
+			hint.status < HIT  ?  hint.status = LOST, Arf.lost++ : 0;
 		else break;
 }
 
