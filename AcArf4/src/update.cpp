@@ -6,7 +6,7 @@
 #include <span>
 
 typedef dmGameObject::HInstance GO;				using namespace Ar;
-typedef dmVMath::Vector3 v3i, *v3;				typedef dmVMath::Point3 p3;
+typedef dmVMath::Vector3 v3i, *v3;				typedef dmVMath::Point3 P3;
 typedef dmVMath::Vector4 v4i, *v4;				typedef dmVMath::Quat Qt;
 
 struct AuInfo {
@@ -16,10 +16,10 @@ struct AuInfo {
 
 
 /* Utils & Render Methods */
-static const Qt maxQuat(0.0f, 0.0f, 0.594822786751341f, 0.803856860617217f);
+static const Qt maxQuat(0.0, 0.0, 0.594822786751341, 0.803856860617217);
 static Qt rotationToQuat(const float degree) noexcept {
 	const auto cosSin = CosSin({ .a = degree * 0.5f });
-	return Qt(0.0f, 0.0f, cosSin.b, cosSin.a);
+	return Qt(0, 0, cosSin.b, cosSin.a);
 }
 
 static std::unordered_map<uint64_t, int16_t> lastWgo;
@@ -30,7 +30,7 @@ static AuInfo renderWish(lua_State* L, AuInfo info, Duo Pos, Duo zw) {
 				lastWgo[Pos.val] = ++info.wUsed;
 				const auto wGo = ( lua_rawgeti(L, WGO, info.wUsed),
 										   dmScript::CheckGOInstance(L, -1) );
-				SetPosition( wGo, p3(Pos.a, Pos.b, zw.a) );
+				SetPosition( wGo, P3(Pos.a, Pos.b, zw.a) );
 				SetScale   ( wGo, (zw.b = 1 - zw.b,  0.637f + 0.437f * zw.b * zw.b) );
 
 				// Tint
@@ -61,7 +61,36 @@ static AuInfo renderEchoHelper(AuInfo info) {
 	return info;
 }
 
-static AuInfo renderAnim(lua_State* L, AuInfo info, Duo Pos, const int8_t msPast) {
+static AuInfo renderAnim(lua_State* L, AuInfo info, Duo Pos, const int16_t msPast) {
+	if( msPast > 370 )			return info;
+	const auto tint = ( lua_rawgeti(L, ATINT, ++info.aUsed), dmScript::CheckVector4(L, -1) );
+	const auto lAgo = ( lua_rawgeti(L, AL, info.aUsed), dmScript::CheckGOInstance(L, -1) ),
+			   rAgo = ( lua_rawgeti(L, AR, info.aUsed), dmScript::CheckGOInstance(L, -1) );
+	lua_pop(L, 3);
+
+	// Tint
+	tint -> setXYZ( Arf.aTint[info.sType] );
+	if( double w;  msPast < 73 )
+		w = msPast * 0.01,			tint -> setW( 0.17199 + 0.637 * w * (2.0-w) );
+	else
+		w = (msPast-73) / 297.0,	tint -> setW( 0.637 * (1.0f - w*w) );
+
+	// Transform
+	const float PosZ = msPast * 0.0001;
+	SetPosition(lAgo, P3( Pos.a, Pos.b, PosZ ));
+	SetPosition(rAgo, P3( Pos.a, Pos.b, PosZ + 0.00005 ));
+
+	if( double leftRatio;  msPast < 193 )
+		leftRatio = msPast / 193.0,
+		SetRotation( lAgo, rotationToQuat(45.0 + 28.0 * leftRatio) ),
+		SetScale( lAgo, 1.0f + 0.637f * leftRatio * (2.0 - leftRatio) );
+	else
+		SetRotation(lAgo, maxQuat),
+		SetScale(lAgo, 1.637f);
+
+	const double rightRatio = msPast / 370.0;
+	SetRotation( rAgo, rotationToQuat(45.0 - 8.0 * rightRatio) );
+	SetScale( rAgo, 1.0f + 0.637f * rightRatio * (2.0 - rightRatio) );
 	return info;
 }
 
@@ -75,7 +104,7 @@ using Span = std::span;
 int Ar::UpdateArf(lua_State* L) noexcept {
 	/* Usage:
 	 * local wgo_used, hgo_used, ego_used, ehgo_used, ago_used, h_playhs, e_playhs = Arf4.UpdateArf(
-	 *       ms, dt, wgos, hgos, egos, ehgos, agos, wtints, htints, etints, ehtints, atints)
+	 *       ms, dt, wgos, hgos, egos, ehgos, agols, agors, wtints, htints, etints, ehtints, atints)
 	 */
 	Arf.msTime = lua_tointeger(L, 1);
 		if( Arf.msTime >= Arf.before )			return 0;
@@ -194,18 +223,18 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 			lua_pop(L, 2);
 
 			if( float V;  lifeMs < -370 )
-				V = lifeMs * 0.0001 - 0.037,				SetPosition( hintGo, p3(hintPos.a, hintPos.b, V) ),
+				V = lifeMs * 0.0001 - 0.037,				SetPosition( hintGo, P3(hintPos.a, hintPos.b, V) ),
 				V = 0.3f + (lifeMs + 510) * 0.0005f,		hintTint -> setX(V).setY(V).setZ(V),
 				info.hUsed++;
 			else if( lifeMs < 0 )
 				hintTint -> setX(0.37).setY(0.37).setZ(0.37),
-				SetPosition( hintGo, p3(hintPos.a, hintPos.b, -0.0573) ),
+				SetPosition( hintGo, P3(hintPos.a, hintPos.b, -0.0573) ),
 				info.hUsed++;
 			else
 				info = renderAnim(L, info, hintPos, lifeMs),
 				( lifeMs < 101 )?
-					SetPosition( hintGo, p3(hintPos.a, hintPos.b, -0.0073) ),
-					hintTint -> setXYZ(Arf.hitTint) : 0,
+					SetPosition( hintGo, P3(hintPos.a, hintPos.b, -0.0073) ),
+					hintTint -> setXYZ(Arf.hTint) : 0,
 				info.playH = lifeMs < info.frameDt;
 		}
 		for( const Info ei = Arf.eIdx[timer.t];  const Echo e : Span(Arf.echoes.begin() + ei.f, ei.c) ) {
@@ -225,43 +254,43 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 			lua_pop(L, 2);
 
 			if( float V;  lifeMs < -370 )
-				V = lifeMs * 0.0001 - 0.037,				SetPosition( hintGo, p3(hintPos.a, hintPos.b, V) ),
+				V = lifeMs * 0.0001 - 0.037,				SetPosition( hintGo, P3(hintPos.a, hintPos.b, V) ),
 				V = 0.3f + (lifeMs + 510) * 0.0005f,		hintTint -> setX(V).setY(V).setZ(V),
 				info.hUsed++;
 			else if( lifeMs < 370 ) switch( h.status ) {
 				case NJUDGED:		case SPECIAL:
 					hintTint -> setX(0.37).setY(0.37).setZ(0.37);
-					dmGameObject::SetPosition( hintGo, p3(hintPos.a, hintPos.b, -0.0637) );
+					dmGameObject::SetPosition( hintGo, P3(hintPos.a, hintPos.b, -0.0637) );
 					info.hUsed++;
 					break;
 				case NJUDGED_LIT:	case SPECIAL_LIT:
 					hintTint -> setX(0.573).setY(0.573).setZ(0.573);
-					dmGameObject::SetPosition( hintGo, p3(hintPos.a, hintPos.b, -0.0573) );
+					dmGameObject::SetPosition( hintGo, P3(hintPos.a, hintPos.b, -0.0573) );
 					info.hUsed++;
 					break;
 				case HIT_LIT:
-					hintTint -> setXYZ(Arf.hitTint);
-					dmGameObject::SetPosition( hintGo, p3(hintPos.a, hintPos.b, -0.0073) );
+					hintTint -> setXYZ(Arf.hTint);
+					dmGameObject::SetPosition( hintGo, P3(hintPos.a, hintPos.b, -0.0073) );
 					info.hUsed++;
 				case HIT:
-					info.sType = 0, info = renderAnim(L, info, hintPos, lifeMs);
+					info.sType = 0, info = renderAnim(L, info, hintPos, lifeMs - h.deltaMs);
 					break;
 				case EARLY_LIT:
-					hintTint -> setX(H_EARLY_R).setY(H_EARLY_G).setZ(H_EARLY_B);
-					dmGameObject::SetPosition( hintGo, p3(hintPos.a, hintPos.b, -0.0037) );
+					hintTint -> setXYZ(HintEarly);
+					dmGameObject::SetPosition( hintGo, P3(hintPos.a, hintPos.b, -0.0037) );
 					info.hUsed++;
 				case EARLY:
-					info.sType = 1, info = renderAnim(L, info, hintPos, lifeMs);
+					info.sType = 1, info = renderAnim(L, info, hintPos, lifeMs - h.deltaMs);
 					break;
 				case LATE_LIT:		HCASE_LATE_LIT:;
-					hintTint -> setX(H_EARLY_R).setY(H_LATE_G).setZ(H_LATE_B);
-					dmGameObject::SetPosition( hintGo, p3(hintPos.a, hintPos.b, -0.0037) );
+					hintTint -> setXYZ(HintLate);
+					dmGameObject::SetPosition( hintGo, P3(hintPos.a, hintPos.b, -0.0037) );
 					info.hUsed++;
 				case LATE:			HCASE_LATE:;
-					info.sType = 2, info = renderAnim(L, info, hintPos, lifeMs);
+					info.sType = 2, info = renderAnim(L, info, hintPos, lifeMs - h.deltaMs);
 					break;
 				default:   // LOST
-					SetPosition( hintGo, p3(hintPos.a, hintPos.b, -lifeMs * 0.00011) );
+					SetPosition( hintGo, P3(hintPos.a, hintPos.b, -lifeMs * 0.00011) );
 					V =  0.573 - lifeMs * 0.00037,		hintTint -> setX(V);
 					V *= 0.51,							hintTint -> setY(V).setZ(V);
 					info.hUsed++;

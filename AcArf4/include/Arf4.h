@@ -3,22 +3,20 @@
 #include <dmsdk/sdk.h>
 #include <vector>
 
-static constexpr auto H_EARLY_R = 0.37675f, H_EARLY_G = 0.67815f, H_EARLY_B = 0.767628125f;
-static constexpr auto H_LATE_R = 0.767628125f, H_LATE_G = 0.466228125f, H_LATE_B = 0.37675f;
-static constexpr auto H_HIT_R = 0.88f, H_HIT_G = 0.7528125f, H_HIT_B = 0.5534375f;
-
-static constexpr auto A_EARLY_R = 0.3125f, A_EARLY_G = 0.5625f, A_EARLY_B = 0.63671875f;
-static constexpr auto A_LATE_R = 0.63671875f, A_LATE_G = 0.38671875f, A_LATE_B = 0.3125f;
-static constexpr auto A_HIT_R = 1.0f, A_HIT_G = 0.85546875f, A_HIT_B = 0.62890625f;
+inline const dmVMath::Vector3
+	HintEarly {0.37675, 0.67815, 0.767628125},		AnimEarly {0.3125, 0.5625, 0.63671875},
+	HintLate {0.767628125, 0.466228125, 0.37675},		AnimLate {0.63671875, 0.38671875, 0.3125},
+	HintHit {0.88, 0.7528125, 0.5534375},				AnimHit {1.0, 0.85546875, 0.62890625},
+	HintHr {0.88},									AnimHr {1.0};
 
 namespace Arf4 {
 	#define	Ar32(...)  using i32 = int32_t; using u32 = uint32_t;  union{ struct{__VA_ARGS__;}; u32 val; };
 	#define Ar64(...)  using i64 = int64_t; using u64 = uint64_t;  union{ struct{__VA_ARGS__;}; u64 val; };
 
-	enum  TableIndex : uint8_t  {	   WGO = 3, HGO, EGO, EHGO, AGO, WTINT, HTINT, ETINT, EHTINT, ATINT  };
-	enum  EaseType   : uint8_t  {   STATIC = 0, LINEAR, INSINE, OUTSINE									 };
+	enum  TableIndex : uint8_t  {	   WGO = 3, HGO, EGO, EH, AL, AR, WTINT, HTINT, ETINT, EHTINT, ATINT  };
+	enum  EaseType   : uint8_t  {   STATIC = 0, LINEAR, INSINE, OUTSINE									  };
 	enum  Status     : uint8_t  {  NJUDGED = 0, SPECIAL, NJUDGED_LIT, SPECIAL_LIT, HIT, HIT_LIT, LOST,
-								  SPECIAL_LOST, EARLY, EARLY_LIT, LATE, LATE_LIT						 };
+								  SPECIAL_LOST, EARLY, EARLY_LIT, LATE, LATE_LIT						  };
 /* Wish */
 	struct Point {
 		Ar64(																// cdx: [-64,64) 1/8
@@ -80,16 +78,16 @@ namespace Arf4 {
 		std::vector<Hint>		hints;
 		/*------------------------*/
 		Ar64(
-			uint64_t			before:20, objectCount:15;
-			uint64_t			wgoRequired:10, hgoRequired:9, egoRequired:10;
+			uint64_t			before:20, objectCount:16;
+			uint64_t			wgoRequired:10, hgoRequired:9, egoRequired:9;
 		)
 		//------------------------//
 		int64_t					minDt:8, maxDt:8;
 		uint64_t				msTime:20, judgeRange:7 = 37;
-		uint64_t				sHit:6, hHit:15, eHit:15, early:15, late:15, lost:15;
-		uint64_t				isAuto:1, isAnyX:1, isAnyY:1, isDaymode:1;
+		uint64_t				sHit:6, hHit:15, eHit:15, early:15, late:15, lost:16;
+		uint64_t				isAuto:1, isAnyX:1, isAnyY:1;
 		/*------------------------*/
-		dmVMath::Vector3		hitTint { H_HIT_R };
+		dmVMath::Vector3		hTint = HintHr, aTint[3] {AnimHr, AnimEarly, AnimLate};
 		float					xScale = 112.5/8, yScale = xScale;
 		float					xDelta, cSpeed = 1;							// cS ∈ [0,1.25]  pS ∈ [0.5,10]
 	};
