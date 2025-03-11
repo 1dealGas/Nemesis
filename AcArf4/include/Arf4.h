@@ -5,8 +5,8 @@
 
 inline const dmVMath::Vector3
 	HintEarly {0.37675, 0.67815, 0.767628125},		AnimEarly {0.3125, 0.5625, 0.63671875},
-	HintLate {0.767628125, 0.466228125, 0.37675},		AnimLate {0.63671875, 0.38671875, 0.3125},
-	HintHit {0.88, 0.7528125, 0.5534375},				AnimHit {1.0, 0.85546875, 0.62890625},
+	HintLate {0.767628125, 0.466228125, 0.37675},	AnimLate {0.63671875, 0.38671875, 0.3125},
+	HintHit {0.88, 0.7528125, 0.5534375},			AnimHit {1.0, 0.85546875, 0.62890625},
 	HintHr {0.88},									AnimHr {1.0};
 
 namespace Arf4 {
@@ -87,7 +87,7 @@ namespace Arf4 {
 		uint64_t				sHit:6, hHit:15, eHit:15, early:15, late:15, lost:16;
 		uint64_t				isAuto:1, isAnyX:1, isAnyY:1;
 		/*------------------------*/
-		dmVMath::Vector3		hTint = HintHr, aTint[3] {AnimHr, AnimEarly, AnimLate};
+		dmVMath::Vector3		oTint = HintHr, aTint[3] = {AnimHr, AnimEarly, AnimLate};
 		float					xScale = 112.5/8, yScale = xScale;
 		float					xDelta, cSpeed = 1;							// cS ∈ [0,1.25]  pS ∈ [0.5,10]
 	};

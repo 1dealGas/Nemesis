@@ -79,8 +79,8 @@ int Ar::SetSpeed(lua_State* L) noexcept {
 
 int Ar::SetDaymode(lua_State* L) noexcept {
 	lua_toboolean(L, 1) ?
-		Arf.hTint = HintHit, Arf.aTint[0] = AnimHit:
-		Arf.hTint = HintHr,  Arf.aTint[0] = AnimHr;
+		Arf.oTint = HintHit, Arf.aTint[0] = AnimHit:
+		Arf.oTint = HintHr,  Arf.aTint[0] = AnimHr;
 	return 0;
 }
 
