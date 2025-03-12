@@ -284,7 +284,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 				const GO helper = ( lua_rawgeti(L, EH, ++info.xUsed), dmScript::CheckGOInstance(L,-1) );
 				lua_pushnumber( L, R = -lifeMs / 510.0 ), lua_rawseti(L, EHTINT, info.xUsed);
 				SetPosition( helper, P3(mPos.a, mPos.b, 0.0625) );
-				SetScale( helper, 1.637 - R * (2-R) );
+				SetScale( helper, 1.237 - R * (2-R) );
 				lua_pop(L, 1);
 			}
 		}
@@ -387,7 +387,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 					echoTint -> setX(0.37).setY(0.37).setZ(0.37).setW(R);
 					goto E_NSET_TSF;
 				case NJUDGED_LIT:	case SPECIAL_LIT:
-					echoTint -> setX(0.573).setY(0.573).setZ(0.573).setW(R);
+					echoTint -> setX(0.673).setY(0.673).setZ(0.673).setW(R);
 					goto E_NSET_TSF;
 				case HIT_LIT:
 					echoTint -> setXYZ( Arf.oTint ).setW(R);
@@ -413,10 +413,10 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 					const GO helper = ( lua_rawgeti(L, EH, ++info.xUsed), dmScript::CheckGOInstance(L,-1) );
 					if( lifeMs < 0 )
 						lua_pushnumber( L, R = -lifeMs / 510.0 ), lua_rawseti(L, EHTINT, info.xUsed),
-						SetScale( helper, 1.637 - R * (2-R) );
+						SetScale( helper, 1.237 - R * (2-R) );
 					else
 						lua_pushnumber(L, 1), lua_rawseti(L, EHTINT, info.xUsed),
-						SetScale( helper, 0.637 );
+						SetScale( helper, 0.237 );
 					SetPosition( helper, P3(mPos.a, mPos.b, 0.0625) );
 					lua_pop(L, 1);
 				}
