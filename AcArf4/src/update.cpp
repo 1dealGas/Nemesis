@@ -2,7 +2,6 @@
 #include <Arf4.h>
 #include <dmsdk/dlib/time.h>
 #include <unordered_map>
-#include <algorithm>
 #include <span>
 
 typedef dmGameObject::HInstance GO;				using namespace Ar;
@@ -56,7 +55,6 @@ static AuInfo renderWish(lua_State* L, AuInfo info, Duo Pos, Duo zw) {
 	return info;
 }
 
-static constexpr auto dtPred = [](const Delta a, const Delta b) noexcept { return a.t < b.t; };
 static AuInfo renderAnim(lua_State* L, AuInfo info, Duo Pos, const int16_t msPast) {
 	if( msPast > 370 )	return info;
 	const auto tint = ( lua_rawgeti(L, ATINT, ++info.aUsed), dmScript::CheckVector4(L, -1) );
@@ -107,37 +105,35 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 
 	/* Info */
 	const double eSpeed = (PlayerSpeed * Arf.cSpeed + 11) / 1500.0,
-				 dSpeed = eSpeed / 1024 /* 1/1024 -> 1 */;			double zDt[8] = { Arf.msTime * 1024.0 };
+				 dSpeed = eSpeed / 1024 /* 1/1024 -> 1 */;			double zDt[2] = { Arf.msTime * 1024.0 };
 	AuInfo info = { .frameDt = (uint64_t)(lua_tonumber(L, 2) * 1000) };
 	Delta timer = { .t = Arf.msTime >> 2 };
 
 	/* Delta
-	 * zDt = Scale * 1024, Dt = Scale * Speed
+	 * zDt = Scale * 1024, Dt = Scale * xSpeed
 	 */
-	if( auto pFirst = Arf.deltas.begin() + 1; true ) {   // To limit the scope of some vars
-		for( uint64_t sizes = Arf.deltas[0].val,  i = 7; i; --i,  sizes >>= 9 )
-			if( const uint64_t size = sizes & 0x1ff;  size == 0 )
-				zDt[i] = zDt[0];
-			else {
-				const auto pEnd  = pFirst + size,
-						   pNext = std::upper_bound(pFirst, pEnd, timer, dtPred);
-				if( const Delta thisDt = *(pNext-1);  pNext != pEnd  &&  pNext->base < thisDt.base )
-					zDt[i] = thisDt.base - (Arf.msTime - thisDt.t * 4.0) * thisDt.absV;
-				else
-					zDt[i] = thisDt.base + (Arf.msTime - thisDt.t * 4.0) * thisDt.absV;
-				pFirst = pEnd;
-			}
-		const auto pEnd  = Arf.deltas.end(),
-				   pNext = std::upper_bound(pFirst, pEnd, timer, dtPred);
-		if( const Delta thisDt = *(pNext-1);  pNext != pEnd  &&  pNext->base < thisDt.base )
-			zDt[0] = thisDt.base - (Arf.msTime - thisDt.t * 4.0) * thisDt.absV;
+	if( const Delta lastDt = Arf.deltas.back();  timer.t >= lastDt.t )
+		zDt[1] = lastDt.base + (Arf.msTime - lastDt.t * 4.0) * lastDt.absV;
+	else {
+		const auto initIt = Arf.deltas.begin() + 1, lastIt = Arf.deltas.end() - 1;
+			  auto it = initIt + Arf.deltas[0].val;
+		if( it != initIt  &&  timer.t < it->t )
+			do	 --it;
+			while( it != initIt  &&  timer.t < it->t );
+			auto nextIt = it + 1;
+		while( it != lastIt  &&  timer.t >= nextIt->t )
+			++it, ++nextIt;
+
+		if( const Delta thiz = *it;  thiz.base <= nextIt->base )
+			zDt[1] = thiz.base + (Arf.msTime - thiz.t * 4.0) * thiz.absV;
 		else
-			zDt[0] = thisDt.base + (Arf.msTime - thisDt.t * 4.0) * thisDt.absV;
-		timer.t >>= 7;
+			zDt[1] = thiz.base - (Arf.msTime - thiz.t * 4.0) * thiz.absV;
+		Arf.deltas[0].val = it - initIt;
 	}
+	timer.t >>= 7;
 
 	/* Wish */
-	lastWgo.clear();		   // timer.t == Arf.msTime >> 9 since here
+	lastWgo.clear();		  // timer.t == Arf.msTime >> 9 since here
 	for(const Info wi = Arf.wIdx[timer.t];  Wish& wish : Span(Arf.wishes.begin() + wi.f, wi.c)) {
 		Wish w = wish;
 
@@ -166,7 +162,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 		/* WishChild */
 		if( double wZdt;  w.cCount )
 			if( const auto wChilds = Span(Arf.wishChilds.begin() + w.cSince, w.cCount);
-				(wZdt = zDt[w.delGroup]) < wChilds.back().zDt  &&  (wChilds[0].zDt - wZdt) * dSpeed < 8 ) {
+				(wZdt = zDt[w.withDt]) < wChilds.back().zDt  &&  (wChilds[0].zDt - wZdt) * dSpeed < 8 ) {
 
 				// Manage cIndex
 				if( uint16_t prevCidx = w.cIndex - 1;  w.cIndex  &&  wZdt < wChilds[prevCidx].zDt )
@@ -203,7 +199,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 
 	/* Hint & Echo */
 	if( Arf.isAuto ) {   // There are much more boilerplate lines...
-		for( const Info hi = Arf.hIdx[timer.t];  const Hint h : Span(Arf.hints.begin() + hi.f, hi.c) ) {
+		for(const Info hi = Arf.hIdx[timer.t];  const Hint h : Span(Arf.hints.cbegin() + hi.f, hi.c)) {
 			const int16_t lifeMs = Arf.msTime - h.ms;
 			if( lifeMs > +370 )		continue;   // +470 if not Auto
 			if( lifeMs < -510 )		break;
@@ -227,7 +223,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 					--info.hUsed,   // Hint Go acquired, but not used
 				info.playH = lifeMs < info.frameDt;
 		}
-		for( const Info ei = Arf.eIdx[timer.t];  const Echo e : Span(Arf.echoes.begin() + ei.f, ei.c) ) {
+		for(const Info ei = Arf.eIdx[timer.t];  const Echo e : Span(Arf.echoes.cbegin() + ei.f, ei.c)) {
 			const int16_t lifeMs = Arf.msTime - e.ms;
 			if( lifeMs > 370 )
 				continue;
@@ -290,7 +286,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 		}
 	}
 	else {
-		for( const Info hi = Arf.hIdx[timer.t];  const Hint h : Span(Arf.hints.begin() + hi.f, hi.c) ) {
+		for(const Info hi = Arf.hIdx[timer.t];  const Hint h : Span(Arf.hints.cbegin() + hi.f, hi.c)) {
 			const int16_t lifeMs = Arf.msTime - h.ms;
 			if( lifeMs > +470 )		continue;
 			if( lifeMs < -510 )		break;
@@ -342,7 +338,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 				default:;
 			}
 		}
-		for( const Info ei = Arf.eIdx[timer.t];  const Echo e : Span(Arf.echoes.begin() + ei.f, ei.c) ) {
+		for(const Info ei = Arf.eIdx[timer.t];  const Echo e : Span(Arf.echoes.cbegin() + ei.f, ei.c)) {
 			const int16_t lifeMs = Arf.msTime - e.ms;
 			if( lifeMs > 470 )
 				continue;

@@ -32,9 +32,9 @@ namespace Arf4 {
 	};
 	struct Wish {
 		Ar64(
-			u64  nCount:5,  nSince:15;		u64  isSpecial:1;
-			u64  cCount:10, cSince:15;		u64  delGroup:3;
-			u64  nIndex:5,  cIndex:10;
+			u64  nCount:6,  nSince:15;		u64  withDt:1;
+			u64  cCount:10, cSince:15;		u64  isSpecial:1;
+			u64  nIndex:6,  cIndex:10;
 		)
 	};
 
@@ -70,7 +70,7 @@ namespace Arf4 {
 /* Fumen */
 	struct Fumen {
 		std::vector<Point>		nodes;
-		std::vector<Delta>		deltas;										// [0] L->H  Sizes of 7->1, 9*7
+		std::vector<Delta>		deltas;										// [0] Index
 		std::vector<Child>		wishChilds;
 		std::vector<Info>		wIdx, hIdx, eIdx;
 		std::vector<Wish>		wishes;
