@@ -65,7 +65,7 @@ static AuInfo renderAnim(lua_State* L, AuInfo info, Duo Pos, const int16_t msPas
 	lua_pop(L, 3);
 
 	// Tint
-	tint -> setXYZ( Arf.aTint[info.sType] );
+	tint -> setXYZ( AnimTint[info.sType] );
 	if( double w;  msPast < 73 )
 		w = msPast * 0.01,			tint -> setW( 0.17199 + 0.637 * w * (2-w) );
 	else
@@ -223,7 +223,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 			else
 				info = renderAnim(L, info, hintPos, lifeMs),
 				( lifeMs < 101 )?
-					SetPosition( hintGo, P3(hintPos.a, hintPos.b, -0.0073) ), hintTint -> setXYZ(Arf.oTint):
+					SetPosition( hintGo, P3(hintPos.a, hintPos.b, -0.0073) ), hintTint -> setXYZ(HintHit):
 					--info.hUsed,   // Hint Go acquired, but not used
 				info.playH = lifeMs < info.frameDt;
 		}
@@ -271,7 +271,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 	E_ASET_SCL:		SetScale( echoGo, 1.074 - 0.437 * R * (2-R) );
 				}
 				else
-					echoTint -> setXYZ( Arf.oTint ).setW(R),
+					echoTint -> setXYZ(HintHit).setW(R),
 					SetScale( echoGo, 0.637 );
 				SetPosition( echoGo, P3(ePos.a, ePos.b, 0.02) );
 			}
@@ -314,7 +314,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 					SetPosition( hintGo, P3(hintPos.a, hintPos.b, -0.0573) ),  ++info.hUsed;
 					break;
 				case HIT_LIT:
-					hintTint -> setXYZ(Arf.oTint);
+					hintTint -> setXYZ(HintHit);
 					SetPosition( hintGo, P3(hintPos.a, hintPos.b, -0.0073) ),  ++info.hUsed;
 				case HIT:
 					info = renderAnim(L, info, hintPos, lifeMs - h.deltaMs);
@@ -390,7 +390,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 					echoTint -> setX(0.673).setY(0.673).setZ(0.673).setW(R);
 					goto E_NSET_TSF;
 				case HIT_LIT:
-					echoTint -> setXYZ( Arf.oTint ).setW(R);
+					echoTint -> setXYZ(HintHit).setW(R);
 	E_NSET_TSF:		SetPosition( echoGo, P3(ePos.a, ePos.b, 0.02) );
 					SetScale( echoGo, 1.074 - 0.437 * R * (2-R) );
 					break;

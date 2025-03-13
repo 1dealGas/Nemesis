@@ -77,13 +77,6 @@ int Ar::SetSpeed(lua_State* L) noexcept {
 	return 0;
 }
 
-int Ar::SetDaymode(lua_State* L) noexcept {
-	lua_toboolean(L, 1) ?
-		Arf.oTint = HintHit, Arf.aTint[0] = AnimHit:
-		Arf.oTint = HintHr,  Arf.aTint[0] = AnimHr;
-	return 0;
-}
-
 int Ar::SetJudgeZone(lua_State* L) noexcept {
 	/* Usage:
 	 * Arf4.SetJudgeZone(ms, is_any_x, is_any_y)   -- ms ∈ [1,100]
@@ -93,6 +86,7 @@ int Ar::SetJudgeZone(lua_State* L) noexcept {
 
 	Arf.minDt = InputDelta - Arf.judgeRange;		Arf.minDt = Arf.minDt < -100 ? -100 : Arf.minDt ;
 	Arf.maxDt = InputDelta + Arf.judgeRange;		Arf.maxDt = Arf.maxDt >  100 ?  100 : Arf.maxDt ;
+
 	Arf.isAnyX = lua_toboolean(L, 2);
 	Arf.isAnyY = lua_toboolean(L, 3);
 	return 0;
