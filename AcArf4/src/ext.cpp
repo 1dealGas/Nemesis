@@ -1,0 +1,48 @@
+﻿//  Arf4 Ext  //
+#include <Arf4.h>
+
+Arf4::Fumen		Arf;
+uint64_t		UsysTime;
+int8_t			InputDelta;
+float			PlayerSpeed = 6;
+
+static const luaL_Reg Arf4Lib[] = {
+	#ifdef AR_BUILD_VIEWER
+		{"NewBuild", Ar::NewBuild},
+		{"SetDelta", Ar::SetDelta},
+		{"NewVerse", Ar::NewVerse},
+		{"NewWish", Ar::NewWish},
+		{"NewHint", Ar::NewHint},
+		{"NewEcho", Ar::NewEcho},
+		{"NewChild", Ar::NewChild},
+		{"NewHelper", Ar::NewHelper},
+		{"DeltaTone", Ar::DeltaTone},
+		{"OrganizeArf", Ar::OrganizeArf},
+		{"ExportArf", Ar::ExportArf},
+		{"BarToMs", Ar::BarToMs},
+		{"Mirror", Ar::Mirror},
+	#else
+		{"LoadArf", Ar::LoadArf},
+		{"JudgeArf", Ar::JudgeArf},
+		{"SetJudgeZone", Ar::SetJudgeZone},
+		{"GetJudgeStat", Ar::GetJudgeStat},
+		{"SetInputDelta", Ar::SetInputDelta},
+		{"TransformStr", Ar::TransformStr},
+		{"Ease", Ar::Ease},
+	#endif
+		{"UpdateArf", Ar::UpdateArf},
+		{"SetSpeed", Ar::SetSpeed},
+		{"SetCam", Ar::SetCam},
+		{nullptr, nullptr}
+};
+
+static dmExtension::Result Arf4Init(dmExtension::Params* p) {
+	return luaL_register(p->m_L, "Arf4", Arf4Lib), lua_pop(p->m_L, 1), dmExtension::RESULT_OK;
+}
+static dmExtension::Result Arf4OK(dmExtension::Params*) {
+	return dmExtension::RESULT_OK;
+}
+static dmExtension::Result Arf4APPOK(dmExtension::AppParams*) {
+	return dmExtension::RESULT_OK;
+}
+DM_DECLARE_EXTENSION(AcArf4, "AcArf4", Arf4APPOK, Arf4APPOK, Arf4Init, nullptr, nullptr, Arf4OK)

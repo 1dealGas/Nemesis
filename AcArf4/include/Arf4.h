@@ -3,12 +3,6 @@
 #include <dmsdk/sdk.h>
 #include <vector>
 
-inline const dmVMath::Vector3
-	AnimTint[]{ {1, 1, 1}, {0.3125, 0.5625, 0.63671875}, {0.63671875, 0.38671875, 0.3125} },
-	HintEarly	{0.37675, 0.67815, 0.767628125},
-	HintLate	{0.767628125, 0.466228125, 0.37675},
-	HintHit		{0.88, 0.88, 0.88};
-
 namespace Arf4 {
 	#define	Ar32(...)  using i32 = int32_t; using u32 = uint32_t;  union{ struct{__VA_ARGS__;}; u32 val; };
 	#define Ar64(...)  using i64 = int64_t; using u64 = uint64_t;  union{ struct{__VA_ARGS__;}; u64 val; };
@@ -86,7 +80,6 @@ namespace Arf4 {
 		uint64_t				msTime:20, judgeRange:7 = 37;
 		uint64_t				sHit:6, hHit:15, eHit:15, early:15, late:15, lost:16;
 		uint64_t				isAuto:1, isAnyX:1, isAnyY:1;
-		/*------------------------*/
 		float					xScale = 112.5/8, yScale = xScale;
 		float					xDelta, cSpeed = 1;							// cS ∈ [0,1.25]  pS ∈ [0.5,10]
 	};
@@ -101,18 +94,16 @@ namespace Ar {
 
 	/* Build */
 	int  NewBuild(lua_State* L);
-	int  NewDeltaGroup(lua_State* L) noexcept;
-	int  DeltaTone(lua_State* L) noexcept;
-	int  NewVerse(lua_State*) noexcept;
-	int  MirrorLR(lua_State*) noexcept;
-	int  MirrorUD(lua_State*) noexcept;
-	int  NewHelper(lua_State* L) noexcept;
-	int  NewChild(lua_State* L);
+	int  SetDelta(lua_State* L) noexcept;
+	int  NewVerse(lua_State* L) noexcept;
 	int  NewWish(lua_State* L);
 	int  NewHint(lua_State* L);
 	int  NewEcho(lua_State* L);
+	int  NewChild(lua_State* L);
+	int  NewHelper(lua_State* L) noexcept;
+	int  DeltaTone(lua_State* L) noexcept;
 	int  BarToMs(lua_State* L) noexcept;
-	int  Move(lua_State* L) noexcept;
+	int  Mirror(lua_State* L) noexcept;
 
 	/* Internal */
   float  Eased(double, uint8_t) noexcept;

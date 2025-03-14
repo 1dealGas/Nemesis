@@ -4,6 +4,12 @@
 #include <unordered_map>
 #include <span>
 
+static const dmVMath::Vector3
+	AnimTint[]{ {1, 1, 1}, {0.3125, 0.5625, 0.63671875}, {0.63671875, 0.38671875, 0.3125} },
+	HintEarly	{0.37675, 0.67815, 0.767628125},
+	HintLate	{0.767628125, 0.466228125, 0.37675},
+	HintHit		{0.88, 0.88, 0.88};
+
 typedef dmGameObject::HInstance GO;				using namespace Ar;
 typedef dmVMath::Vector3 v3i, *v3;				typedef dmVMath::Point3 P3;
 typedef dmVMath::Vector4 v4i, *v4;				typedef dmVMath::Quat Qt;
@@ -13,7 +19,6 @@ struct AuInfo {
 	uint64_t sType:2 = false, playH:1 = false, playE:1 = false;
 };
 
-
 /* Utils & Render Methods */
 static const Qt maxQuat(0, 0, 0.594822786751341, 0.803856860617217);
 static auto rotationToQuat(const float degree) noexcept {
@@ -22,7 +27,7 @@ static auto rotationToQuat(const float degree) noexcept {
 }
 
 static std::unordered_map<uint64_t, int16_t> lastWgo;
-static AuInfo renderWish(lua_State* L, AuInfo info, Duo Pos, Duo zw) {
+static AuInfo renderWish(lua_State* L, AuInfo info, Duo Pos, const Duo zw) {
 	if( Pos.b = 540 + Pos.b * Arf.yScale,  Pos.b >= -36  &&  Pos.b <= 1116 )
 		if( Pos.a = 900 + Pos.a * Arf.xScale + Arf.xDelta,  Pos.a >= -36  &&  Pos.a <= 1836 )
 			if( const uint16_t idx = lastWgo[Pos.val];  idx == 0 ) {
@@ -55,7 +60,7 @@ static AuInfo renderWish(lua_State* L, AuInfo info, Duo Pos, Duo zw) {
 	return info;
 }
 
-static AuInfo renderAnim(lua_State* L, AuInfo info, Duo Pos, const int16_t msPast) {
+static AuInfo renderAnim(lua_State* L, AuInfo info, const Duo Pos, const int16_t msPast) {
 	if( msPast > 370 )	return info;
 	const auto tint = ( lua_rawgeti(L, ATINT, ++info.aUsed), dmScript::CheckVector4(L, -1) );
 	const auto lAgo = ( lua_rawgeti(L, AL, info.aUsed), dmScript::CheckGOInstance(L, -1) ),
@@ -421,7 +426,6 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 					info = renderAnim(L, info, mPos, lifeMs - e.deltaMs);
 		}
 	}
-
 	return lua_pushinteger(L, info.wUsed), lua_pushinteger(L, info.hUsed), lua_pushinteger(L, info.eUsed),
 		   lua_pushinteger(L, info.xUsed), lua_pushinteger(L, info.aUsed), lua_pushboolean(L, info.playH),
 		   lua_pushboolean(L, info.playE), 7;
