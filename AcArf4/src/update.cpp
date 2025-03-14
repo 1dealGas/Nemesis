@@ -95,7 +95,6 @@ static AuInfo renderAnim(lua_State* L, AuInfo info, const Duo Pos, const int16_t
 
 
 /* Main */
-using Span = std::span;
 int Ar::UpdateArf(lua_State* L) noexcept {
 	/* Usage:
 	 * local wgo_used, hgo_used, ego_used, ehgo_used, ago_used, h_playhs, e_playhs = Arf4.UpdateArf(
@@ -103,7 +102,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 	 */
 	Arf.msTime = lua_tointeger(L, 1);
 		if( Arf.msTime >= Arf.before )			return 0;
-			Arf.msTime = max(Arf.msTime, 2);	UsysTime = dmTime::GetMonotonicTime();
+			Arf.msTime = fmax(Arf.msTime, 2);	UsysTime = dmTime::GetMonotonicTime();
 	#ifndef AR_BUILD_VIEWER
 		if(! Arf.isAuto )						JudgeArfSweep();
 	#endif
@@ -112,7 +111,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 	const double eSpeed = (PlayerSpeed * Arf.cSpeed + 11) / 1500.0,
 				 dSpeed = eSpeed / 1024 /* 1/1024 -> 1 */;			double zDt[2] = { Arf.msTime * 1024.0 };
 	AuInfo info = { .frameDt = (uint64_t)(lua_tonumber(L, 2) * 1000) };
-	Delta timer = { .t = Arf.msTime >> 2 };
+	Delta timer = { .t = (uint64_t)(Arf.msTime >> 2) };
 
 	/* Delta
 	 * zDt = Scale * 1024, Dt = Scale * xSpeed
@@ -139,11 +138,11 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 
 	/* Wish */
 	lastWgo.clear();		  // timer.t == Arf.msTime >> 9 since here
-	for(const Info wi = Arf.wIdx[timer.t];  Wish& wish : Span(Arf.wishes.begin() + wi.f, wi.c)) {
+	for(const Info wi = Arf.wIdx[timer.t];  Wish& wish : std::span(Arf.wishes).subspan(wi.f, wi.c)) {
 		Wish w = wish;
 
 		/* Nodes */
-		const auto nodes = Span(Arf.nodes.begin() + w.nSince, w.nCount);
+		const auto nodes = std::span(Arf.nodes).subspan(w.nSince, w.nCount);
 		if( Arf.msTime < nodes.front().ms  ||  Arf.msTime >= nodes.back().ms )
 			continue;
 
@@ -162,11 +161,11 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 		Duo nodePos   = CosSin({ .a = thiz.deg + (next.deg - thiz.deg) * ratio });
 			nodePos.a = thiz.cdx + (next.cdx - thiz.cdx) * ratio + radius * nodePos.a /* cos(deg) */ ;
 			nodePos.b = thiz.cdy + (next.cdy - thiz.cdy) * ratio + radius * nodePos.b /* sin(deg) */ ;
-		info = renderWish(L, info, nodePos, {.a = 0.01f, .b = min(tint, 1.0f) });
+		info = renderWish(L, info, nodePos, {.a = 0.01f, .b = fmin(tint, 1.0f) });
 
 		/* WishChild */
 		if( double wZdt;  w.cCount )
-			if( const auto wChilds = Span(Arf.wishChilds.begin() + w.cSince, w.cCount);
+			if( const auto wChilds = std::span(Arf.wishChilds).subspan(w.cSince, w.cCount);
 				(wZdt = zDt[w.withDt]) < wChilds.back().zDt  &&  (wChilds[0].zDt - wZdt) * dSpeed < 8 ) {
 
 				// Manage cIndex
@@ -196,7 +195,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 					childPos.b = nodePos.b + distX8 * childPos.b;
 
 					const float cTint = cRatio / 0.237;
-					info = renderWish(L, info, childPos, { .a = 0.03f, .b = min(cTint, 1.0f) });
+					info = renderWish(L, info, childPos, { .a = 0.03f, .b = fmin(cTint, 1.0f) });
 				}
 			}
 		wish = w;   // `w` is a value, while `wish` is a ref
@@ -204,7 +203,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 
 	/* Hint & Echo */
 	if( Arf.isAuto ) {   // There are much more boilerplate lines...
-		for(const Info hi = Arf.hIdx[timer.t];  const Hint h : Span(Arf.hints.cbegin() + hi.f, hi.c)) {
+		for(const Info hi = Arf.hIdx[timer.t];  const Hint h : std::span(Arf.hints).subspan(hi.f, hi.c)) {
 			const int16_t lifeMs = Arf.msTime - h.ms;
 			if( lifeMs > +370 )		continue;   // +470 if not Auto
 			if( lifeMs < -510 )		break;
@@ -224,11 +223,11 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 			else
 				info = renderAnim(L, info, hintPos, lifeMs),
 				( lifeMs < 101 )?
-					SetPosition( hintGo, P3(hintPos.a, hintPos.b, -0.0073) ), hintTint -> setXYZ(HintHit):
-					--info.hUsed,   // Hint Go acquired, but not used
+					SetPosition( hintGo, P3(hintPos.a, hintPos.b, -0.0073) ), hintTint -> setXYZ(HintHit), 0
+					:--info.hUsed,   // Hint Go acquired, but not used
 				info.playH = lifeMs < info.frameDt;
 		}
-		for(const Info ei = Arf.eIdx[timer.t];  const Echo e : Span(Arf.echoes.cbegin() + ei.f, ei.c)) {
+		for(const Info ei = Arf.eIdx[timer.t];  const Echo e : std::span(Arf.echoes).subspan(ei.f, ei.c)) {
 			const int16_t lifeMs = Arf.msTime - e.ms;
 			if( lifeMs > 370 )
 				continue;
@@ -250,7 +249,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 				ePos.a = mPos.a + x8d * ePos.a * Arf.xScale,
 				ePos.b = mPos.b + x8d * ePos.b * Arf.yScale,
 				R /= 0.237;
-			R = min( R,1 );
+			R = fmin( R,1 );
 
 			// Update Echo
 			if( lifeMs < 101 ) {
@@ -291,7 +290,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 		}
 	}
 	else {
-		for(const Info hi = Arf.hIdx[timer.t];  const Hint h : Span(Arf.hints.cbegin() + hi.f, hi.c)) {
+		for(const Info hi = Arf.hIdx[timer.t];  const Hint h : std::span(Arf.hints).subspan(hi.f, hi.c)) {
 			const int16_t lifeMs = Arf.msTime - h.ms;
 			if( lifeMs > +470 )		continue;
 			if( lifeMs < -510 )		break;
@@ -343,8 +342,8 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 				default:;
 			}
 		}
-		for(const Info ei = Arf.eIdx[timer.t];  const Echo e : Span(Arf.echoes.cbegin() + ei.f, ei.c)) {
-			const int16_t lifeMs = Arf.msTime - e.ms;
+		for(const Info ei = Arf.eIdx[timer.t];  const Echo e : std::span(Arf.echoes).subspan(ei.f, ei.c)) {
+			const int16_t lifeMs = Arf.msTime - e.ms;				double R = 1;
 			if( lifeMs > 470 )
 				continue;
 
@@ -353,7 +352,6 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 				mPos.b = 540 + e.cdy * Arf.yScale;
 			if( lifeMs > 370 )
 				goto UPDATE_ANIM;
-			double R = 1;
 
 			if( lifeMs >= 0 )
 				ePos = mPos;
@@ -367,46 +365,47 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 				ePos.a = mPos.a + x8d * ePos.a * Arf.xScale,
 				ePos.b = mPos.b + x8d * ePos.b * Arf.yScale,
 				R /= 0.237;
-			R = min( R,1 );
+			R = fmin( R,1 );
 
-			// Update Echo
-			const GO echoGo   = ( lua_rawgeti(L, EGO, ++info.eUsed), dmScript::CheckGOInstance(L,-1) );
-			const v4 echoTint = ( lua_rawgeti(L, ETINT, info.eUsed), dmScript::CheckVector4(L,-1)    );
-			lua_pop(L, 2);
+			/* Update Echo */ {
+				const GO echoGo   = ( lua_rawgeti(L, EGO, ++info.eUsed), dmScript::CheckGOInstance(L,-1) );
+				const v4 echoTint = ( lua_rawgeti(L, ETINT, info.eUsed), dmScript::CheckVector4(L,-1)    );
+				lua_pop(L, 2);
 
-			if( lifeMs < -510 ) {
-				echoTint -> setX(0.3).setY(0.3).setZ(0.3).setW(R);
-				goto E_NSET_TSF;
-			}
-			if( lifeMs < -370 ) {
-				const float C = 0.0005 * (lifeMs + 370) + 0.37;
-				echoTint -> setX(C).setY(C).setZ(C).setW(R);
-				goto E_NSET_TSF;
-			}
-			switch( e.status ) {
-	[[likely]]	case NJUDGED:		case SPECIAL:
-					echoTint -> setX(0.37).setY(0.37).setZ(0.37).setW(R);
+				if( lifeMs < -510 ) {
+					echoTint -> setX(0.3).setY(0.3).setZ(0.3).setW(R);
 					goto E_NSET_TSF;
-				case NJUDGED_LIT:	case SPECIAL_LIT:
-					echoTint -> setX(0.673).setY(0.673).setZ(0.673).setW(R);
+				}
+				if( lifeMs < -370 ) {
+					const float C = 0.0005 * (lifeMs + 370) + 0.37;
+					echoTint -> setX(C).setY(C).setZ(C).setW(R);
 					goto E_NSET_TSF;
-				case HIT_LIT:
-					echoTint -> setXYZ(HintHit).setW(R);
-	E_NSET_TSF:		SetPosition( echoGo, P3(ePos.a, ePos.b, 0.02) );
-					SetScale( echoGo, 1.074 - 0.437 * R * (2-R) );
-					break;
-				case LOST:
-					R = 0.573 - lifeMs * 0.00037,	echoTint -> setX(R).setW(1);
-					R*= 0.51,						echoTint -> setY(R).setZ(R);
-					goto E_LSET_TSF;
-   [[unlikely]] case SPECIAL_LOST:
-					R = 0.573 - lifeMs * 0.00037,	echoTint -> setX(R).setY(R).setZ(R).setW(1);
-	E_LSET_TSF:		SetPosition( echoGo, P3(ePos.a, ePos.b, 0.02) );
-					SetScale( echoGo, 0.637 );
-					break;
-				default:   // Case HIT, no echoGo used
-					--info.eUsed;
-			}
+				}
+				switch( e.status ) {
+		[[likely]]	case NJUDGED:		case SPECIAL:
+						echoTint -> setX(0.37).setY(0.37).setZ(0.37).setW(R);
+						goto E_NSET_TSF;
+					case NJUDGED_LIT:	case SPECIAL_LIT:
+						echoTint -> setX(0.673).setY(0.673).setZ(0.673).setW(R);
+						goto E_NSET_TSF;
+					case HIT_LIT:
+						echoTint -> setXYZ(HintHit).setW(R);
+	   E_NSET_TSF:		SetPosition( echoGo, P3(ePos.a, ePos.b, 0.02) );
+						SetScale( echoGo, 1.074 - 0.437 * R * (2-R) );
+						break;
+					case LOST:
+						R = 0.573 - lifeMs * 0.00037,	echoTint -> setX(R).setW(1);
+						R*= 0.51,						echoTint -> setY(R).setZ(R);
+						goto E_LSET_TSF;
+	  [[unlikely]]  case SPECIAL_LOST:
+						R = 0.573 - lifeMs * 0.00037,	echoTint -> setX(R).setY(R).setZ(R).setW(1);
+	   E_LSET_TSF:		SetPosition( echoGo, P3(ePos.a, ePos.b, 0.02) );
+						SetScale( echoGo, 0.637 );
+						break;
+					default:   // Case HIT, no echoGo used
+						--info.eUsed;
+				}
+			}   // This scope is required by goto
 
 			/**/ MISC_UPDATE:
 			if( e.status < HIT )
@@ -426,6 +425,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 					info = renderAnim(L, info, mPos, lifeMs - e.deltaMs);
 		}
 	}
+
 	return lua_pushinteger(L, info.wUsed), lua_pushinteger(L, info.hUsed), lua_pushinteger(L, info.eUsed),
 		   lua_pushinteger(L, info.xUsed), lua_pushinteger(L, info.aUsed), lua_pushboolean(L, info.playH),
 		   lua_pushboolean(L, info.playE), 7;

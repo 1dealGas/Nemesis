@@ -80,7 +80,8 @@ static bool testAnmitsuSafety(const int16_t cdx, const int16_t cdy, const bool i
 					if( i.b > d  &&  i.b < u )
 						return false;
 	}
-	isScored ? blockPos.push_back({ .a = x, .b = y }) : 0;   // Push "Safe when Anmitsu" Objects
+	if( isScored )   // Push "Safe when Anmitsu" Objects
+		blockPos.push_back({ .a = x, .b = y });
 	return true;
 }
 
@@ -146,13 +147,12 @@ static Echo scanEcho(Echo echo, const int32_t deltaMs, const Duo validTouches[])
 #include <span>
 #include <dmsdk/dlib/time.h>
 static void judgeArfInternal(const Duo validTouches[], const bool anyPressed, const bool anyRel) noexcept {
-	const uint64_t msTime = Arf.msTime + dmTime::GetMonotonicTime() - UsysTime, G = msTime >> 9;
-	using Span = std::span;
-
+	const uint64_t msTime = Arf.msTime + dmTime::GetMonotonicTime() - UsysTime,
+						G = msTime >> 9;
 	if( anyRel )
 		blockPos.clear();
 	if( uint32_t minJudgedMs = NULL;  anyPressed ) {
-		for(const Info eIdx = Arf.eIdx[G];  Echo& e : Span( Arf.echoes.begin() + eIdx.f, eIdx.c )) {
+		for(const Info ei = Arf.eIdx[G];  Echo& e : std::span(Arf.echoes).subspan(ei.f, ei.c)) {
 			const int32_t deltaMs = Arf.msTime - e.ms;
 			if( deltaMs < -370 )		break;
 			if( deltaMs > +470 )		continue;
@@ -171,7 +171,7 @@ static void judgeArfInternal(const Duo validTouches[], const bool anyPressed, co
 					e.deltaMs = deltaMs;
 				}
 		}
-		for(const Info hIdx = Arf.hIdx[G];  Hint& h : Span( Arf.hints.begin() + hIdx.f, hIdx.c )) {
+		for(const Info hi = Arf.hIdx[G];  Hint& h : std::span(Arf.hints).subspan(hi.f, hi.c)) {
 			const int32_t deltaMs = Arf.msTime - h.ms;
 			if( deltaMs < -370 )		break;
 			if( deltaMs > +470 )		continue;
@@ -197,13 +197,13 @@ static void judgeArfInternal(const Duo validTouches[], const bool anyPressed, co
 		}
 	}
 	else {
-		for(const Info eIdx = Arf.eIdx[G];  Echo& e : Span( Arf.echoes.begin() + eIdx.f, eIdx.c )) {
+		for(const Info ei = Arf.eIdx[G];  Echo& e : std::span(Arf.echoes).subspan(ei.f, ei.c)) {
 			const int32_t deltaMs = Arf.msTime - e.ms;
 			if( deltaMs < -370 )		break;
 			if( deltaMs > +470 )		continue;
 			e = scanEcho(e, deltaMs, validTouches);
 		}
-		for(const Info hIdx = Arf.hIdx[G];  Hint& h : Span( Arf.hints.begin() + hIdx.f, hIdx.c )) {
+		for(const Info hi = Arf.hIdx[G];  Hint& h : std::span(Arf.hints).subspan(hi.f, hi.c)) {
 			const int32_t deltaMs = Arf.msTime - h.ms;
 			if( deltaMs < -370 )		break;
 			if( deltaMs > +470 )		continue;
@@ -214,7 +214,7 @@ static void judgeArfInternal(const Duo validTouches[], const bool anyPressed, co
 
 void Ar::JudgeArfSweep() noexcept {
 	const uint32_t G = Arf.msTime >> 9;
-	for( const Info eIdx = Arf.eIdx[G];  Echo& echo : std::span( Arf.echoes.begin() + eIdx.f, eIdx.c ))
+	for(const Info ei = Arf.eIdx[G];  Echo& echo : std::span(Arf.echoes).subspan(ei.f, ei.c))
 		if( const int32_t deltaMs = Arf.msTime - echo.ms;  deltaMs > 255 ) {}
 		else if( deltaMs > 100 )												   /* [3] Lost Behavior */
 			switch( echo.status ) {
@@ -230,7 +230,7 @@ void Ar::JudgeArfSweep() noexcept {
 			}
 		else break;
 
-	for( const Info hIdx = Arf.hIdx[G];  Hint& hint : std::span( Arf.hints.begin() + hIdx.f, hIdx.c ))
+	for(const Info hi = Arf.hIdx[G];  Hint& hint : std::span(Arf.hints).subspan(hi.f, hi.c))
 		if( const int32_t deltaMs = Arf.msTime - hint.ms;  deltaMs > 255 ) {}
 		else if( deltaMs > 100 )
 			hint.status < HIT  ?  hint.status = LOST, Arf.lost++ : 0;
