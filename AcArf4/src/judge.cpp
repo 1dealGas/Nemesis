@@ -244,7 +244,7 @@ int Ar::JudgeArf(lua_State* L) noexcept {
 	Duo validTouches[33];
 	uint8_t touchCount = 0, anyPressed = false, anyReleased = false;
 	for( uint8_t i = 1 ; i < 33 ; i++ ) {
-		switch( lua_rawgeti(L, i, 3), lua_tointeger(L, -1) ) {
+		switch( lua_rawgeti(L, 3, i), lua_tointeger(L, -1) ) {
 			case 1:
 				anyPressed = true;
 			case 2:
