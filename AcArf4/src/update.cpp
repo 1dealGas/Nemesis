@@ -124,7 +124,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 		if( it != initIt  &&  timer.t < it->t )
 			do	 --it;
 			while( it != initIt  &&  timer.t < it->t );
-			auto nextIt = it + 1;
+		/**/auto nextIt = it + 1;
 		while( it != lastIt  &&  timer.t >= nextIt->t )
 			++it, ++nextIt;
 
@@ -147,12 +147,16 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 			continue;
 
 		Point thiz, next;
-		if( thiz = nodes[w.nIndex], Arf.msTime < thiz.ms )
+		if( thiz = nodes[w.nIndex], Arf.msTime < thiz.ms ) {
 			do	 --w.nIndex;
 			while( thiz = nodes[w.nIndex], Arf.msTime < thiz.ms );
-		else if( uint8_t nextIdx = w.nIndex + 1;  next = nodes[nextIdx],  Arf.msTime >= next.ms )
+			next = nodes[w.nIndex + 1];
+		}
+		else if( uint8_t nextIdx = w.nIndex + 1;  next = nodes[nextIdx],  Arf.msTime >= next.ms ) {
 			do	 ++w.nIndex, ++nextIdx;
 			while( next = nodes[nextIdx], Arf.msTime >= next.ms );
+			thiz = nodes[w.nIndex];
+		}
 		info.sType = w.isSpecial;
 
 		const float tint = (Arf.msTime - nodes[0].ms) / 151.0,
@@ -232,9 +236,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 			if( lifeMs > 370 )
 				continue;
 
-			Duo mPos, ePos;
-				mPos.a = 900 + e.cdx * Arf.xScale + Arf.xDelta;
-				mPos.b = 540 + e.cdy * Arf.yScale;
+			Duo ePos, mPos = { .a = 900 + e.cdx * Arf.xScale + Arf.xDelta, .b = 540 + e.cdy * Arf.yScale };
 			double R = 1;
 
 			if( lifeMs >= 0 )
@@ -343,13 +345,12 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 			}
 		}
 		for(const Info ei = Arf.eIdx[timer.t];  const Echo e : std::span(Arf.echoes).subspan(ei.f, ei.c)) {
-			const int16_t lifeMs = Arf.msTime - e.ms;				double R = 1;
+			const int16_t lifeMs = Arf.msTime - e.ms;
 			if( lifeMs > 470 )
 				continue;
 
-			Duo mPos, ePos;
-				mPos.a = 900 + e.cdx * Arf.xScale + Arf.xDelta;
-				mPos.b = 540 + e.cdy * Arf.yScale;
+			double R = 1;
+			Duo ePos, mPos = { .a = 900 + e.cdx * Arf.xScale + Arf.xDelta, .b = 540 + e.cdy * Arf.yScale };
 			if( lifeMs > 370 )
 				goto UPDATE_ANIM;
 
@@ -425,7 +426,6 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 					info = renderAnim(L, info, mPos, lifeMs - e.deltaMs);
 		}
 	}
-
 	return lua_pushinteger(L, info.wUsed), lua_pushinteger(L, info.hUsed), lua_pushinteger(L, info.eUsed),
 		   lua_pushinteger(L, info.xUsed), lua_pushinteger(L, info.aUsed), lua_pushboolean(L, info.playH),
 		   lua_pushboolean(L, info.playE), 7;
