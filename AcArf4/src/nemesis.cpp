@@ -2,6 +2,7 @@
 #ifndef AR_BUILD_VIEWER
 #include <algorithm>
 #include <Arf4.h>
+#include <span>
 #include <map>
 
 /* Internal Typedefs & Fns */
@@ -186,32 +187,47 @@ static void wishCacheT(N4::Wish& w, const double beat) noexcept {
 	w.wY = w.wNy + w.wRadius * cosSin.b;
 }
 
-static double checkTime(lua_State* L, const int where) {
+static double checkTime(lua_State* L, const int where) noexcept {   // Stack balanced; Won't pop
 	if( double T;  lua_type(L, where) == LUA_TTABLE )
-		return lua_rawgeti(L, where, 1),  lua_rawgeti(L, where, 2),   // [-2] sinceBar  [-1] withTone
-			   N.sinceTone = barToTone( lua_tonumber(L, -2) ),  T = lua_tonumber(L, -1),  lua_pop(L, 2),
+		return N.sinceTone = barToTone(( lua_rawgeti(L, where, 1), lua_tonumber(L, -1) )),	lua_pop(L, 1),
+			   T = ( lua_rawgeti(L, where, 2), lua_tonumber(L, -1) ),						lua_pop(L, 1),
 			   barToBeat(toneToBar(  N.sinceTone + ( T<0 ? -T/16 : T )  ));
 	else
 		return T = lua_tonumber(L, where),
 			   barToBeat(toneToBar(  N.sinceTone + ( T<0 ? -T/16 : T )  ));
 }
 
-static double wishCheckTime(lua_State* L, const int where) {
+static double checkTimeLocal(lua_State* L, const int where) noexcept {   // Stack balanced; Won't pop
 	if( double S, T;  lua_type(L, where) == LUA_TTABLE )
-		return lua_rawgeti(L, where, 1),  lua_rawgeti(L, where, 2),   // [-2] sinceBar  [-1] withTone
-			   S = barToTone( lua_tonumber(L, -2) ),  T = lua_tonumber(L, -1),  lua_pop(L, 2),
+		return S = barToTone(( lua_rawgeti(L, where, 1), lua_tonumber(L, -1) )),			lua_pop(L, 1),
+			   T = ( lua_rawgeti(L, where, 2), lua_tonumber(L, -1) ),						lua_pop(L, 1),
 			   barToBeat(toneToBar(  S + ( T<0 ? -T/16 : T )  ));
 	else
 		return T = lua_tonumber(L, where),
 			   barToBeat(toneToBar(  N.sinceTone + ( T<0 ? -T/16 : T )  ));
 }
 
+static N4::Point checkPointArg(lua_State* L, const int where) noexcept {   // Stack balanced; Won't pop
+	if( lua_type(L, where) == LUA_TTABLE ) {
+		const auto r = ( lua_rawgeti(L, where, 1), lua_tonumber(L, -1) );					lua_pop(L, 1);
+		const auto d = ( lua_rawgeti(L, where, 2), lua_tonumber(L, -1) );					lua_pop(L, 1);
+		const auto e = ( lua_rawgeti(L, where, 3), lua_tonumber(L, -1) );					lua_pop(L, 1);
+		return {
+			.radius = fmin((uint8_t)(r * 4), 31) * 0.25,
+			.degree = std::clamp(d, -1024.0, 1023.0),
+			.ease = (uint8_t)(e > 3 ? 1 : e)
+		};
+	}
+	const auto e = lua_tonumber(L, where);
+	return { .ease = (uint8_t)(e > 3 ? 1 : e) };
+}
+
 static int wishGetActualX(lua_State* L) noexcept {
 	N4::Wish* w;
 	if( lua_type(L, 1) == LUA_TUSERDATA )
-		w = (N4::Wish*)lua_touserdata(L, 1), wishCacheT( *w, wishCheckTime(L, 2) );
+		w = (N4::Wish*)lua_touserdata(L, 1), wishCacheT( *w, checkTimeLocal(L, 2) );
 	else
-		w = (N4::Wish*)lua_touserdata(L, 2), wishCacheT( *w, wishCheckTime(L, 1) );
+		w = (N4::Wish*)lua_touserdata(L, 2), wishCacheT( *w, checkTimeLocal(L, 1) );
 	lua_pushnumber(L, w->wX);
 	return 1;
 }
@@ -219,16 +235,16 @@ static int wishGetActualX(lua_State* L) noexcept {
 static int wishGetActualY(lua_State* L) noexcept {
 	N4::Wish* w;
 	if( lua_type(L, 1) == LUA_TUSERDATA )
-		w = (N4::Wish*)lua_touserdata(L, 1), wishCacheT( *w, wishCheckTime(L, 2) );
+		w = (N4::Wish*)lua_touserdata(L, 1), wishCacheT( *w, checkTimeLocal(L, 2) );
 	else
-		w = (N4::Wish*)lua_touserdata(L, 2), wishCacheT( *w, wishCheckTime(L, 1) );
+		w = (N4::Wish*)lua_touserdata(L, 2), wishCacheT( *w, checkTimeLocal(L, 1) );
 	lua_pushnumber(L, w->wY);
 	return 1;
 }
 
 static int wishGetInfo(lua_State* L) noexcept {
 	const auto w = (N4::Wish*)lua_touserdata(L, 1);
-	wishCacheT( *w, wishCheckTime(L, 2) );
+	wishCacheT( *w, checkTimeLocal(L, 2) );
 	lua_createtable(L, 6, 0);
 
 	return
@@ -250,8 +266,8 @@ static int freeHelper(lua_State* L) noexcept {
 /* Script APIs */
 static std::map<double, N4::Delta> bpmMap;
 static std::map<double, N4::Tempo> tempoMap;
-int Ar::NewBuild(lua_State* L)  /* Exception thrown by Lua */  {
-	/* Usage:
+int Ar::NewBuild(lua_State* L) noexcept {
+	/* Example:
 	 * Time {					-- For 4/4-only tracks
 	 *     Offset = 0,			-- Beat 0 starts from 0ms
 	 *     0, 170,				-- Bar, BPM
@@ -268,8 +284,10 @@ int Ar::NewBuild(lua_State* L)  /* Exception thrown by Lua */  {
 	 *     ···
 	 * }
 	 */
+	if( lua_type(L, 1) != LUA_TTABLE )
+		return lua_pushboolean(L, false), 1;
 	const double offset = (lua_getfield(L, 1, "Offset"), fmax( lua_tonumber(L,-1), 0 ));
-	lua_pop(L, 1);   // If succeeded, [1] must be a Table since then.
+		lua_pop(L, 1);
 	N = {};
 
 	// Tempo
@@ -355,22 +373,157 @@ int Ar::NewBuild(lua_State* L)  /* Exception thrown by Lua */  {
 		lua_pushcfunction(L, wishGetActualY),	lua_setfield(L, -2, "__sub"),
 		lua_pushcfunction(L, wishGetInfo),		lua_setfield(L, -2, "__call"),
 		lua_pushcfunction(L, freeHelper),		lua_setfield(L, -2, "__gc");
+	return lua_pushboolean(L, true), 1;
+}
+
+static std::map<double, double> deltaMap;
+int Ar::SetDelta(lua_State* L) noexcept {
+	/* Example:
+	 * Delta {
+	 *     {0},			1,					-- Bar 0, Ratio: 1
+	 *     {2, 1/32},	-1,					-- Bar 2, then 1/32 Tone, Ratio: -1
+	 *     {2, 1},		0.9,				-- Bar 2, then 1/16 Tone, Ratio: 0.9
+	 *     15,			1,					-- Bar 2(Cached), then 15/16 Tone, Ratio: 1
+	 *     ···
+	 * }
+	 */
+	if(! lua_istable(L, 1) )
+		return lua_pushboolean(L, false), 1;
+	deltaMap.clear();
+
+	const size_t inputLen = lua_objlen(L, 1);
+	for( size_t i = 1; i < inputLen; i+=2 ) {
+		const double ms = beatToMs(( lua_rawgeti(L, 1, i), checkTime(L, -1) ));				  lua_pop(L, 1);
+		const double ratio = ( lua_rawgeti(L, 1, i+1), lua_tonumber(L, -1) ) * 170 / 15000;   lua_pop(L, 1);
+		deltaMap[ms] = ratio < 1.0/1024-8 ? 1.0/1024-8 : ratio > 8-1.0/1024 ? 8-1.0/1024 : ratio;
+	}
+
+	switch( auto SZ = deltaMap.size() ) {
+		case 0:
+			N.deltas[0] = { 0, 1 };
+			return lua_pushboolean(L, true), 1;
+		case 1:
+			N.deltas[0] = { 0, fmax(deltaMap.cbegin()->second, 0) };
+			return lua_pushboolean(L, true), 1;
+		default:
+			N.deltas.clear();
+			N.deltas.reserve( deltaMap.size() );
+			for( const auto [ms, ratio] : deltaMap )
+				if( N.deltas.empty()  ||  ratio != N.deltas.back().value )
+					N.deltas.push_back({ ms, ratio });
+
+			if( N.deltas.front().value < 0 )
+				N.deltas.front().value = 1;
+			if( N.deltas.back().value < 0 )
+				N.deltas.back().value = 1;
+			N.deltas[0].init = 0;
+
+			SZ = N.deltas.size();
+			for( size_t i = 1; i < SZ; ++i ) {
+				const auto  lastNode = N.deltas[i-1];
+					  auto& thisNode = N.deltas[i];
+				thisNode.base = lastNode.base + (thisNode.init - lastNode.init) * lastNode.value;
+
+				if( thisNode.base < 0 ) {
+					N.deltas.clear();  N.deltas.push_back({ 0, 1 });
+					return lua_pushboolean(L, false), 1;
+				}
+			}
+			return lua_pushboolean(L, true), 1;
+	}
+}
+
+int Ar::NewWish(lua_State* L) {}
+int Ar::NewHelper(lua_State* L) noexcept {}
+int Ar::NewChild(lua_State* L) {}
+int Ar::NewHint(lua_State* L) {}
+int Ar::NewEcho(lua_State* L) {}
+
+int Ar::NewVerse(lua_State* L) noexcept {
+	/* Usage:
+	 * Verse(since_tone) do ... end
+	 */
+	if( !lua_isnoneornil(L, 1) )
+		(void)checkTime(L, 1);
+	N.verseWidx = N.wishes.size();
+	N.verseEidx = N.echoes.size();
 	return 0;
 }
 
-int Ar::SetDelta(lua_State* L) noexcept {}
+int Ar::Mirror(lua_State* L) noexcept {
+	/* Usage:
+	 * Mirror(mirror_lr, mirror_ud)
+	 */
+	switch( lua_toboolean(L, 1) + (lua_toboolean(L, 2) << 1) ) {
+		case 1:   // Mirror LR
+			for( auto& w : std::span(N.wishes).subspan(N.verseWidx) ) {
+				for( auto& node : w.nodes )
+					node.x = 16 - node.x;
+				for( auto& child : w.wishChilds )
+					child.initLoop = (child.initLoop > 0.5 ? 1.5 : 0.5) - child.initLoop,
+					child.deltaLoop = -child.deltaLoop;
+			}
+			for( auto& e : std::span(N.echoes).subspan(N.verseEidx) )
+				e.x = 16 - e.x,
+				e.initLoop = (e.initLoop > 0.5 ? 1.5 : 0.5) - e.initLoop,
+				e.deltaLoop = -e.deltaLoop;
+			break;
+		case 2:   // Mirror UD
+			for( auto& w : std::span(N.wishes).subspan(N.verseWidx) ) {
+				for( auto& node : w.nodes )
+					node.y = 8 - node.y;
+				for( auto& child : w.wishChilds )
+					child.initLoop = 1 - child.initLoop,
+					child.deltaLoop = -child.deltaLoop;
+			}
+			for( auto& e : std::span(N.echoes).subspan(N.verseEidx) )
+				e.y = 8 - e.y,
+				e.initLoop = 1 - e.initLoop,
+				e.deltaLoop = -e.deltaLoop;
+			break;
+		case 3:   // Mirror LR & UD
+			for( auto& w : std::span(N.wishes).subspan(N.verseWidx) ) {
+				for( auto& node : w.nodes )
+					node.x = 16 - node.x,  node.y = 8 - node.y;
+				for( auto& child : w.wishChilds )
+					child.initLoop = child.initLoop + (child.initLoop > 0.5 ? -0.5 : 0.5);
+			}
+			for( auto& e : std::span(N.echoes).subspan(N.verseEidx) )
+				e.x = 16 - e.x,  e.y = 8 - e.y,
+				e.initLoop = e.initLoop + (e.initLoop > 0.5 ? -0.5 : 0.5);
+		default:;
+	}
+	return 0;
+}
 
-int Ar::NewWish(lua_State* L) {}
-int Ar::NewHint(lua_State* L) {}
-int Ar::NewEcho(lua_State* L) {}
-int Ar::NewChild(lua_State* L) {}
-int Ar::NewHelper(lua_State* L) noexcept {}
+int Ar::DeltaTone(lua_State* L) noexcept {
+	/* Example:
+	 * local delta_tone = DeltaTone( {1, 1/16}, {2, 5/32} )
+	 */
+	double LT;
+	if( double S;  lua_type(L, 1) == LUA_TTABLE )   // [-2] sinceBar  [-1] withTone
+		lua_rawgeti(L, 1, 1),  lua_rawgeti(L, 1, 2),  S = barToTone( lua_tonumber(L, -2) ),
+		LT = lua_tonumber(L, -1),  LT = barToBeat(toneToBar(  S + ( LT<0 ? -LT/16 : LT )  ));
+	else
+		LT = lua_tonumber(L, +1),  LT = barToBeat(toneToBar(  N.sinceTone + ( LT<0 ? -LT/16 : LT )  ));
 
-int Ar::NewVerse(lua_State*) noexcept {}
-int Ar::Mirror(lua_State*) noexcept {}
+	double RT;
+	if( double S;  lua_type(L, 2) == LUA_TTABLE )   // [-2] sinceBar  [-1] withTone
+		lua_rawgeti(L, 2, 1),  lua_rawgeti(L, 2, 2),  S = barToTone( lua_tonumber(L, -2) ),
+		RT = lua_tonumber(L, -1),  RT = barToBeat(toneToBar(  S + ( RT<0 ? -RT/16 : RT )  ));
+	else
+		RT = lua_tonumber(L, +2),  RT = barToBeat(toneToBar(  N.sinceTone + ( RT<0 ? -RT/16 : RT )  ));
 
-int Ar::DeltaTone(lua_State* L) noexcept {}
-int Ar::BarToMs(lua_State* L) noexcept {}
+	lua_pushnumber( L, RT - LT );
+	return 1;
+}
+
+int Ar::BarToMs(lua_State* L) noexcept {
+	/* Usage:
+	 * local ms = BarToMs(absolute_bar_value)
+	 */
+	return lua_pushnumber(L, beatToMs(barToBeat( lua_tonumber(L,1) ))), 1;
+}
 
 
 /* Arf Compile Fn */
