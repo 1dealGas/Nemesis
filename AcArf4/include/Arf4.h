@@ -93,13 +93,13 @@ namespace Ar {
 	using namespace Arf4;
 
 	/* Build */
-	int  NewBuild(lua_State* L);
+	int  NewBuild(lua_State* L) noexcept;
 	int  SetDelta(lua_State* L) noexcept;
 	int  NewVerse(lua_State* L) noexcept;
-	int  NewWish(lua_State* L);
-	int  NewHint(lua_State* L);
-	int  NewEcho(lua_State* L);
-	int  NewChild(lua_State* L);
+	int  NewWish(lua_State* L) noexcept;
+	int  NewHint(lua_State* L) noexcept;
+	int  NewEcho(lua_State* L) noexcept;
+	int  NewChild(lua_State* L) noexcept;
 	int  NewHelper(lua_State* L) noexcept;
 	int  DeltaTone(lua_State* L) noexcept;
 	int  BarToMs(lua_State* L) noexcept;

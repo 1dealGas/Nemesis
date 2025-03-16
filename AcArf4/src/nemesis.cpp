@@ -1,5 +1,6 @@
 ﻿// Nemesis, the Aerials Fumen Compiler. //
-#ifndef AR_BUILD_VIEWER
+#ifdef AR_BUILD_VIEWER
+#include <unordered_map>
 #include <algorithm>
 #include <Arf4.h>
 #include <span>
@@ -24,6 +25,7 @@ namespace N4 {
 	struct Child {
 		double		beat;
 		double		radius, initLoop, deltaLoop;
+		bool		hintSpecial;
 	};
 
 	/* Object */
@@ -74,10 +76,10 @@ static double barToTone(const double bar) noexcept {   // With User Input
 	N.tIdx = it - initIt;
 
 	const auto thiz = *it;
-	return thiz.toneBase + fmax(bar - thiz.bar, 0) * thiz.a / thiz.b;
+	return thiz.toneBase + fmax(bar - thiz.bar, 0) * thiz.a / thiz.b;   // tone >= 0 guaranteed
 }
 
-static double toneToBar(const double tone) noexcept {   // With User Input
+static double toneToBar(const double tone) noexcept {   // Internal, tone >= 0 required
 	if( const auto lastTempo = N.tempoList.back();  tone >= lastTempo.toneBase )
 		return lastTempo.bar + (tone - lastTempo.toneBase) * lastTempo.b / lastTempo.a;
 
@@ -92,7 +94,7 @@ static double toneToBar(const double tone) noexcept {   // With User Input
 	N.tIdx = it - initIt;
 
 	const auto thiz = *it;
-	return thiz.bar + fmax(tone - thiz.toneBase, 0) * thiz.b / thiz.a;
+	return thiz.bar + (tone - thiz.toneBase) * thiz.b / thiz.a;
 }
 
 static double barToBeat(const double bar) noexcept {   // Internal, bar >= 0 required
@@ -154,11 +156,6 @@ static double nextDouble(const double d) noexcept {   // Little Endian Only
 	return ++nd.u, nd.d;
 }
 
-static bool isSimilarDouble(const double a, const double b) noexcept {   // Internal, a < b required
-	const union{ double d; uint64_t u; }  A = {a}, B = {b};
-	return  B.u - A.u < 2;
-}
-
 static void wishCacheT(N4::Wish& w, const double beat) noexcept {
 	if( const auto& first = w.nodes.front();  beat < first.beat )
 		w.wNx = first.x, w.wNy = first.y, w.wRadius = first.radius, w.wDegree = first.degree;
@@ -188,7 +185,7 @@ static void wishCacheT(N4::Wish& w, const double beat) noexcept {
 }
 
 static double checkTime(lua_State* L, const int where) noexcept {   // Stack balanced; Won't pop
-	if( double T;  lua_type(L, where) == LUA_TTABLE )
+	if( double T;  lua_istable(L, where) )
 		return N.sinceTone = barToTone(( lua_rawgeti(L, where, 1), lua_tonumber(L, -1) )),	lua_pop(L, 1),
 			   T = ( lua_rawgeti(L, where, 2), lua_tonumber(L, -1) ),						lua_pop(L, 1),
 			   barToBeat(toneToBar(  N.sinceTone + ( T<0 ? -T/16 : T )  ));
@@ -198,7 +195,7 @@ static double checkTime(lua_State* L, const int where) noexcept {   // Stack bal
 }
 
 static double checkTimeLocal(lua_State* L, const int where) noexcept {   // Stack balanced; Won't pop
-	if( double S, T;  lua_type(L, where) == LUA_TTABLE )
+	if( double S, T;  lua_istable(L, where) )
 		return S = barToTone(( lua_rawgeti(L, where, 1), lua_tonumber(L, -1) )),			lua_pop(L, 1),
 			   T = ( lua_rawgeti(L, where, 2), lua_tonumber(L, -1) ),						lua_pop(L, 1),
 			   barToBeat(toneToBar(  S + ( T<0 ? -T/16 : T )  ));
@@ -208,23 +205,23 @@ static double checkTimeLocal(lua_State* L, const int where) noexcept {   // Stac
 }
 
 static N4::Point checkPointArg(lua_State* L, const int where) noexcept {   // Stack balanced; Won't pop
-	if( lua_type(L, where) == LUA_TTABLE ) {
+	if( lua_istable(L, where) ) {
 		const auto r = ( lua_rawgeti(L, where, 1), lua_tonumber(L, -1) );					lua_pop(L, 1);
 		const auto d = ( lua_rawgeti(L, where, 2), lua_tonumber(L, -1) );					lua_pop(L, 1);
 		const auto e = ( lua_rawgeti(L, where, 3), lua_tonumber(L, -1) );					lua_pop(L, 1);
 		return {
 			.radius = fmin((uint8_t)(r * 4), 31) * 0.25,
 			.degree = std::clamp(d, -1024.0, 1023.0),
-			.ease = (uint8_t)(e > 3 ? 1 : e)
+			.ease = (uint8_t)(e > Arf4::OUTSINE  ?  Arf4::LINEAR : e)
 		};
 	}
 	const auto e = lua_tonumber(L, where);
-	return { .ease = (uint8_t)(e > 3 ? 1 : e) };
+	return {.ease = (uint8_t)(e > Arf4::OUTSINE  ?  Arf4::LINEAR : e)};
 }
 
 static int wishGetActualX(lua_State* L) noexcept {
 	N4::Wish* w;
-	if( lua_type(L, 1) == LUA_TUSERDATA )
+	if( lua_isuserdata(L, 1) )
 		w = (N4::Wish*)lua_touserdata(L, 1), wishCacheT( *w, checkTimeLocal(L, 2) );
 	else
 		w = (N4::Wish*)lua_touserdata(L, 2), wishCacheT( *w, checkTimeLocal(L, 1) );
@@ -234,7 +231,7 @@ static int wishGetActualX(lua_State* L) noexcept {
 
 static int wishGetActualY(lua_State* L) noexcept {
 	N4::Wish* w;
-	if( lua_type(L, 1) == LUA_TUSERDATA )
+	if( lua_isuserdata(L, 1) )
 		w = (N4::Wish*)lua_touserdata(L, 1), wishCacheT( *w, checkTimeLocal(L, 2) );
 	else
 		w = (N4::Wish*)lua_touserdata(L, 2), wishCacheT( *w, checkTimeLocal(L, 1) );
@@ -245,15 +242,15 @@ static int wishGetActualY(lua_State* L) noexcept {
 static int wishGetInfo(lua_State* L) noexcept {
 	const auto w = (N4::Wish*)lua_touserdata(L, 1);
 	wishCacheT( *w, checkTimeLocal(L, 2) );
-	lua_createtable(L, 6, 0);
+	lua_createtable(L, 0, 6);
 
 	return
-		lua_pushnumber(L, w->wX),		lua_rawseti(L, -2, 1),
-		lua_pushnumber(L, w->wY),		lua_rawseti(L, -2, 2),
-		lua_pushnumber(L, w->wNx),		lua_rawseti(L, -2, 3),
-		lua_pushnumber(L, w->wNy),		lua_rawseti(L, -2, 4),
-		lua_pushnumber(L, w->wRadius),	lua_rawseti(L, -2, 5),
-		lua_pushnumber(L, w->wDegree),	lua_rawseti(L, -2, 6),
+		lua_pushnumber(L, w->wX),		lua_setfield(L, -2, "x"),
+		lua_pushnumber(L, w->wY),		lua_setfield(L, -2, "y"),
+		lua_pushnumber(L, w->wNx),		lua_setfield(L, -2, "node_x"),
+		lua_pushnumber(L, w->wNy),		lua_setfield(L, -2, "node_y"),
+		lua_pushnumber(L, w->wRadius),	lua_setfield(L, -2, "radius"),
+		lua_pushnumber(L, w->wDegree),	lua_setfield(L, -2, "degree"),
 	1;
 }
 
@@ -284,7 +281,7 @@ int Ar::NewBuild(lua_State* L) noexcept {
 	 *     ···
 	 * }
 	 */
-	if( lua_type(L, 1) != LUA_TTABLE )
+	if(! lua_istable(L, 1) )
 		return lua_pushboolean(L, false), 1;
 	const double offset = (lua_getfield(L, 1, "Offset"), fmax( lua_tonumber(L,-1), 0 ));
 		lua_pop(L, 1);
@@ -319,7 +316,7 @@ int Ar::NewBuild(lua_State* L) noexcept {
 		N.tempoList.reserve(tempoCount);
 		N.tempoList.clear();
 
-		for( const auto [_, tempo] : tempoMap )
+		for( const auto& [_, tempo] : tempoMap )
 			N.tempoList.push_back(tempo);
 		N.tempoList[0].bar = 0;   // In case firstTempo.bar > 0
 
@@ -351,7 +348,7 @@ int Ar::NewBuild(lua_State* L) noexcept {
 		default:
 			N.beatToMs.clear();
 			N.beatToMs.reserve( bpmCnt );
-			for( const auto [_, node] : bpmMap )
+			for( const auto& [_, node] : bpmMap )
 				N.beatToMs.push_back(node);
 			N.beatToMs[0].init = 0;
 			N.beatToMs[0].base = offset;
@@ -366,11 +363,15 @@ int Ar::NewBuild(lua_State* L) noexcept {
 	// Provide Metatables
 	if( luaL_newmetatable(L, "NEMESIS_WISH") )
 		lua_pushcfunction(L, wishGetActualX),	lua_setfield(L, -2, "__add"),
+		lua_pushcfunction(L, wishGetActualX),	lua_setfield(L, -2, "__mul"),
 		lua_pushcfunction(L, wishGetActualY),	lua_setfield(L, -2, "__sub"),
+		lua_pushcfunction(L, wishGetActualY),	lua_setfield(L, -2, "__div"),
 		lua_pushcfunction(L, wishGetInfo),		lua_setfield(L, -2, "__call");
 	if( luaL_newmetatable(L, "NEMESIS_HELPER") )
 		lua_pushcfunction(L, wishGetActualX),	lua_setfield(L, -2, "__add"),
+		lua_pushcfunction(L, wishGetActualX),	lua_setfield(L, -2, "__mul"),
 		lua_pushcfunction(L, wishGetActualY),	lua_setfield(L, -2, "__sub"),
+		lua_pushcfunction(L, wishGetActualY),	lua_setfield(L, -2, "__div"),
 		lua_pushcfunction(L, wishGetInfo),		lua_setfield(L, -2, "__call"),
 		lua_pushcfunction(L, freeHelper),		lua_setfield(L, -2, "__gc");
 	return lua_pushboolean(L, true), 1;
@@ -392,13 +393,14 @@ int Ar::SetDelta(lua_State* L) noexcept {
 	deltaMap.clear();
 
 	const size_t inputLen = lua_objlen(L, 1);
-	for( size_t i = 1; i < inputLen; i+=2 ) {
-		const double ms = beatToMs(( lua_rawgeti(L, 1, i), checkTime(L, -1) ));				  lua_pop(L, 1);
-		const double ratio = ( lua_rawgeti(L, 1, i+1), lua_tonumber(L, -1) ) * 170 / 15000;   lua_pop(L, 1);
+	for( size_t i = 1;  i < inputLen;  i += 2 ) {
+		const double ms = beatToMs(( lua_rawgeti(L, 1, i), checkTime(L, -1) )),
+					 ratio = ( lua_rawgeti(L, 1, i+1), lua_tonumber(L, -1) );
 		deltaMap[ms] = ratio < 1.0/1024-8 ? 1.0/1024-8 : ratio > 8-1.0/1024 ? 8-1.0/1024 : ratio;
+		lua_pop(L, 2);
 	}
 
-	switch( auto SZ = deltaMap.size() ) {
+	switch( auto SZ = deltaMap.size();  SZ ) {
 		case 0:
 			N.deltas[0] = { 0, 1 };
 			return lua_pushboolean(L, true), 1;
@@ -419,7 +421,7 @@ int Ar::SetDelta(lua_State* L) noexcept {
 			N.deltas[0].init = 0;
 
 			SZ = N.deltas.size();
-			for( size_t i = 1; i < SZ; ++i ) {
+			for( size_t i = 1;  i < SZ;  ++i ) {
 				const auto  lastNode = N.deltas[i-1];
 					  auto& thisNode = N.deltas[i];
 				thisNode.base = lastNode.base + (thisNode.init - lastNode.init) * lastNode.value;
@@ -433,11 +435,196 @@ int Ar::SetDelta(lua_State* L) noexcept {
 	}
 }
 
-int Ar::NewWish(lua_State* L) {}
-int Ar::NewHelper(lua_State* L) noexcept {}
-int Ar::NewChild(lua_State* L) {}
-int Ar::NewHint(lua_State* L) {}
-int Ar::NewEcho(lua_State* L) {}
+static std::map<double, N4::Point> nodeMap;
+int Ar::NewWish(lua_State* L) noexcept {
+	/* Example:
+	 * local myWish = Wish {	-- When failed, a nil will be returned.
+	 *     Special = true,		-- false by default
+	 *     WithDelta = true,	-- true by default
+	 *     {1}, 4, 3, LINEAR,	-- Bar 1, X=4, Y=3, Linear Ease
+	 *
+	 *     -- Add Radius(5 here) & Degree(0 here) like this
+	 *     -12, oldWish + (-12), oldWish - (-12), {5, 0, LINEAR},
+	 *     ···
+	 * }
+	 */
+	if(! lua_istable(L, 1) )
+		return lua_pushnil(L), 1;
+	N4::Wish W = {
+		.isSpecial = (uint8_t)( lua_getfield(L, 1, "Special"), lua_toboolean(L,-1) ),
+		.withDt = (uint8_t)( lua_getfield(L, 1, "WithDelta"), lua_isnil(L,-1) ? true : lua_toboolean(L,-1) )
+	};
+	lua_pop(L, 2);
+
+	nodeMap.clear();
+	const size_t inputLen = lua_objlen(L, 1);
+	for( size_t i = 1;  i < inputLen;  i += 4 ) {
+		const double beat = ( lua_rawgeti(L, 1, i), checkTime(L, -1) ),
+					 x = ( lua_rawgeti(L, 1, i+1), lua_tonumber(L, -1) ),
+					 y = ( lua_rawgeti(L, 1, i+2), lua_tonumber(L, -1) );
+		auto point = ( lua_rawgeti(L, 1, i+3), checkPointArg(L, -1) );
+			 point.x = x < -56 ? -56 : x > 56 ? 56 : x;
+			 point.y = y < -28 ? -28 : y > 28 ? 28 : y;
+			 point.beat = beat;
+		nodeMap[( nodeMap.contains(beat) ? nextDouble(beat) : beat )] = point;
+		lua_pop(L, 4);
+	}
+	if( nodeMap.empty()  ||  nodeMap.cbegin()->second.beat == nodeMap.crbegin()->second.beat )
+		return lua_pushnil(L), 1;
+
+	W.nodes.reserve( nodeMap.size() );
+	for( const auto& [_, node] : nodeMap )
+		W.nodes.push_back(node);
+	W.nodes.back().ease = STATIC;
+
+	lua_pushlightuserdata(L, ( N.wishes.push_back(W), &N.wishes.back() ));
+	luaL_getmetatable(L, "NEMESIS_WISH");
+	lua_setmetatable(L, -2);
+	return 1;
+}
+
+int Ar::NewHelper(lua_State* L) noexcept {
+	/* Example:
+	 * local myHelperOrNil = Helper {	-- For getX/getY usages only.
+	 *     {1}, 4, 3, LINEAR,			-- Bar 1, X=4, Y=3, Linear Ease
+	 *     -12, 8, 9, LINEAR,			-- Bar 1 then 12/16 Tone, X=8, Y=9, Linear Ease
+	 *     ···
+	 * }
+	 */
+	if(! lua_istable(L, 1) )
+		return lua_pushnil(L), 1;
+	const auto  W = new(lua_newuserdata( L, sizeof(N4::Wish) )) N4::Wish;
+		  auto& nodes = W -> nodes;
+	nodeMap.clear();
+
+	const size_t inputLen = lua_objlen(L, 1);
+	for( size_t i = 1;  i < inputLen;  i += 4 ) {
+		const double beat = ( lua_rawgeti(L, 1, i), checkTime(L, -1) ),
+					 x = ( lua_rawgeti(L, 1, i+1), lua_tonumber(L, -1) ),
+					 y = ( lua_rawgeti(L, 1, i+2), lua_tonumber(L, -1) );
+		auto point = ( lua_rawgeti(L, 1, i+3), checkPointArg(L, -1) );
+			 point.x = x < -56 ? -56 : x > 56 ? 56 : x;
+			 point.y = y < -28 ? -28 : y > 28 ? 28 : y;
+			 point.beat = beat;
+		nodeMap[( nodeMap.contains(beat) ? nextDouble(beat) : beat )] = point;
+		lua_pop(L, 4);
+	}
+	if( nodeMap.empty()  ||  nodeMap.cbegin()->second.beat == nodeMap.crbegin()->second.beat )
+		return W->~Wish(), lua_pushnil(L), 1;   // Let Lua GC free the mem of W
+
+	nodes.reserve( nodeMap.size() );
+	for( const auto& [_, node] : nodeMap )
+		nodes.push_back(node);
+	nodes.back().ease = STATIC;
+
+	luaL_getmetatable(L, "NEMESIS_HELPER");
+	lua_istable(L, -1) ? (void)lua_setmetatable(L, -2) : W->~Wish();
+	return 1;
+}
+
+
+int Ar::NewChild(lua_State* L) noexcept {
+	/* Example:
+	 * Child {
+	 *     Wish = nil,				-- The last Wish of the Fumen by default
+	 *     Radius = 7.0,			-- 7.0 by Default
+	 *     Special = false,			-- Try to generate a special Hint if true, false by default
+	 *     InitLoop = 0.25,			-- 0.25 by default
+	 *     DeltaLoop = 1.25,		-- 0 by default
+	 *     {1, 1}, 2, 3, 4, ···		-- Times
+	 * }
+	 */
+	if( N.wishes.empty()  ||  lua_istable(L, 1) == 0 )
+		return lua_pushboolean(L, false), 1;
+
+	auto& W = N.wishes.back();
+	if( lua_getfield(L, 1, "Wish"), lua_getmetatable(L, -1), luaL_getmetatable(L, "NEMESIS_WISH"),
+		lua_equal(L, -1, -2) )
+		W = *(N4::Wish*)lua_touserdata(L, 2);
+	double radius = ( lua_getfield(L, 1, "Radius"), lua_tonumber(L, -1) );
+		   radius = radius ? (radius > 7.875 ? 7.875 : radius) : 7;
+	double initLoop = ( lua_getfield(L, 1, "InitLoop"), lua_tonumber(L, -1) );
+		   initLoop = initLoop ? (initLoop < 0 ? 0 : initLoop > 1 ? 1 : initLoop) : 0.25;
+	double deltaLoop = ( lua_getfield(L, 1, "DeltaLoop"), lua_tonumber(L, -1) );
+		   deltaLoop = deltaLoop < -1.875 ? -1.875 : deltaLoop > 1.875 ? 1.875 : deltaLoop;
+	const bool hintSpecial = ( lua_getfield(L, 1, "Special"), lua_toboolean(L, -1) );
+	lua_pop(L, 4);
+
+	const double minBeat = W.nodes.front().beat;
+	const size_t inputLen = lua_objlen(L, 1);			W.wishChilds.reserve( inputLen );
+	for( size_t i = 1;  i < inputLen;  ++i )
+		if( const double beat = (lua_rawgeti(L, 1, i), checkTime(L, -1));  lua_pop(L, 1),  beat > minBeat )
+			W.wishChilds.push_back({beat, radius, initLoop, deltaLoop, hintSpecial});
+	return lua_pushboolean(L, true), 1;
+}
+
+int Ar::NewHint(lua_State* L) noexcept {
+	/* Usage:
+	 * Hint {
+	 *     Wish = myWish,			-- The last Wish of the Fumen by default
+	 *     Special = false,			-- False by default
+	 *     {1}, 1, 2, 3, 4, ···		-- Times
+	 * }
+	 */
+	if( N.wishes.empty()  ||  lua_istable(L, 1) == 0 )
+		return lua_pushboolean(L, false), 1;
+
+	auto& W = N.wishes.back();
+	if( lua_getfield(L, 1, "Wish"), lua_getmetatable(L, -1), luaL_getmetatable(L, "NEMESIS_WISH"),
+		lua_equal(L, -1, -2) )
+		W = *(N4::Wish*)lua_touserdata(L, 2);
+	const bool hintSpecial = ( lua_getfield(L, 1, "Special"), lua_toboolean(L, -1) );
+	lua_pop(L, 1);
+
+	const double minBeat = W.nodes.front().beat,
+				 maxBeat = W.nodes.back().beat;
+	const size_t inputLen = lua_objlen(L, 1);			W.manualHints.reserve( inputLen );
+	for( size_t i = 1;  i < inputLen;  ++i )
+		if( const double beat = ( lua_rawgeti(L, 1, i), checkTime(L, -1) );  lua_pop(L, 1),
+			beat > minBeat  &&  beat <= maxBeat )
+			W.manualHints.push_back({beat, hintSpecial});
+	return lua_pushboolean(L, true), 1;
+}
+
+int Ar::NewEcho(lua_State* L) noexcept {
+	/* Usage:
+	 * Echo {
+	 *     Radius = 7.0,			-- 0 by Default
+	 *     Special = false,			-- Scored if true, false by default
+	 *     InitLoop = 0.25,			-- 0.25 by default, ignored if Radius is 0
+	 *     DeltaLoop = 1.25,		-- 0 by default, ignored if Radius is 0
+	 *     {1}, 8, 0.5,				-- T1, X1, Y1
+	 *     12, 8, 0.5,				-- T2, X2, Y2
+	 *     ···
+	 * }
+	 */
+	if(! lua_istable(L, 1) )
+		return lua_pushboolean(L, false), 1;
+	const bool isSpecial = (lua_getfield(L, 1, "Special"), lua_toboolean(L, -1));
+		   double radius = (lua_getfield(L, 1, "Radius"), lua_tonumber(L, -1)), initLoop = 0, deltaLoop = 0;
+				  radius = radius ? (radius > 7.875 ? 7.875 : radius) : 7;
+	lua_pop(L, 2);
+
+	if( radius )
+		initLoop = ( lua_getfield(L, 1, "InitLoop"), lua_tonumber(L, -1) ),
+		initLoop = initLoop ? (initLoop < 0 ? 0 : initLoop > 1 ? 1 : initLoop) : 0.25,
+		deltaLoop = ( lua_getfield(L, 1, "DeltaLoop"), lua_tonumber(L, -1) ),
+		deltaLoop = deltaLoop < -1.875 ? -1.875 : deltaLoop > 1.875 ? 1.875 : deltaLoop,
+	/**/lua_pop(L, 2);
+
+	const size_t inputLen = lua_objlen(L, 1);			N.echoes.reserve(inputLen);
+	for( size_t i = 1;  i < inputLen;  i += 3 ) {
+		const double beat = ( lua_rawgeti(L, 1, i), checkTime(L, -1) ),
+					 x = ( lua_rawgeti(L, 1, i+1), lua_tonumber(L, -1) ),
+					 y = ( lua_rawgeti(L, 1, i+2), lua_tonumber(L, -1) );
+		N.echoes.push_back({
+			.x = x < -56 ? -56 : x > 56 ? 56 : x,
+			.y = y < -28 ? -28 : y > 28 ? 28 : y,
+			beat, radius, initLoop, deltaLoop, isSpecial
+		});
+	}
+	return lua_pushboolean(L, true), 1;
+}
 
 int Ar::NewVerse(lua_State* L) noexcept {
 	/* Usage:
@@ -501,14 +688,14 @@ int Ar::DeltaTone(lua_State* L) noexcept {
 	 * local delta_tone = DeltaTone( {1, 1/16}, {2, 5/32} )
 	 */
 	double LT;
-	if( double S;  lua_type(L, 1) == LUA_TTABLE )   // [-2] sinceBar  [-1] withTone
+	if( double S;  lua_istable(L, 1) )   // [-2] sinceBar  [-1] withTone
 		lua_rawgeti(L, 1, 1),  lua_rawgeti(L, 1, 2),  S = barToTone( lua_tonumber(L, -2) ),
 		LT = lua_tonumber(L, -1),  LT = barToBeat(toneToBar(  S + ( LT<0 ? -LT/16 : LT )  ));
 	else
 		LT = lua_tonumber(L, +1),  LT = barToBeat(toneToBar(  N.sinceTone + ( LT<0 ? -LT/16 : LT )  ));
 
 	double RT;
-	if( double S;  lua_type(L, 2) == LUA_TTABLE )   // [-2] sinceBar  [-1] withTone
+	if( double S;  lua_istable(L, 2) )   // [-2] sinceBar  [-1] withTone
 		lua_rawgeti(L, 2, 1),  lua_rawgeti(L, 2, 2),  S = barToTone( lua_tonumber(L, -2) ),
 		RT = lua_tonumber(L, -1),  RT = barToBeat(toneToBar(  S + ( RT<0 ? -RT/16 : RT )  ));
 	else
@@ -528,6 +715,6 @@ int Ar::BarToMs(lua_State* L) noexcept {
 
 /* Arf Compile Fn */
 int Ar::OrganizeArf(lua_State* L) noexcept {
-
+	return 0;
 }
 #endif
