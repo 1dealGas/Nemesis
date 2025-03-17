@@ -26,7 +26,7 @@ namespace Arf4 {
 	};
 	struct Wish {
 		Ar64(
-			u64  nCount:6,  nSince:15;		u64  withDt:1;
+			u64  nCount:6,  nSince:15;		u64  compressChild:1;
 			u64  cCount:10, cSince:15;		u64  isSpecial:1;
 			u64  nIndex:6,  cIndex:10;
 		)

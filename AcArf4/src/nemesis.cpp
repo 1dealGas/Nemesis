@@ -44,7 +44,7 @@ namespace N4 {
 		std::vector<Point>	nodes;
 		std::vector<Child>	wishChilds;
 		std::vector<Hint>	manualHints;
-		uint8_t				nIdx, isSpecial, withDt;
+		uint8_t				nIdx, isSpecial, compressChild;
 		//------------------------//
 		float				wRadius;
 		double				wX, wY, wNx, wNy, wDegree;
@@ -438,10 +438,10 @@ int Ar::SetDelta(lua_State* L) noexcept {
 static std::map<double, N4::Point> nodeMap;
 int Ar::NewWish(lua_State* L) noexcept {
 	/* Example:
-	 * local myWish = Wish {	-- When failed, a nil will be returned.
-	 *     Special = true,		-- false by default
-	 *     WithDelta = true,	-- true by default
-	 *     {1}, 4, 3, LINEAR,	-- Bar 1, X=4, Y=3, Linear Ease
+	 * local myWish = Wish {		-- When failed, a nil will be returned.
+	 *     Special = true,			-- false by default
+	 *     CompressChild = true,	-- false by default
+	 *     {1}, 4, 3, LINEAR,		-- Bar 1, X=4, Y=3, Linear Ease
 	 *
 	 *     -- Add Radius(5 here) & Degree(0 here) like this
 	 *     -12, oldWish + (-12), oldWish - (-12), {5, 0, LINEAR},
@@ -452,7 +452,7 @@ int Ar::NewWish(lua_State* L) noexcept {
 		return lua_pushnil(L), 1;
 	N4::Wish W = {
 		.isSpecial = (uint8_t)( lua_getfield(L, 1, "Special"), lua_toboolean(L,-1) ),
-		.withDt = (uint8_t)( lua_getfield(L, 1, "WithDelta"), lua_isnil(L,-1) ? true : lua_toboolean(L,-1) )
+		.compressChild = (uint8_t)( lua_getfield(L, 1, "CompressChild"), lua_toboolean(L,-1) )
 	};
 	lua_pop(L, 2);
 
