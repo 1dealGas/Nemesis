@@ -57,36 +57,25 @@ namespace bitsery {
 			if( pFile == nullptr )
 				return lua_pushboolean(L, false), 1;
 
-			fseek(pFile, 0, SEEK_END);									// Size
+			(void)fseek(pFile, 0, SEEK_END);							// Size
 			bufSize = ftell(pFile);
-			fseek(pFile, 0, SEEK_SET);
+			(void)fseek(pFile, 0, SEEK_SET);
 
 			pBuf = (uint8_t*)malloc(bufSize);							// Copying
 			if( fread( pBuf, 1, bufSize, pFile ) != bufSize )
 				return lua_pushboolean(L, false), free(pBuf), fclose(pFile), 1;
-			fclose(pFile);
+			(void)fclose(pFile);
 		}
 
 		// Use Proof to Decrypt
 		if( size_t proofSize;  lua_type(L, 3) == LUA_TSTRING ) {
 			const auto proofStr = (const uint8_t*)lua_tolstring(L, 3, &proofSize);
-			   uint8_t proof16[16], proofMd5[16], proofSha1[20];
 
-			if( proofSize > 15 )
-				for( size_t i=0; i<16; ++i )
-					proof16[i] = proofStr[i];
-			else {
-				for( size_t i=0; i<proofSize; ++i )
-					proof16[i] = proofStr[i];
-				for( size_t i=proofSize; i<16; ++i )
-					proof16[i] = i*3 + 73;
-			}
-			dmCrypt::HashMd5 ( proofStr, (uint32_t)proofSize, proofMd5  );
-			dmCrypt::HashSha1( proofStr, (uint32_t)proofSize, proofSha1 );
-
-			Decrypt(dmCrypt::ALGORITHM_XTEA, pBuf, bufSize, proofSha1, 16);
-			Decrypt(dmCrypt::ALGORITHM_XTEA, pBuf, bufSize, proofMd5, 16);
-			Decrypt(dmCrypt::ALGORITHM_XTEA, pBuf, bufSize, proof16, 16);
+			uint8_t proofSha256[32];
+			dmCrypt::HashSha256( proofStr, (uint32_t)proofSize, proofSha256 );
+			Decrypt(dmCrypt::ALGORITHM_XTEA, pBuf, bufSize, proofSha256+16, 16);
+			Decrypt(dmCrypt::ALGORITHM_XTEA, pBuf, bufSize, proofSha256+8, 16);
+			Decrypt(dmCrypt::ALGORITHM_XTEA, pBuf, bufSize, proofSha256, 16);
 		}
 
 		// Decode & Return
@@ -114,18 +103,8 @@ namespace bitsery {
 		const char *inputStr = luaL_checklstring(L, 1, &inputSize),
 				   *proofStr = luaL_checklstring(L, 2, &proofSize);
 
-		uint8_t proof16[16], proofMd5[16], proofSha1[20];
-		if( proofSize > 15 )
-			for( size_t i=0; i<16; ++i )
-				proof16[i] = proofStr[i];
-		else {
-			for( size_t i=0; i<proofSize; ++i )
-				proof16[i] = proofStr[i];
-			for( size_t i=proofSize; i<16; ++i )
-				proof16[i] = i*3 + 73;
-		}
-		dmCrypt::HashMd5 ( (const uint8_t*)proofStr, (uint32_t)proofSize, proofMd5  );
-		dmCrypt::HashSha1( (const uint8_t*)proofStr, (uint32_t)proofSize, proofSha1 );
+		uint8_t proofSha256[32];
+		dmCrypt::HashSha256( (const uint8_t*)proofStr, (uint32_t)proofSize, proofSha256 );
 
 		// Decode //
 		if( lua_toboolean(L, 3) ) {
@@ -133,9 +112,9 @@ namespace bitsery {
 			uint8_t* outputStr = (uint8_t*)malloc( originalSize = inputSize );
 
 			dmCrypt::Base64Decode( (const uint8_t*)inputStr, inputSize, outputStr, &originalSize );
-			Decrypt(dmCrypt::ALGORITHM_XTEA, outputStr, originalSize, proofSha1, 16);
-			Decrypt(dmCrypt::ALGORITHM_XTEA, outputStr, originalSize, proofMd5, 16);
-			Decrypt(dmCrypt::ALGORITHM_XTEA, outputStr, originalSize, proof16, 16);
+			Decrypt(dmCrypt::ALGORITHM_XTEA, outputStr, originalSize, proofSha256+16, 16);
+			Decrypt(dmCrypt::ALGORITHM_XTEA, outputStr, originalSize, proofSha256+8, 16);
+			Decrypt(dmCrypt::ALGORITHM_XTEA, outputStr, originalSize, proofSha256, 16);
 
 			return lua_pushlstring( L, (const char*)outputStr, originalSize ), free(outputStr), 1;
 		}
@@ -145,9 +124,9 @@ namespace bitsery {
 		const auto inputStrMutable = (uint8_t*)const_cast<char*>(inputStr),
 						 outputStr = (uint8_t*)malloc(outputSize);
 
-		Encrypt(dmCrypt::ALGORITHM_XTEA, inputStrMutable, inputSize, proof16, 16);
-		Encrypt(dmCrypt::ALGORITHM_XTEA, inputStrMutable, inputSize, proofMd5, 16);
-		Encrypt(dmCrypt::ALGORITHM_XTEA, inputStrMutable, inputSize, proofSha1, 16);
+		Encrypt(dmCrypt::ALGORITHM_XTEA, inputStrMutable, inputSize, proofSha256, 16);
+		Encrypt(dmCrypt::ALGORITHM_XTEA, inputStrMutable, inputSize, proofSha256+8, 16);
+		Encrypt(dmCrypt::ALGORITHM_XTEA, inputStrMutable, inputSize, proofSha256+16, 16);
 		dmCrypt::Base64Encode(inputStrMutable, inputSize, outputStr, &outputSize);
 
 		return lua_pushstring( L, (const char*)outputStr ), free(outputStr), 1;
@@ -167,23 +146,12 @@ namespace bitsery {
 		if( const size_t bufSize = ( enc.adapter().flush(), enc.adapter().writtenBytesCount() ); bufSize ) {
 			if( size_t proofSize;  lua_type(L, 1) == LUA_TSTRING ) {
 				const auto proofStr = (const uint8_t*)lua_tolstring(L, 1, &proofSize);
-				   uint8_t proof16[16], proofMd5[16], proofSha1[20];
 
-				if( proofSize > 15 )
-					for( size_t i=0; i<16; ++i )
-						proof16[i] = proofStr[i];
-				else {
-					for( size_t i=0; i<proofSize; ++i )
-						proof16[i] = proofStr[i];
-					for( size_t i=proofSize; i<16; ++i )
-						proof16[i] = i*3 + 73;
-				}
-				dmCrypt::HashMd5 ( proofStr, (uint32_t)proofSize, proofMd5  );
-				dmCrypt::HashSha1( proofStr, (uint32_t)proofSize, proofSha1 );
-
-				Encrypt(dmCrypt::ALGORITHM_XTEA, &buf[0], bufSize, proof16, 16);
-				Encrypt(dmCrypt::ALGORITHM_XTEA, &buf[0], bufSize, proofMd5, 16);
-				Encrypt(dmCrypt::ALGORITHM_XTEA, &buf[0], bufSize, proofSha1, 16);
+				uint8_t proofSha256[32];
+				dmCrypt::HashSha256( proofStr, (uint32_t)proofSize, proofSha256 );
+				Encrypt(dmCrypt::ALGORITHM_XTEA, &buf[0], bufSize, proofSha256, 16);
+				Encrypt(dmCrypt::ALGORITHM_XTEA, &buf[0], bufSize, proofSha256+8, 16);
+				Encrypt(dmCrypt::ALGORITHM_XTEA, &buf[0], bufSize, proofSha256+16, 16);
 			}
 			return lua_pushlstring(L, (char*)&buf[0], bufSize), 1;
 		}
