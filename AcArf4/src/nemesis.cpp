@@ -1,5 +1,5 @@
 ﻿// Nemesis, the Aerials Fumen Compiler. //
-#ifdef AR_BUILD_VIEWER
+#ifndef AR_BUILD_VIEWER
 #include <unordered_map>
 #include <algorithm>
 #include <Arf4.h>
@@ -211,7 +211,7 @@ static N4::Point checkPointArg(lua_State* L, const int where) noexcept {   // St
 		const auto e = ( lua_rawgeti(L, where, 3), lua_tonumber(L, -1) );					lua_pop(L, 1);
 		return {
 			.radius = fmin((uint8_t)(r * 4), 31) * 0.25,
-			.degree = std::clamp(d, -1024.0, 1023.0),
+			.degree = d < -1024 ? -1024 : d > 1023 ? 1023 : d,
 			.ease = (uint8_t)(e > Arf4::OUTSINE  ?  Arf4::LINEAR : e)
 		};
 	}
@@ -381,10 +381,10 @@ static std::map<double, double> deltaMap;
 int Ar::SetDelta(lua_State* L) noexcept {
 	/* Example:
 	 * Delta {
-	 *     {0},			1,					-- Bar 0, Ratio: 1
-	 *     {2, 1/32},	-1,					-- Bar 2, then 1/32 Tone, Ratio: -1
-	 *     {2, 1},		0.9,				-- Bar 2, then 1/16 Tone, Ratio: 0.9
-	 *     15,			1,					-- Bar 2(Cached), then 15/16 Tone, Ratio: 1
+	 *     {0},			1,				-- Bar 0, Ratio: 1
+	 *     {2, 1/32},	-1,				-- Bar 2, then 1/32 Tone, Ratio: -1
+	 *     {2, 1},		0.9,			-- Bar 2, then 1/16 Tone, Ratio: 0.9
+	 *     15,			1,				-- Bar 2(Cached), then 15/16 Tone, Ratio: 1
 	 *     ···
 	 * }
 	 */
@@ -396,7 +396,7 @@ int Ar::SetDelta(lua_State* L) noexcept {
 	for( size_t i = 1;  i < inputLen;  i += 2 ) {
 		const double ms = beatToMs(( lua_rawgeti(L, 1, i), checkTime(L, -1) )),
 					 ratio = ( lua_rawgeti(L, 1, i+1), lua_tonumber(L, -1) );
-		deltaMap[ms] = ratio < 1.0/1024-8 ? 1.0/1024-8 : ratio > 8-1.0/1024 ? 8-1.0/1024 : ratio;
+		deltaMap[ms] = ratio;
 		lua_pop(L, 2);
 	}
 
@@ -412,7 +412,7 @@ int Ar::SetDelta(lua_State* L) noexcept {
 			N.deltas.reserve( deltaMap.size() );
 			for( const auto [ms, ratio] : deltaMap )
 				if( N.deltas.empty()  ||  ratio != N.deltas.back().value )
-					N.deltas.push_back({ ms, ratio });
+					N.deltas.push_back({ (uint64_t)(ms/4) * 4.0, ratio });
 
 			if( N.deltas.front().value < 0 )
 				N.deltas.front().value = 1;
@@ -426,7 +426,7 @@ int Ar::SetDelta(lua_State* L) noexcept {
 					  auto& thisNode = N.deltas[i];
 				thisNode.base = lastNode.base + (thisNode.init - lastNode.init) * lastNode.value;
 
-				if( thisNode.base < 0 ) {
+				if( thisNode.base < 0  ||  thisNode.base > 1048575 * (8 - 1.0/1024) ) {
 					N.deltas.clear();  N.deltas.push_back({ 0, 1 });
 					return lua_pushboolean(L, false), 1;
 				}
@@ -438,10 +438,10 @@ int Ar::SetDelta(lua_State* L) noexcept {
 static std::map<double, N4::Point> nodeMap;
 int Ar::NewWish(lua_State* L) noexcept {
 	/* Example:
-	 * local myWish = Wish {		-- When failed, a nil will be returned.
-	 *     Special = true,			-- false by default
-	 *     CompressChild = true,	-- false by default
-	 *     {1}, 4, 3, LINEAR,		-- Bar 1, X=4, Y=3, Linear Ease
+	 * local myWish = Wish {			-- When failed, a nil will be returned.
+	 *     Special = true,				-- false by default
+	 *     CompressChild = true,		-- false by default
+	 *     {1}, 4, 3, LINEAR,			-- Bar 1, X=4, Y=3, Linear Ease
 	 *
 	 *     -- Add Radius(5 here) & Degree(0 here) like this
 	 *     -12, oldWish + (-12), oldWish - (-12), {5, 0, LINEAR},
@@ -463,8 +463,8 @@ int Ar::NewWish(lua_State* L) noexcept {
 					 x = ( lua_rawgeti(L, 1, i+1), lua_tonumber(L, -1) ),
 					 y = ( lua_rawgeti(L, 1, i+2), lua_tonumber(L, -1) );
 		auto point = ( lua_rawgeti(L, 1, i+3), checkPointArg(L, -1) );
-			 point.x = x < -56 ? -56 : x > 56 ? 56 : x;
-			 point.y = y < -28 ? -28 : y > 28 ? 28 : y;
+			 point.x = x < -55.875 ? -55.875 : x > 71.875 ? 71.875 : x;
+			 point.y = y < -27.875 ? -27.875 : y > 35.875 ? 35.875 : y;
 			 point.beat = beat;
 		nodeMap[( nodeMap.contains(beat) ? nextDouble(beat) : beat )] = point;
 		lua_pop(L, 4);
@@ -503,8 +503,8 @@ int Ar::NewHelper(lua_State* L) noexcept {
 					 x = ( lua_rawgeti(L, 1, i+1), lua_tonumber(L, -1) ),
 					 y = ( lua_rawgeti(L, 1, i+2), lua_tonumber(L, -1) );
 		auto point = ( lua_rawgeti(L, 1, i+3), checkPointArg(L, -1) );
-			 point.x = x < -56 ? -56 : x > 56 ? 56 : x;
-			 point.y = y < -28 ? -28 : y > 28 ? 28 : y;
+			 point.x = x < -55.875 ? -55.875 : x > 71.875 ? 71.875 : x;
+			 point.y = y < -27.875 ? -27.875 : y > 35.875 ? 35.875 : y;
 			 point.beat = beat;
 		nodeMap[( nodeMap.contains(beat) ? nextDouble(beat) : beat )] = point;
 		lua_pop(L, 4);
@@ -526,12 +526,12 @@ int Ar::NewHelper(lua_State* L) noexcept {
 int Ar::NewChild(lua_State* L) noexcept {
 	/* Example:
 	 * Child {
-	 *     Wish = nil,				-- The last Wish of the Fumen by default
-	 *     Radius = 7.0,			-- 7.0 by Default
-	 *     Special = false,			-- Try to generate a special Hint if true, false by default
-	 *     InitLoop = 0.25,			-- 0.25 by default
-	 *     DeltaLoop = 1.25,		-- 0 by default
-	 *     {1, 1}, 2, 3, 4, ···		-- Times
+	 *     Wish = nil,					-- The last Wish of the Fumen by default
+	 *     Radius = 7.0,				-- 7.0 by Default
+	 *     Special = false,				-- Try to generate a special Hint if true, false by default
+	 *     InitLoop = 0.25,				-- 0.25 by default
+	 *     DeltaLoop = 1.25,			-- 0 by default
+	 *     {1, 1}, 2, 3, 4, ···			-- Times
 	 * }
 	 */
 	if( N.wishes.empty()  ||  lua_istable(L, 1) == 0 )
@@ -542,7 +542,7 @@ int Ar::NewChild(lua_State* L) noexcept {
 		lua_equal(L, -1, -2) )
 		W = *(N4::Wish*)lua_touserdata(L, 2);
 	double radius = ( lua_getfield(L, 1, "Radius"), lua_tonumber(L, -1) );
-		   radius = radius ? (radius > 7.875 ? 7.875 : radius) : 7;
+		   radius = radius ? (radius > 7.75 ? 7.75 : radius) : 7;
 	double initLoop = ( lua_getfield(L, 1, "InitLoop"), lua_tonumber(L, -1) );
 		   initLoop = initLoop ? (initLoop < 0 ? 0 : initLoop > 1 ? 1 : initLoop) : 0.25;
 	double deltaLoop = ( lua_getfield(L, 1, "DeltaLoop"), lua_tonumber(L, -1) );
@@ -561,9 +561,9 @@ int Ar::NewChild(lua_State* L) noexcept {
 int Ar::NewHint(lua_State* L) noexcept {
 	/* Usage:
 	 * Hint {
-	 *     Wish = myWish,			-- The last Wish of the Fumen by default
-	 *     Special = false,			-- False by default
-	 *     {1}, 1, 2, 3, 4, ···		-- Times
+	 *     Wish = myWish,				-- The last Wish of the Fumen by default
+	 *     Special = false,				-- False by default
+	 *     {1}, 1, 2, 3, 4, ···			-- Times
 	 * }
 	 */
 	if( N.wishes.empty()  ||  lua_istable(L, 1) == 0 )
@@ -589,12 +589,12 @@ int Ar::NewHint(lua_State* L) noexcept {
 int Ar::NewEcho(lua_State* L) noexcept {
 	/* Usage:
 	 * Echo {
-	 *     Radius = 7.0,			-- 0 by Default
-	 *     Special = false,			-- Scored if true, false by default
-	 *     InitLoop = 0.25,			-- 0.25 by default, ignored if Radius is 0
-	 *     DeltaLoop = 1.25,		-- 0 by default, ignored if Radius is 0
-	 *     {1}, 8, 0.5,				-- T1, X1, Y1
-	 *     12, 8, 0.5,				-- T2, X2, Y2
+	 *     Radius = 7.0,				-- 0 by Default
+	 *     Special = false,				-- Scored if true, false by default
+	 *     InitLoop = 0.25,				-- 0.25 by default, ignored if Radius is 0
+	 *     DeltaLoop = 1.25,			-- 0 by default, ignored if Radius is 0
+	 *     {1}, 8, 0.5,					-- T1, X1, Y1
+	 *     12, 8, 0.5,					-- T2, X2, Y2
 	 *     ···
 	 * }
 	 */
@@ -602,7 +602,7 @@ int Ar::NewEcho(lua_State* L) noexcept {
 		return lua_pushboolean(L, false), 1;
 	const bool isSpecial = (lua_getfield(L, 1, "Special"), lua_toboolean(L, -1));
 		   double radius = (lua_getfield(L, 1, "Radius"), lua_tonumber(L, -1)), initLoop = 0, deltaLoop = 0;
-				  radius = radius ? (radius > 7.875 ? 7.875 : radius) : 7;
+				  radius = radius ? (radius > 7.75 ? 7.75 : radius) : 7;
 	lua_pop(L, 2);
 
 	if( radius )
@@ -618,8 +618,8 @@ int Ar::NewEcho(lua_State* L) noexcept {
 					 x = ( lua_rawgeti(L, 1, i+1), lua_tonumber(L, -1) ),
 					 y = ( lua_rawgeti(L, 1, i+2), lua_tonumber(L, -1) );
 		N.echoes.push_back({
-			.x = x < -56 ? -56 : x > 56 ? 56 : x,
-			.y = y < -28 ? -28 : y > 28 ? 28 : y,
+			.x = x < -55.875 ? -55.875 : x > 71.875 ? 71.875 : x,
+			.y = y < -27.875 ? -27.875 : y > 35.875 ? 35.875 : y,
 			beat, radius, initLoop, deltaLoop, isSpecial
 		});
 	}
@@ -714,7 +714,92 @@ int Ar::BarToMs(lua_State* L) noexcept {
 
 
 /* Arf Compile Fn */
+#include <utility>
+static std::map<uint64_t, uint8_t> valueMap;
+static std::unordered_map<uint64_t, uint8_t> echoMap;
 int Ar::OrganizeArf(lua_State* L) noexcept {
-	return 0;
+	/* Usage:
+	 * local before_or_false, objcnt, wgo_required, hgo_required, ego_required = Arf4.OrganizeArf()
+	 */
+	Fumen F = { .isAuto = true };
+
+	// Organize Deltas
+	F.deltas.reserve( N.deltas.size() + 1 ), F.deltas.push_back({ .val = 0 });
+	for( const auto& d : N.deltas ) {
+		if( d.init > 1048575 )
+			return lua_pushboolean(L, false), 1;
+		F.deltas.push_back({
+			.val = (uint64_t)d.init >> 2,
+			.absV = (uint64_t)( fmin( abs(d.value), 8 - 1.0/1024 ) * 1024 ),
+			.base = (uint64_t)( d.base * 1024 )
+		});
+	}
+
+	// Organize Echoes
+	echoMap.clear();
+	for( const auto [x, y, beat, radius, initLoop, deltaLoop, isSpecial] : N.echoes )
+		if( const uint64_t ms = beatToMs(beat);  ms < 510  ||  ms > 1048575 - 470 )
+			return lua_pushboolean(L, false), 1;
+		else if( const auto baseEcho = Echo { .cdx = (int64_t)( (x - 8) * 8 ),
+											  .cdy = (int64_t)( (y - 4) * 8 ),  .ms = ms,
+											  .radius = (uint64_t)( radius * 4 ),
+											  .initLoop = (uint64_t)( initLoop * 64 ),
+											  .deltaLoop = (int64_t)( deltaLoop * 8 ) };
+		echoMap[baseEcho.val] == false )   // Insertion and Value Checking, in one sentence
+			echoMap[baseEcho.val] = isSpecial;
+
+	F.echoes.reserve( echoMap.size() );
+	for( const auto [val, isSpecial] : echoMap )
+		if( Echo e = { .val = val };  true )
+			F.echoes.push_back(( e.status = isSpecial, e ));
+	std::ranges::sort( F.echoes, [](const Echo a, const Echo b) { return  a.val << 27  <  b.val << 27; } );
+
+	// Organize Times of Wishes, Add Hints into `F.hints`
+	valueMap.clear();
+	for( auto& w : N.wishes ) {
+		for( auto& n : w.nodes )
+			if( (n.beat = beatToMs( n.beat )) > 1048575 )
+				return lua_pushboolean(L, false), 1;
+		for( auto& c : w.wishChilds ) {   // Use valueMap to deduplicate & sort childs later
+			if( (c.beat = beatToMs( c.beat )) < w.nodes.back().beat  &&  c.beat >= 510 ) {
+				wishCacheT(w, c.beat);
+				if( auto baseHint = Hint { .cdx = (int64_t)( (w.wX - 8) * 8 ),
+										   .cdy = (int64_t)( (w.wY - 4) * 8 ),
+										   .ms = (uint64_t)c.beat };
+				valueMap[baseHint.val] == false )
+					valueMap[baseHint.val] = c.hintSpecial;
+			}
+			c.beat = msToDt(c.beat);
+		}
+		for( auto [beat, isSpecial] : w.manualHints )
+			if( beat = beatToMs(beat), beat >= 510 ) {
+				wishCacheT(w, beat);
+				if( auto baseHint = Hint { .cdx = (int64_t)( (w.wX - 8) * 8 ),
+										   .cdy = (int64_t)( (w.wY - 4) * 8 ),
+										   .ms = (uint64_t)beat };
+				valueMap[baseHint.val] == false )
+					valueMap[baseHint.val] = isSpecial;
+			}
+	}
+
+	F.hints.reserve( valueMap.size() );
+	for( const auto [val, isSpecial] : valueMap )
+		if( Hint h = { .val = val };  true )
+			F.hints.push_back(( h.status = isSpecial, h ));
+	std::ranges::sort( N.wishes, [](const auto& a, const auto& b) {
+		return a.nodes.front().beat < b.nodes.front().beat;
+	});
+
+	// Generate hIdx & eIdx, Count scored objects
+	// Metadata: before, objectCount, hgoRequired, egoRequired
+
+	// Flatten Wishes, Generate wIdx
+	// Metadata: before, wgoRequired
+
+	return
+		lua_pushinteger(L, F.before),			lua_pushinteger(L, F.objectCount),
+		lua_pushinteger(L, F.wgoRequired),		lua_pushinteger(L, F.hgoRequired),
+		lua_pushinteger(L, F.egoRequired),		Arf = std::move(F),
+	5;
 }
 #endif
