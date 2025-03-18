@@ -109,16 +109,15 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 
 	/* Info */
 	const double eSpeed = (PlayerSpeed * Arf.cSpeed + 11) / 1500.0,
-				 dSpeed = eSpeed / 1024 /* 1/1024 -> 1 */;
+				 dSpeed = eSpeed / 1024 /* 1/1024 -> 1 */;			double zDt[2] = { Arf.msTime * 1024.0 };
 	AuInfo info = { .frameDt = (uint64_t)(lua_tonumber(L, 2) * 1000) };
 	Delta timer = { .t = (uint64_t)(Arf.msTime >> 2) };
 
 	/* Delta
 	 * zDt = Scale * 1024, Dt = Scale * xSpeed
 	 */
-	double zDt;
 	if( const Delta lastDt = Arf.deltas.back();  timer.t >= lastDt.t )
-		zDt = lastDt.base + (Arf.msTime - lastDt.t * 4.0) * lastDt.absV;
+		zDt[1] = lastDt.base + (Arf.msTime - lastDt.t * 4.0) * lastDt.absV;
 	else {
 		const auto initIt = Arf.deltas.begin() + 1, lastIt = Arf.deltas.end() - 1;
 			  auto it = initIt + Arf.deltas[0].val;
@@ -130,9 +129,9 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 			++it, ++nextIt;
 
 		if( const Delta thiz = *it;  thiz.base <= nextIt->base )
-			zDt = thiz.base + (Arf.msTime - thiz.t * 4.0) * thiz.absV;
+			zDt[1] = thiz.base + (Arf.msTime - thiz.t * 4.0) * thiz.absV;
 		else
-			zDt = thiz.base - (Arf.msTime - thiz.t * 4.0) * thiz.absV;
+			zDt[1] = thiz.base - (Arf.msTime - thiz.t * 4.0) * thiz.absV;
 		Arf.deltas[0].val = it - initIt;
 	}
 	timer.t >>= 7;
@@ -169,48 +168,32 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 		info = renderWish(L, info, nodePos, {.a = 0.01f, .b = fmin(tint, 1.0f) });
 
 		/* WishChild */
-		if( w.cCount )
+		if( double wZdt;  w.cCount )
 			if( const auto wChilds = std::span(Arf.wishChilds).subspan(w.cSince, w.cCount);
-				zDt < wChilds.back().zDt  &&  (wChilds[0].zDt - zDt) * dSpeed < 8 ) {
+				(wZdt = zDt[w.withDt]) < wChilds.back().zDt  &&  (wChilds[0].zDt - wZdt) * dSpeed < 8 ) {
 
 				// Manage cIndex
-				if( uint16_t prevCidx = w.cIndex - 1;  w.cIndex  &&  zDt < wChilds[prevCidx].zDt )
+				if( uint16_t prevCidx = w.cIndex - 1;  w.cIndex  &&  wZdt < wChilds[prevCidx].zDt )
 					do	 --w.cIndex, --prevCidx;
-					while( w.cIndex  &&  zDt < wChilds[prevCidx].zDt );
+					while( w.cIndex  &&  wZdt < wChilds[prevCidx].zDt );
 				else {
 					const uint16_t lastCidx = w.cCount - 1;
-					while( w.cIndex < lastCidx  &&  zDt >= wChilds[w.cIndex].zDt )
+					while( w.cIndex < lastCidx  &&  wZdt >= wChilds[w.cIndex].zDt )
 						++w.cIndex;
 				}
 
 				// Traverse Subspan
-				if( w.compressChild ) {
-					for( const auto c : wChilds.subspan(w.cIndex) )
-						if( double cFactor = 1 - (c.zDt - zDt) * dSpeed / 8;  cFactor > 0 ) {
-							Duo childPos = CosSin({
-								.a = (float)( 360 * (c.initLoop / 64.0 + c.deltaLoop / 8.0 * cFactor) )
-							});
-							const float cTint = cFactor / 0.237;
-										cFactor *= c.radius << 1;   /* 1/4 -> 1/8 */
-							childPos.a = nodePos.a + cFactor * childPos.a;
-							childPos.b = nodePos.b + cFactor * childPos.b;
-							info = renderWish(L, info, childPos, { .a = 0.03f, .b = fmin(cTint, 1.0f) });
-						}
-				}
-				else for( const auto c : wChilds.subspan(w.cIndex) ) {
-					if( const auto distX8 = (c.zDt - zDt) * dSpeed * 8;  distX8 > 64 /* 8x8 */ )
-						break;
-					else if( const double cRatio = 1 - distX8 / (c.radius * 2) /* To 1/8 */;  cRatio > 0 ) {
+				for( const auto c : wChilds.subspan(w.cIndex) )
+					if( double cQuot = 1 - (c.zDt - wZdt) * dSpeed / fmax(c.radius / 4.0, 6);  cQuot > 0 ) {
 						Duo childPos = CosSin({
-							.a = (float)( 360 * (c.initLoop / 64.0 + c.deltaLoop / 8.0 * cRatio) )
+							.a = (float)( 360 * (c.initLoop / 64.0 + c.deltaLoop / 8.0 * cQuot) )
 						});
-						childPos.a = nodePos.a + distX8 * childPos.a;
-						childPos.b = nodePos.b + distX8 * childPos.b;
-
-						const float cTint = cRatio / 0.237;
+						const float cTint  = cQuot / 0.237;
+									cQuot *= c.radius << 1;   /* 1/4 -> 1/8 */
+						childPos.a = nodePos.a + cQuot * childPos.a;
+						childPos.b = nodePos.b + cQuot * childPos.b;
 						info = renderWish(L, info, childPos, { .a = 0.03f, .b = fmin(cTint, 1.0f) });
 					}
-				}
 			}
 		wish = w;   // `w` is a value, while `wish` is a ref
 	}
@@ -254,7 +237,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 			else if( !e.radius )
 				if( lifeMs > -511 )		ePos = mPos, R = (lifeMs + 510) / 151.0;
 				else					continue;
-			else if( double x8d;  R += lifeMs * eSpeed / 8,  R < 0 )
+			else if( double x8d;  R += lifeMs * eSpeed / fmax(e.radius * 0.25, 6),  R < 0 )
 				goto MISC_UPDATE_AUTO;
 			else
 				x8d = R * (e.radius << 1),   /* 1/4 -> 1/8 */
@@ -370,7 +353,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 			else if( !e.radius )
 				if( lifeMs > -511 )		ePos = mPos, R = (lifeMs + 510) / 151.0;
 				else					continue;
-			else if( double x8d;  R += lifeMs * eSpeed / 8,  R < 0 )
+			else if( double x8d;  R += lifeMs * eSpeed / fmax(e.radius * 0.25, 6),  R < 0 )
 				goto MISC_UPDATE;
 			else
 				x8d = R * (e.radius << 1),   /* 1/4 -> 1/8 */
@@ -438,6 +421,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 					info = renderAnim(L, info, mPos, lifeMs - e.deltaMs);
 		}
 	}
+
 	return lua_pushinteger(L, info.wUsed), lua_pushinteger(L, info.hUsed), lua_pushinteger(L, info.eUsed),
 		   lua_pushinteger(L, info.xUsed), lua_pushinteger(L, info.aUsed), lua_pushboolean(L, info.playH),
 		   lua_pushboolean(L, info.playE), 7;

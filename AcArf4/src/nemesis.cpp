@@ -44,7 +44,7 @@ namespace N4 {
 		std::vector<Point>	nodes;
 		std::vector<Child>	wishChilds;
 		std::vector<Hint>	manualHints;
-		uint8_t				nIdx, isSpecial, compressChild;
+		uint8_t				nIdx, isSpecial, withDt;
 		//------------------------//
 		float				wRadius;
 		double				wX, wY, wNx, wNy, wDegree;
@@ -275,19 +275,19 @@ static std::map<double, N4::Delta> bpmMap;
 static std::map<double, N4::Tempo> tempoMap;
 int Ar::NewBuild(lua_State* L) noexcept {
 	/* Example:
-	 * Time {					-- For 4/4-only tracks
-	 *     Offset = 0,			-- Beat 0 starts from 0ms
-	 *     0, 170,				-- Bar, BPM
+	 * Time {						-- For 4/4-only tracks
+	 *     Offset = 0,				-- Beat 0 starts from 0ms
+	 *     0, 170,					-- Bar, BPM
 	 *     ···
 	 * }
-	 * Time {					-- For tracks with Tempo Variations
-	 *     Offset = 0,			-- Offset must be positive
+	 * Time {						-- For tracks with Tempo Variations
+	 *     Offset = 0,				-- Offset must be positive
 	 *     Tempo = {
-	 *         0, 4, 4,			-- Bar, Beat Count of a Bar, How many Beats are equal in length to an Tone
+	 *         0, 4, 4,				-- Bar, Beat Count of a Bar, Tone Divisor
 	 *         1, 3, 4,
 	 *         25, 4, 4
 	 *     },
-	 *     0, 0, 201,			-- Bar(to be converted to Beat), Additional Beats, BPM
+	 *     0, 0, 201,				-- Bar(to be converted to Beat), Additional Beats, BPM
 	 *     ···
 	 * }
 	 */
@@ -391,10 +391,10 @@ static std::map<double, double> deltaMap;
 int Ar::SetDelta(lua_State* L) noexcept {
 	/* Example:
 	 * Delta {
-	 *     {0},			1,				-- Bar 0, Ratio: 1
-	 *     {2, 1/32},	-1,				-- Bar 2, then 1/32 Tone, Ratio: -1
-	 *     {2, 1},		0.9,			-- Bar 2, then 1/16 Tone, Ratio: 0.9
-	 *     15,			1,				-- Bar 2(Cached), then 15/16 Tone, Ratio: 1
+	 *     {0},			1,			-- Bar 0, Ratio: 1
+	 *     {2, 1/32},	-1,			-- Bar 2, then 1/32 Tone, Ratio: -1
+	 *     {2, 1},		0.9,		-- Bar 2, then 1/16 Tone, Ratio: 0.9
+	 *     15,			1,			-- Bar 2(Cached), then 15/16 Tone, Ratio: 1
 	 *     ···
 	 * }
 	 */
@@ -448,10 +448,10 @@ int Ar::SetDelta(lua_State* L) noexcept {
 static std::map<double, N4::Point> nodeMap;
 int Ar::NewWish(lua_State* L) noexcept {
 	/* Example:
-	 * local myWish = Wish {			-- When failed, a nil will be returned.
-	 *     Special = true,				-- false by default
-	 *     CompressChild = true,		-- false by default
-	 *     {1}, 4, 3, LINEAR,			-- Bar 1, X=4, Y=3, Linear Ease
+	 * local myWish = Wish {		-- When failed, a nil will be returned.
+	 *     Special = true,			-- false by default
+	 *     WithDelta = true,		-- true by default
+	 *     {1}, 4, 3, LINEAR,		-- Bar 1, X=4, Y=3, Linear Ease
 	 *
 	 *     -- Add Radius(5 here) & Degree(0 here) like this
 	 *     -12, oldWish + (-12), oldWish - (-12), {5, 0, LINEAR},
@@ -462,7 +462,7 @@ int Ar::NewWish(lua_State* L) noexcept {
 		return lua_pushnil(L), lua_pushfstring(L, NOT_A_TABLE, "Wish"), 2;
 	N4::Wish W = {
 		.isSpecial = (uint8_t)( lua_getfield(L, 1, "Special"), lua_toboolean(L,-1) ),
-		.compressChild = (uint8_t)( lua_getfield(L, 1, "CompressChild"), lua_toboolean(L,-1) )
+		.withDt = (uint8_t)( lua_getfield(L, 1, "WithDelta"), lua_isnil(L,-1) ? true : lua_toboolean(L,-1) )
 	};
 	lua_pop(L, 2);
 
@@ -495,11 +495,11 @@ int Ar::NewWish(lua_State* L) noexcept {
 
 int Ar::NewHelper(lua_State* L) noexcept {
 	/* Example:
-	 * local myHelperOrNil = Helper {	-- For getX/getY usages only.
-	 *     {1}, 4, 3, LINEAR,			-- Bar 1, X=4, Y=3, Linear Ease
-	 *     -12, 8, 9, LINEAR,			-- Bar 1 then 12/16 Tone, X=8, Y=9, Linear Ease
+	 * local helper = Helper {		-- When failed, a nil will be returned.
+	 *     {1}, 4, 3, LINEAR,		-- Bar 1, X=4, Y=3, Linear Ease
+	 *     -12, 8, 9, LINEAR,		-- Bar 1 then 12/16 Tone, X=8, Y=9, Linear Ease
 	 *     ···
-	 * }
+	 * }   -- Then you can use the Helper to do some interpolations.
 	 */
 	if(! lua_istable(L, 1) )
 		return lua_pushnil(L), lua_pushfstring(L, NOT_A_TABLE, "Helper"), 2;
@@ -536,12 +536,12 @@ int Ar::NewHelper(lua_State* L) noexcept {
 int Ar::NewChild(lua_State* L) noexcept {
 	/* Example:
 	 * Child {
-	 *     Wish = nil,					-- The last Wish of the Fumen by default
-	 *     Radius = 7.0,				-- 7.0 by Default
-	 *     Special = false,				-- Try to generate a special Hint if true, false by default
-	 *     InitLoop = 0.25,				-- 0.25 by default
-	 *     DeltaLoop = 1.25,			-- 0 by default
-	 *     {1, 1}, 2, 3, 4, ···			-- Times
+	 *     Wish = nil,				-- The last Wish of the Fumen by default
+	 *     Radius = 7.0,			-- 7.0 by Default
+	 *     Special = false,			-- Try to generate a special Hint if true, false by default
+	 *     InitLoop = 0.25,			-- 0.25 by default
+	 *     DeltaLoop = 1.25,		-- 0 by default
+	 *     {1, 1}, 2, 3, 4, ···		-- Times
 	 * }
 	 */
 	if( N.wishes.empty() )
@@ -573,9 +573,9 @@ int Ar::NewChild(lua_State* L) noexcept {
 int Ar::NewHint(lua_State* L) noexcept {
 	/* Usage:
 	 * Hint {
-	 *     Wish = myWish,				-- The last Wish of the Fumen by default
-	 *     Special = false,				-- False by default
-	 *     {1}, 1, 2, 3, 4, ···			-- Times
+	 *     Wish = myWish,			-- The last Wish of the Fumen by default
+	 *     Special = false,			-- False by default
+	 *     {1}, 1, 2, 3, 4, ···		-- Times
 	 * }
 	 */
 	if( N.wishes.empty() )
@@ -603,12 +603,12 @@ int Ar::NewHint(lua_State* L) noexcept {
 int Ar::NewEcho(lua_State* L) noexcept {
 	/* Usage:
 	 * Echo {
-	 *     Radius = 7.0,				-- 0 by Default
-	 *     Special = false,				-- Scored if true, false by default
-	 *     InitLoop = 0.25,				-- 0.25 by default, ignored if Radius is 0
-	 *     DeltaLoop = 1.25,			-- 0 by default, ignored if Radius is 0
-	 *     {1}, 8, 0.5,					-- T1, X1, Y1
-	 *     12, 8, 0.5,					-- T2, X2, Y2
+	 *     Radius = 7.0,			-- 0 by Default
+	 *     Special = false,			-- Scored if true, false by default
+	 *     InitLoop = 0.25,			-- 0.25 by default, ignored if Radius is 0
+	 *     DeltaLoop = 1.25,		-- 0 by default, ignored if Radius is 0
+	 *     {1}, 8, 0.5,				-- T1, X1, Y1
+	 *     12, 8, 0.5,				-- T2, X2, Y2
 	 *     ···
 	 * }
 	 */
@@ -794,8 +794,10 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 				valueMap[baseHint.val] == false )
 					valueMap[baseHint.val] = c.hintSpecial;
 			}
-			c.beat = msToDt(c.beat);
 		}
+		if( w.withDt )  for( auto& c : w.wishChilds )
+			c.beat = msToDt(c.beat);
+
 		for( auto [beat, isSpecial] : w.manualHints )
 			if( beat = beatToMs(beat), beat >= 510 ) {
 				wishCacheT(w, beat);
@@ -853,7 +855,7 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 		const auto e = F.echoes[i];
 		Arf.objectCount += e.status;
 
-		int32_t initMs = e.ms - (e.radius ? 1044 : 510);
+		int32_t initMs = e.ms - (e.radius ? 1011 : 510);
 		if( initMs < 0 )
 			initMs = 0;
 
