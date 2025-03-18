@@ -1,7 +1,8 @@
 ﻿// Nemesis, the Aerials Fumen Compiler. //
-#ifndef AR_BUILD_VIEWER
+#ifdef AR_BUILD_VIEWER
 #include <unordered_map>
 #include <algorithm>
+#include <utility>
 #include <Arf4.h>
 #include <span>
 #include <map>
@@ -728,8 +729,7 @@ int Ar::BarToMs(lua_State* L) noexcept {
 
 
 /* Arf Compile Fn */
-#include <utility>
-static std::map<uint64_t, uint8_t> valueMap;
+static std::map<uint64_t, int16_t> valueMap;
 static std::unordered_map<uint64_t, uint8_t> echoMap;
 static std::vector< std::vector<Arf4::Wish> > wIdxProto;
 static std::vector< std::vector<uint32_t> > index2d;
@@ -745,7 +745,7 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 		if( d.init > 1048575 )   /* Arf4.h */
 			return lua_pushboolean(L, false), lua_pushfstring(L, NEMESIS_TIME_OOR, "DeltaNode"), 2;
 		F.deltas.push_back({
-			.val = (uint64_t)d.init >> 2,
+			.t = (uint64_t)d.init >> 2,
 			.absV = (uint64_t)( fmin( abs(d.value), 8 - 1.0/1024 ) * 1024 ),
 			.base = (uint64_t)( d.base * 1024 )
 		});
@@ -880,18 +880,109 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 	}
 	index2d.clear();
 
-	/* Flatten Wishes, Generate wIdx
-	 * Metadata: before, wgoRequired
+	/* Flatten Nodes & WishChilds
+	 * Metadata: before
 	 */
+	wIdxProto.clear();
+	wIdxProto.resize(2048);
 	std::ranges::sort( N.wishes, [](const auto& a, const auto& b) {
 		return a.nodes.front().beat < b.nodes.front().beat;
 	});
-	// WIP
 
-	return
-		lua_pushinteger(L, F.before),			lua_pushinteger(L, F.objectCount),
-		lua_pushinteger(L, F.wgoRequired),		lua_pushinteger(L, F.hgoRequired),
-		lua_pushinteger(L, F.egoRequired),		Arf = std::move(F),
+	F.nodes.reserve(32767);
+	F.wishChilds.reserve(32767);
+	for( auto& w : N.wishes ) {
+		Wish wView = { .nSince = F.nodes.size(), .nCount = w.nodes.size(),
+					   .withDt = w.withDt, .isSpecial = w.isSpecial };
+		// Organize Nodes
+		// Time & Count Checked
+		for( const auto [x, y, beat, radius, degree, ease] : w.nodes )
+			F.nodes.push_back({ .cdx = (int64_t)( (x - 8) * 8 ),
+								.cdy = (int64_t)( (y - 8) * 8 ),
+								.ease = ease, .ms = (uint64_t)beat,
+								.radius = (uint64_t)( radius * 4 ),
+								.deg = (int64_t)degree
+			});
+
+		// Organize WishChilds
+		valueMap.clear();
+		for(const auto& nC : w.wishChilds) {
+			const Child c = { .radius = (uint64_t)( nC.radius * 4 ),
+							  .initLoop = (uint64_t)( nC.initLoop * 64 ),
+							  .deltaLoop = (int64_t)( nC.deltaLoop * 8 ),
+							  .zDt = (uint64_t)( nC.beat * 1024 ) };
+			valueMap[c.val] = 0;
+		}
+
+		if( valueMap.size() > 1023 )   /* Arf4.h */
+			return lua_pushboolean(L,0), lua_pushfstring(L, NEMESIS_SLE, "a Wish's WishChilds", LI 1023), 2;
+		wView.cSince = F.wishChilds.size();
+
+		for( const auto [cVal, _] : valueMap )
+			F.wishChilds.push_back({ .val = cVal });
+		wView.cCount = valueMap.size();
+
+		// Size Check (inout.cpp)
+		if( F.nodes.size() > 32767 )   /* 6/9 */
+			return lua_pushboolean(L, false), lua_pushfstring(L, NEMESIS_SLE, "Wish Nodes", LI 32767), 2;
+		if( F.wishChilds.size() > 32767 )   /* 7/9 */
+			return lua_pushboolean(L, false), lua_pushfstring(L, NEMESIS_SLE, "WishChilds", LI 32767), 2;
+
+		// Calculate wgoRequired for this Wish (Here the `.cIndex` field is borrowed)
+		valueMap.clear();
+		for( const auto& c : w.wishChilds ) {
+			const double to = c.beat * (11 / 1500.0),   // Lowest dSpeed
+						 from = to - fmax(c.radius, 6) * (11 / 1500.0);
+			valueMap[from] += 1, valueMap[to] -= 1;
+		}
+
+		int16_t currentStep;
+		for( const auto [_, stepDelta] : valueMap )
+			if( (currentStep += stepDelta) > wView.cIndex )
+				wView.cIndex = currentStep;
+		++wView.cIndex;   // The Wish itself
+
+		/* Push this Wish into wIdxProto
+		 * Update F.before
+		 */
+		const auto lastMs = (uint32_t)w.nodes.back().beat;
+		if( F.before < lastMs )
+			F.before = lastMs;
+
+		const auto endGroup = lastMs >> 9;
+		for( uint32_t i = (uint32_t)w.nodes.front().beat >> 9;  i <= endGroup;  ++i )
+			wIdxProto[i].push_back( wView );
+	}
+	wIdxProto.resize( F.before >> 9 );   /* inout.cpp "wIdx" 8/9 */
+
+	/* Flatten Wishes
+	 * Metadata: wgoRequired
+	 */
+	F.wishes.reserve(16383);
+	for( auto& group : wIdxProto ) {
+		if( group.empty() ) {
+			F.wIdx.push_back({ .f = 0, .c = 0 });
+			continue;
+		}
+		if( group.size() > 1023 )   /* Arf4.h */
+			return lua_pushboolean(L,0), lua_pushfstring(L, NEMESIS_SLE, "Wishes within 512ms", LI 1023), 2;
+		F.wIdx.push_back({ .f = (uint32_t)F.wishes.size(), .c = (uint32_t)group.size() });
+
+		uint16_t groupWgoUsed = 0;
+		for( auto& wish : group )
+			groupWgoUsed += wish.cIndex,	wish.cIndex = 0 /* End of the borrow */,
+			F.wishes.push_back( wish );
+		if( F.wishes.size() > 16383 )   /* inout.cpp 9/9 */
+			return lua_pushboolean(L, false), lua_pushfstring(L, NEMESIS_SLE, "Wishes", LI 16383), 2;
+		if( groupWgoUsed > 1023 )   /* Arf4.h */
+			return lua_pushboolean(L,0), lua_pushfstring(L, NEMESIS_SLE, "Wishes within 512ms", LI 1023), 2;
+		if( groupWgoUsed > F.wgoRequired )
+			F.wgoRequired = groupWgoUsed;
+	}
+
+	return  lua_pushinteger(L, F.before),			lua_pushinteger(L, F.objectCount),
+			lua_pushinteger(L, F.wgoRequired),		lua_pushinteger(L, F.hgoRequired),
+			lua_pushinteger(L, F.egoRequired),		Arf = std::move(F),
 	5;
 }
 #endif
