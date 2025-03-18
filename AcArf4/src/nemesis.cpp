@@ -731,8 +731,7 @@ int Ar::BarToMs(lua_State* L) noexcept {
 /* Arf Compile Fn */
 static std::map<uint64_t, int16_t> valueMap;
 static std::unordered_map<uint64_t, uint8_t> echoMap;
-static std::vector< std::vector<Arf4::Wish> > wIdxProto;
-static std::vector< std::vector<uint32_t> > index2d;
+static std::vector< std::vector<Arf4::Wish> > idxProto;
 int Ar::OrganizeArf(lua_State* L) noexcept {
 	/* Usage:
 	 * local before_or_false, objcnt, wgo_required, hgo_required, ego_required = Arf4.OrganizeArf()
@@ -821,70 +820,64 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 	/* Generate hIdx & eIdx, Count scored objects
 	 * Metadata: before, objectCount, hgoRequired, egoRequired
 	 */
-	index2d.resize(2048);   // Slow Part. Sorry.
+	const size_t hIdxSize = (   /* inout.cpp "hIdx" 4/9 */
+		(F.before = F.hints.back().ms + 470) >> 9   // This is the first time to assign F.before
+	) + 1;
+	idxProto.clear(), idxProto.resize( hIdxSize );
+
 	uint8_t sHintCount = 0;
 	for( size_t i = 0;  i < hintSize;  ++i ) {
 		const auto h = F.hints[i];
 		if( sHintCount < 31 )		sHintCount += h.status;
 		else						F.hints[i].status = NJUDGED;
 
-		const uint32_t endMs = h.ms + 470;
-		if( F.before < endMs )
-			F.before = endMs;
-
-		const size_t endGroup = endMs >> 9;
+		const size_t endGroup = (h.ms + 470) >> 9;
 		for( size_t group = (h.ms - 510) >> 9;  group <= endGroup;  ++group )
-			index2d[group].push_back(i);
+			idxProto[group].push_back({ .val = i });
 	}
-	F.objectCount = hintSize;
 
-	const size_t hIdxSize = (F.before >> 9) + 1;   /* inout.cpp "hIdx" 4/9 */
-	index2d.resize( hIdxSize ), F.hIdx.reserve( hIdxSize );
-	for( const auto& group : index2d ) {
-		uint32_t since, count;
-		if( group.empty() )
-			since = 0, count = 0;
-		else if( since = group.front(),  count = group.back() - since + 1,  count > 1023 )   /* Arf4.h */
+	F.hIdx.reserve( hIdxSize );
+	for( const auto& group : idxProto )
+		if( uint32_t since, count;  group.empty() )
+			F.hIdx.push_back({ .f = 0, .c = 0 });
+		else if( since = group[0].val,  count = group.back().val - since + 1,  count > 1023 )   /* Arf4.h */
 			return lua_pushboolean(L,0), lua_pushfstring(L, NEMESIS_SLE, "Hints within 512ms", LI 1023), 2;
-		F.hIdx.push_back({ .f = since, .c = count });
-	}
-	index2d.clear();
+		else if( F.hIdx.push_back({ .f = since, .c = count }),  count > F.hgoRequired )
+			F.hgoRequired = count;
 
-	index2d.resize(2048);
+	const size_t eIdxSize = (   /* inout.cpp "eIdx" 5/9 */
+		(F.before = fmax( F.before, F.echoes.back().ms + 470 )) >> 9
+	) + 1;
+	idxProto.clear(), idxProto.resize( eIdxSize );
+
+	F.objectCount = hintSize;
 	for( size_t i = 0;  i < echoSize;  ++i ) {
 		const auto e = F.echoes[i];
-		Arf.objectCount += e.status;
+		F.objectCount += e.status;
 
 		int32_t initMs = e.ms - (e.radius ? 1011 : 510);
 		if( initMs < 0 )
 			initMs = 0;
 
-		const uint32_t endMs = e.ms + 470;
-		if( F.before < endMs )
-			F.before = endMs;
-
-		const size_t endGroup = endMs >> 9;
+		const size_t endGroup = (e.ms + 470) >> 9;
 		for( size_t group = initMs >> 9;  group <= endGroup;  ++group )
-			index2d[group].push_back(i);
+			idxProto[group].push_back({ .val = i });
 	}
 
-	const size_t eIdxSize = (F.before >> 9) + 1;   /* inout.cpp "eIdx" 5/9 */
-	index2d.resize( eIdxSize ), F.hIdx.reserve( eIdxSize );
-	for( const auto& group : index2d ) {
-		uint32_t since, count;
-		if( group.empty() )
-			since = 0, count = 0;
-		else if( since = group.front(),  count = group.back() - since + 1,  count > 1023 )   /* Arf4.h */
+	F.eIdx.reserve( eIdxSize );
+	for( const auto& group : idxProto )
+		if( uint32_t since, count;  group.empty() )
+			F.eIdx.push_back({ .f = 0, .c = 0 });
+		else if( since = group[0].val,  count = group.back().val - since + 1,  count > 1023 )   /* Arf4.h */
 			return lua_pushboolean(L,0), lua_pushfstring(L, NEMESIS_SLE, "Echoes within 512ms", LI 1023), 2;
-		F.eIdx.push_back({ .f = since, .c = count });
-	}
-	index2d.clear();
+		else if( F.eIdx.push_back({ .f = since, .c = count }),  count > F.egoRequired )
+			F.egoRequired = count;
 
 	/* Flatten Nodes & WishChilds
 	 * Metadata: before
 	 */
-	wIdxProto.clear();
-	wIdxProto.resize(2048);
+	idxProto.clear();
+	idxProto.resize(2048);
 	std::ranges::sort( N.wishes, [](const auto& a, const auto& b) {
 		return a.nodes.front().beat < b.nodes.front().beat;
 	});
@@ -936,11 +929,10 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 			valueMap[from] += 1, valueMap[to] -= 1;
 		}
 
-		int16_t currentStep;
+		int16_t currentStep = 1;   // The Wish itself
 		for( const auto [_, stepDelta] : valueMap )
 			if( (currentStep += stepDelta) > wView.cIndex )
 				wView.cIndex = currentStep;
-		++wView.cIndex;   // The Wish itself
 
 		/* Push this Wish into wIdxProto
 		 * Update F.before
@@ -951,15 +943,19 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 
 		const auto endGroup = lastMs >> 9;
 		for( uint32_t i = (uint32_t)w.nodes.front().beat >> 9;  i <= endGroup;  ++i )
-			wIdxProto[i].push_back( wView );
+			idxProto[i].push_back( wView );
 	}
-	wIdxProto.resize( F.before >> 9 );   /* inout.cpp "wIdx" 8/9 */
+
+	const uint16_t idxSize = F.before >> 9;
+	idxProto.resize(idxSize);   /* inout.cpp "wIdx" 8/9 */
+	F.hIdx.resize(idxSize);
+	F.eIdx.resize(idxSize);
 
 	/* Flatten Wishes
 	 * Metadata: wgoRequired
 	 */
 	F.wishes.reserve(16383);
-	for( auto& group : wIdxProto ) {
+	for( auto& group : idxProto ) {
 		if( group.empty() ) {
 			F.wIdx.push_back({ .f = 0, .c = 0 });
 			continue;
