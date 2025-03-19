@@ -1,0 +1,36 @@
+path_settings {
+  path: "/Visual/Wish.atlas"
+  profile: "UI"
+}
+path_settings {
+  path: "/Visual/UI.atlas"
+  profile: "UI"
+}
+path_settings {
+  path: "**"
+  profile: "Illust"
+}
+profiles {
+  name: "Illust"
+  platforms {
+    os: OS_ID_GENERIC
+    formats {
+      format: TEXTURE_FORMAT_RGB
+      compressor: "BasisU"
+      compressor_preset: "BASISU_HIGHEST"
+    }
+    mipmaps: false
+  }
+}
+profiles {
+  name: "UI"
+  platforms {
+    os: OS_ID_GENERIC
+    formats {
+      format: TEXTURE_FORMAT_RGBA
+      compressor: "BasisU"
+      compressor_preset: "BASISU_HIGHEST"
+    }
+    mipmaps: false
+  }
+}

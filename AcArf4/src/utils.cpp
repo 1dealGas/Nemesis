@@ -70,7 +70,7 @@ int Ar::SetCam(lua_State* L) noexcept {
 
 int Ar::SetSpeed(lua_State* L) noexcept {
 	/* Usage:
-	 * Arf4.SetSpeed(scale)
+	 * Arf4.SetSpeed(speed)
 	 */
 	const lua_Number  pSpeed = lua_tonumber(L, 1);
 		PlayerSpeed = pSpeed < 0.5 ? 0.5 : pSpeed > 10 ? 10 : pSpeed;

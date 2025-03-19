@@ -806,8 +806,8 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 	for( const auto& group : idxProto )
 		if( uint32_t since, count;  group.empty() )
 			F.hIdx.push_back({ .f = 0, .c = 0 });
-		else if( since = group[0].val,  count = group.back().val - since + 1,  count > 1023 )   /* Arf4.h */
-			return lua_pushboolean(L,0), lua_pushfstring(L, NEMESIS_SLE, "Hints within 512ms", LI 1023), 2;
+		else if( since = group[0].val,  count = group.back().val - since + 1,  count > 511 )   /* Arf4.h */
+			return lua_pushboolean(L, 0), lua_pushfstring(L, NEMESIS_SLE, "Hints within 512ms", LI 511), 2;
 		else if( F.hIdx.push_back({ .f = since, .c = count }),  count > F.hgoRequired )
 			F.hgoRequired = count;
 
@@ -834,8 +834,8 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 	for( const auto& group : idxProto )
 		if( uint32_t since, count;  group.empty() )
 			F.eIdx.push_back({ .f = 0, .c = 0 });
-		else if( since = group[0].val,  count = group.back().val - since + 1,  count > 1023 )   /* Arf4.h */
-			return lua_pushboolean(L,0), lua_pushfstring(L, NEMESIS_SLE, "Echoes within 512ms", LI 1023), 2;
+		else if( since = group[0].val,  count = group.back().val - since + 1,  count > 511 )   /* Arf4.h */
+			return lua_pushboolean(L, 0), lua_pushfstring(L, NEMESIS_SLE, "Echoes within 512ms", LI 511), 2;
 		else if( F.eIdx.push_back({ .f = since, .c = count }),  count > F.egoRequired )
 			F.egoRequired = count;
 

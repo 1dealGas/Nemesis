@@ -5,23 +5,16 @@ platforms:
         context:
             flags: ["-std=c++20", "-Ofast", "-ffunction-sections", "-fdata-sections", "-flto"]
             linkFlags: ["-flto"]
+            defines: ["AR_BUILD_VIEWER"]
 
     x86_64-osx:
         context:
             flags: ["-std=c++20", "-Ofast", "-ffunction-sections", "-fdata-sections", "-flto"]
             linkFlags: ["-flto"]
+            defines: ["AR_BUILD_VIEWER"]
 
     arm64-osx:
         context:
             flags: ["-std=c++20", "-Ofast", "-ffunction-sections", "-fdata-sections", "-flto"]
             linkFlags: ["-flto"]
-
-    arm64-android:
-        context:
-            flags: ["-std=c++20", "-Ofast", "-ffunction-sections", "-fdata-sections", "-flto"]
-            linkFlags: ["-flto"]
-
-    arm64-ios:
-        context:
-            flags: ["-std=c++20", "-Ofast", "-ffunction-sections", "-fdata-sections", "-flto"]
-            linkFlags: ["-flto"]
+            defines: ["AR_BUILD_VIEWER"]

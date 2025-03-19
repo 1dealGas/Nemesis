@@ -94,43 +94,6 @@ namespace bitsery {
 			   lua_pushinteger(L, Arf.wgoRequired),		lua_pushinteger(L, Arf.hgoRequired),
 			   lua_pushinteger(L, Arf.egoRequired),		free(pBuf), 5;
 	}
-
-	int Ar::TransformStr(lua_State* L) {
-		/* Usage:
-		 * local output_str = Arf4.TransformStr(input_str, proof_str, is_decode)
-		 */
-		size_t inputSize, proofSize;
-		const char *inputStr = luaL_checklstring(L, 1, &inputSize),
-				   *proofStr = luaL_checklstring(L, 2, &proofSize);
-
-		uint8_t proofSha256[32];
-		dmCrypt::HashSha256( (const uint8_t*)proofStr, (uint32_t)proofSize, proofSha256 );
-
-		// Decode //
-		if( lua_toboolean(L, 3) ) {
-			uint32_t originalSize;
-			uint8_t* outputStr = (uint8_t*)malloc( originalSize = inputSize );
-
-			dmCrypt::Base64Decode( (const uint8_t*)inputStr, inputSize, outputStr, &originalSize );
-			Decrypt(dmCrypt::ALGORITHM_XTEA, outputStr, originalSize, proofSha256+16, 16);
-			Decrypt(dmCrypt::ALGORITHM_XTEA, outputStr, originalSize, proofSha256+8, 16);
-			Decrypt(dmCrypt::ALGORITHM_XTEA, outputStr, originalSize, proofSha256, 16);
-
-			return lua_pushlstring( L, (const char*)outputStr, originalSize ), free(outputStr), 1;
-		}
-
-		// Encode //
-		uint32_t outputSize = inputSize * 4 / 3 + 1;
-		const auto inputStrMutable = (uint8_t*)const_cast<char*>(inputStr),
-						 outputStr = (uint8_t*)malloc(outputSize);
-
-		Encrypt(dmCrypt::ALGORITHM_XTEA, inputStrMutable, inputSize, proofSha256, 16);
-		Encrypt(dmCrypt::ALGORITHM_XTEA, inputStrMutable, inputSize, proofSha256+8, 16);
-		Encrypt(dmCrypt::ALGORITHM_XTEA, inputStrMutable, inputSize, proofSha256+16, 16);
-		dmCrypt::Base64Encode(inputStrMutable, inputSize, outputStr, &outputSize);
-
-		return lua_pushstring( L, (const char*)outputStr ), free(outputStr), 1;
-	}
 #else
 	int Ar::ExportArf(lua_State* L) {
 		/* Usage:

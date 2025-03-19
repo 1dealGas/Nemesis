@@ -1,0 +1,8 @@
+images {
+  image: "/Visual/Wish.png"
+  sprite_trim_mode: SPRITE_TRIM_MODE_8
+}
+images {
+  image: "/Visual/WishSP.png"
+  sprite_trim_mode: SPRITE_TRIM_MODE_8
+}

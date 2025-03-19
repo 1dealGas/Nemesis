@@ -80,6 +80,7 @@ namespace Arf4 {
 		uint64_t				msTime:20, judgeRange:7 = 37;
 		uint64_t				sHit:6, hHit:15, eHit:15, early:15, late:15, lost:16;
 		uint64_t				isAuto:1, isAnyX:1, isAnyY:1;
+		/*------------------------*/
 		float					xScale = 112.5/8, yScale = xScale;
 		float					xDelta, cSpeed = 1;							// cS ∈ [0,1.25]  pS ∈ [0.5,10]
 	};
@@ -124,5 +125,4 @@ namespace Ar {
 	int  SetJudgeZone(lua_State* L) noexcept;
 	int  GetJudgeStat(lua_State* L) noexcept;
 	int  SetInputDelta(lua_State* L) noexcept;
-	int  TransformStr(lua_State* L);
 }

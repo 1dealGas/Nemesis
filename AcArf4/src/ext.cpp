@@ -25,19 +25,19 @@ static const luaL_Reg Arf4Lib[] = {
 		{"LoadArf", Ar::LoadArf},
 		{"JudgeArf", Ar::JudgeArf},
 		{"SetJudgeZone", Ar::SetJudgeZone},
-		{"GetJudgeStat", Ar::GetJudgeStat},
 		{"SetInputDelta", Ar::SetInputDelta},
-		{"TransformStr", Ar::TransformStr},
+		{"GetJudgeStat", Ar::GetJudgeStat},
+		{"SetSpeed", Ar::SetSpeed},
 		{"Ease", Ar::Ease},
 	#endif
 		{"UpdateArf", Ar::UpdateArf},
-		{"SetSpeed", Ar::SetSpeed},
 		{"SetCam", Ar::SetCam},
 		{nullptr, nullptr}
 };
 
 static dmExtension::Result Arf4Init(dmExtension::Params* p) {
-	return luaL_register(p->m_L, "Arf4", Arf4Lib), lua_pop(p->m_L, 1), dmExtension::RESULT_OK;
+	luaL_register(p->m_L, "Arf4", Arf4Lib), lua_pop(p->m_L, 1);
+	return dmExtension::RESULT_OK;
 }
 static dmExtension::Result Arf4OK(dmExtension::Params*) {
 	return dmExtension::RESULT_OK;

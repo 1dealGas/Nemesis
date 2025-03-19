@@ -1,0 +1,27 @@
+*.fp linguist-language=GLSL
+*.script linguist-language=Lua
+*.render_script linguist-language=Lua
+game.project linguist-language=editor-config
+AcArf4/** linguist-language=C++
+
+*.script_api linguist-language=YAML
+*.appmanifest linguist-language=YAML
+ext.manifest linguist-language=YAML
+
+*.go linguist-language=text proto
+*.font linguist-language=text proto
+*.atlas linguist-language=text proto
+*.render linguist-language=text proto
+*.material linguist-language=text proto
+*.collection linguist-language=text proto
+*.gamepads linguist-language=text proto
+*.input_binding linguist-language=text proto
+*.texture_profiles linguist-language=text proto
+
+AcArf4/include/bitsery/** linguist-vendored
+AcArf4/include/constants.h linguist-generated
+AcAudio/src/miniaudio.cpp linguist-vendored
+AcAudio/src/opusfile/** linguist-vendored
+AcAudio/include/** linguist-vendored
+AcAudio/lib/** linguist-vendored
+AcLFS/** linguist-vendored

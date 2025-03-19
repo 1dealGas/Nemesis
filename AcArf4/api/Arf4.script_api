@@ -1,0 +1,292 @@
+- name: Arf4
+  type: table
+  members:
+
+  - name: LoadArf
+    type: function
+    desc: Player Only
+    parameters:
+    - name: path
+      type: string
+    - name: is_auto
+      type: string
+    - name: proof
+      type: [string, nil]
+    returns:
+    - name: before
+      type: [number, boolean]
+    - name: object_count
+      type: number
+    - name: wgo_required
+      type: number
+    - name: hgo_required
+      type: number
+    - name: ego_required
+      type: number
+
+  - name: JudgeArf
+    type: function
+    desc: Player Only
+    parameters:
+    - name: xs
+      type: table
+    - name: ys
+      type: table
+    - name: phases
+      type: table
+
+  - name: SetJudgeZone
+    type: function
+    desc: Player Only
+    parameters:
+    - name: ms
+      type: number
+    - name: is_any_x
+      type: boolean
+    - name: is_any_y
+      type: boolean
+
+  - name: SetInputDelta
+    type: function
+    desc: Player Only
+    parameters:
+    - name: ms
+      type: number
+
+  - name: GetJudgeStat
+    type: function
+    desc: Player Only
+    returns:
+    - name: hint_hit
+      type: number
+    - name: echo_hit
+      type: number
+    - name: early
+      type: number
+    - name: late
+      type: number
+    - name: lost
+      type: number
+    - name: special_hint_hit
+      type: number
+    - name: object_count
+      type: number
+
+  - name: SetSpeed
+    type: function
+    desc: Player Only
+    parameters:
+    - name: speed
+      type: number
+
+  - name: Ease
+    type: function
+    desc: Player Only
+    parameters:
+    - name: from
+      type: number
+    - name: type
+      type: number
+    - name: to
+      type: number
+    - name: ratio
+      type: number
+    returns:
+    - name: result
+      type: number
+
+  - name: UpdateArf
+    type: function
+    parameters:
+    - name: ms
+      type: number
+    - name: dt
+      type: number
+    - name: wish_gos
+      type: table
+    - name: hint_gos
+      type: table
+    - name: echo_gos
+      type: table
+    - name: echo_helper_gos
+      type: table
+    - name: left_anim_gos
+      type: table
+    - name: right_anim_gos
+      type: table
+    - name: wish_tints
+      type: table
+    - name: hint_tints
+      type: table
+    - name: echo_tints
+      type: table
+    - name: echo_helper_tints
+      type: table
+    - name: anim_tints
+      type: table
+    returns:
+    - name: wish_go_used
+      type: number
+    - name: hint_go_used
+      type: number
+    - name: echo_go_used
+      type: number
+    - name: anim_go_used
+      type: number
+    - name: hint_play_hitsound
+      type: boolean
+    - name: echo_play_hitsound
+      type: boolean
+
+  - name: SetCam
+    type: function
+    parameters:
+    - name: x_scale
+      type: number
+    - name: y_scale
+      type: number
+    - name: x_delta
+      type: number
+    - name: camera_speed
+      type: number
+
+  - name: NewBuild
+    type: function
+    desc: Viewer Only
+    parameters:
+    - name: args
+      type: table
+    returns:
+      - name: ok
+        type: boolean
+      - name: err
+        type: [string, nil]
+
+  - name: SetDelta
+    type: function
+    desc: Viewer Only
+    parameters:
+    - name: args
+      type: table
+    returns:
+      - name: ok
+        type: boolean
+      - name: err
+        type: [string, nil]
+
+  - name: NewVerse
+    type: function
+    desc: Viewer Only
+    parameters:
+    - name: since_tone
+      type: [number, table]
+
+  - name: NewWish
+    type: function
+    desc: Viewer Only
+    parameters:
+    - name: args
+      type: table
+    returns:
+      - name: wish
+        type: [table, nil]
+      - name: err
+        type: [string, nil]
+
+  - name: NewHint
+    type: function
+    desc: Viewer Only
+    parameters:
+    - name: args
+      type: table
+    returns:
+      - name: ok
+        type: boolean
+      - name: err
+        type: [string, nil]
+
+  - name: NewEcho
+    type: function
+    desc: Viewer Only
+    parameters:
+    - name: args
+      type: table
+    returns:
+      - name: ok
+        type: boolean
+      - name: err
+        type: [string, nil]
+
+  - name: NewChild
+    type: function
+    desc: Viewer Only
+    parameters:
+    - name: args
+      type: table
+    returns:
+      - name: ok
+        type: boolean
+      - name: err
+        type: [string, nil]
+
+  - name: NewHelper
+    type: function
+    desc: Viewer Only
+    parameters:
+    - name: args
+      type: table
+    returns:
+      - name: helper
+        type: [table, nil]
+      - name: err
+        type: [string, nil]
+
+  - name: Mirror
+    type: function
+    desc: Viewer Only
+    parameters:
+    - name: mirror_lr
+      type: boolean
+    - name: mirror_ud
+      type: boolean
+
+  - name: OrganizeArf
+    type: function
+    desc: Viewer Only
+    returns:
+      - name: ok
+        type: boolean
+      - name: err
+        type: [string, nil]
+
+  - name: ExportArf
+    type: function
+    desc: Viewer Only
+    parameters:
+    - name: proof
+      type: [string, nil]
+    returns:
+    - name: result
+      type: [string, nil]
+
+  - name: DeltaTone
+    type: function
+    desc: Viewer Only
+    parameters:
+    - name: from
+      type: [table, number]
+    - name: to
+      type: [table, number]
+    returns:
+    - name: src_or_msg
+      type: [table, string]
+
+  - name: BarToMs
+    type: function
+    desc: Viewer Only
+    parameters:
+    - name: bar
+      type: number
+    returns:
+    - name: ms
+      type: number
