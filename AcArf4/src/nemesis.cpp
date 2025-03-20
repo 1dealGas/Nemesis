@@ -444,8 +444,8 @@ int Ar::NewWish(lua_State* L) noexcept {
 					 x = ( lua_rawgeti(L, 1, i+1), lua_tonumber(L, -1) ),
 					 y = ( lua_rawgeti(L, 1, i+2), lua_tonumber(L, -1) );
 		auto point = ( lua_rawgeti(L, 1, i+3), checkPointArg(L, -1) );
-			 point.x = x < -55.875 ? -55.875 : x > 71.875 ? 71.875 : x;
-			 point.y = y < -27.875 ? -27.875 : y > 35.875 ? 35.875 : y;
+			 point.x = x < -23.875 ? -23.875 : x > 39.875 ? 39.875 : x;
+			 point.y = y < -11.875 ? -11.875 : y > 19.875 ? 19.875 : y;
 			 point.beat = beat;
 		nodeMap[( nodeMap.contains(beat) ? nextDouble(beat) : beat )] = point;
 		lua_pop(L, 4);
@@ -484,8 +484,8 @@ int Ar::NewHelper(lua_State* L) noexcept {
 					 x = ( lua_rawgeti(L, 1, i+1), lua_tonumber(L, -1) ),
 					 y = ( lua_rawgeti(L, 1, i+2), lua_tonumber(L, -1) );
 		auto point = ( lua_rawgeti(L, 1, i+3), checkPointArg(L, -1) );
-			 point.x = x < -55.875 ? -55.875 : x > 71.875 ? 71.875 : x;
-			 point.y = y < -27.875 ? -27.875 : y > 35.875 ? 35.875 : y;
+			 point.x = x < -23.875 ? -23.875 : x > 39.875 ? 39.875 : x;
+			 point.y = y < -11.875 ? -11.875 : y > 19.875 ? 19.875 : y;
 			 point.beat = beat;
 		nodeMap[( nodeMap.contains(beat) ? nextDouble(beat) : beat )] = point;
 		lua_pop(L, 4);
@@ -603,8 +603,8 @@ int Ar::NewEcho(lua_State* L) noexcept {
 					 x = ( lua_rawgeti(L, 1, i+1), lua_tonumber(L, -1) ),
 					 y = ( lua_rawgeti(L, 1, i+2), lua_tonumber(L, -1) );
 		N.echoes.push_back({
-			.x = x < -55.875 ? -55.875 : x > 71.875 ? 71.875 : x,
-			.y = y < -27.875 ? -27.875 : y > 35.875 ? 35.875 : y,
+			.x = x < -23.875 ? -23.875 : x > 39.875 ? 39.875 : x,
+			.y = y < -11.875 ? -11.875 : y > 19.875 ? 19.875 : y,
 			beat, radius, initLoop, deltaLoop, isSpecial
 		});
 	}

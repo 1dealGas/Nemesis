@@ -13,8 +13,8 @@ namespace Arf4 {
 								  SPECIAL_LOST, EARLY, EARLY_LIT, LATE, LATE_LIT						  };
 /* Wish */
 	struct Point {
-		Ar64(																// cdx: [-64,64) 1/8
-			i64  cdx:9, cdy:8;				u64  ease:2, ms:20;				// cdy: [-32,32) 1/8
+		Ar64(																// cdx: [-32,32) 1/8
+			i64  cdx:9, cdy:8;				u64  ease:2, ms:20;				// cdy: [-16,16) 1/8
 			u64  radius:6;					i64  deg:19;					// rad  [0,16) 1/4
 		)																	// deg  [-1024,1023) recommended
 	};

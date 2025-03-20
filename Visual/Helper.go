@@ -2,7 +2,7 @@ embedded_components {
   id: "Sprite"
   type: "sprite"
   data: "default_animation: \"Anim\"\n"
-  "material: \"/System/Hint.material\"\n"
+  "material: \"/System/Echohelper.material\"\n"
   "slice9 {\n"
   "  x: 15.0\n"
   "  y: 15.0\n"

@@ -6,7 +6,7 @@ uint64_t		UsysTime;
 int8_t			InputDelta;
 float			PlayerSpeed = 6;
 
-static const luaL_Reg Arf4Lib[] = {
+static constexpr luaL_Reg Arf4Lib[] = {
 	#ifdef AR_BUILD_VIEWER
 		{"NewBuild", Ar::NewBuild},
 		{"SetDelta", Ar::SetDelta},

@@ -23,5 +23,4 @@ AcArf4/include/constants.h linguist-generated
 AcAudio/src/miniaudio.cpp linguist-vendored
 AcAudio/src/opusfile/** linguist-vendored
 AcAudio/include/** linguist-vendored
-AcAudio/lib/** linguist-vendored
 AcLFS/** linguist-vendored
