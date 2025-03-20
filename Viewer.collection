@@ -62,7 +62,7 @@ embedded_instances {
   "  y: 74.0\\n"
   "}\\n"
   "pivot: PIVOT_NW\\n"
-  "text: \\\"[Nemesis]  0 of 0 ms  \\\\302\\\\267  0 Object(s)\\\"\\n"
+  "text: \\\"\\\\302\\\\267][\\\\302\\\\267  0 of 0 ms  \\\\302\\\\267  0 Object(s)\\\"\\n"
   "font: \\\"/System/Viewer.font\\\"\\n"
   "material: \\\"/System/Label.material\\\"\\n"
   "\"\n"
