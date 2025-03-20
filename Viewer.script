@@ -1,0 +1,100 @@
+-- Nemesis, the Aerials Fumen Workflow
+-- Copyright(c) 2025- 1dealGas, under the Apache 2.0 License.
+--
+local NEMESIS_HEADER = [[
+local Arf4, Assert, STATIC, LINEAR, INSINE, OUTSINE = Arf4, assert, 0, 1, 2, 3
+local Verse, Mirror, DeltaTone = Arf4.NewVerse, Arf4.Mirror, Arf4.DeltaTone
+local function NM_WRAP(x) return  function(y) return Assert(x(y)) end  end
+local Wish, Hint, Echo = NM_WRAP(Arf4.NewWish), NM_WRAP(Arf4.NewHint), NM_WRAP(Arf4.NewEcho)
+local Child, Helper = NM_WRAP(Arf4.NewChild), NM_WRAP(Arf4.NewHelper); %s ;
+local Time, Delta = NM_WRAP(Arf4.NewBuild), NM_WRAP(Arf4.SetDelta); %s ;
+]]
+
+
+-- Env
+--
+local Addon, Proof, FumenLoaded   -- FumenLoaded: A Closure to reload the Fumen if updated. Nullable.
+local MessageLabel = msg.url("Nm:/Viewer#[Message]")
+local WorksCmd = sys.get_sys_info().system_name == "Darwin"
+	and "open " .. string.gsub( sys.get_save_file("Nemesis Works", "") , "%s", "\\ " )
+	or  "explorer " .. sys.get_save_file("Nemesis Works", "")
+
+
+-- Audio
+--
+local PlayUnit, StopUnit = AcAudio.PlayUnit, AcAudio.StopUnit
+local HitSounds, HsWhich = {}, 1
+local Audio, AudioLen
+
+local function LoadAudio(name)   -- The `Load` button loads the Fumen first, and then the music if succeeded
+	local ok, data, len
+
+	-- Opus
+	--
+	ok, data = AcAudio.CreateSource( sys.get_save_file("Nemesis Works", name .. ".opus") )
+	if ok then
+		ok, data, len = AcAudio.CreateUnit(data)
+		if ok then
+			Audio, AudioLen = data, len
+			return true
+		end
+	end
+
+	-- Then Vorbis
+	--
+	ok, data = AcAudio.CreateSource( sys.get_save_file("Nemesis Works", name .. ".ogg") )
+	if ok then
+		ok, data, len = AcAudio.CreateUnit(data)
+		if ok then
+			Audio, AudioLen = data, len
+			return true
+		end
+	end
+
+	-- Then...
+	--
+	return false
+end
+
+local function PlayHitSound()
+	PlayUnit(HitSounds[HsWhich], false)
+	HsWhich = (HsWhich == 32) and 1 or (HsWhich+1)
+	StopUnit(HitSounds[HsWhich], true)
+end
+
+
+-- Canvas
+--
+local CanvasMs, CanvasBefore, ObjectCount
+local XScale, YScale, XDelta, CamSpeed = 1, 1, 0, 1
+
+local WGOs, HGOs, EGOs, EHGOs, AlGOs, ArGOs = {}, {}, {}, {}, {}, {}
+local WishSprites, HintSprites, EchoSprites, HelperSprites, AlSprites, ArSprites = {}, {}, {}, {}, {}, {}
+local WishTints, WishSpecial, HintTints, EchoTints, HelperTints, AnimTints = {}, {}, {}, {}, {}, {}
+local LastWgoUsed, LastHgoUsed, LastEgoUsed, LastAgoUsed = 0, 0, 0, 0
+
+local UPDATE_MSG_FMT = "·][·  %u of %u ms  ·  %u Object(s)"
+local ENABLE, DISABLE, TINTW, TINT = hash "enable", hash "disable", hash "tint.w", hash "tint"
+local WISHSP, WISH = hash "WishSP", hash "Wish"
+
+local label_set_text = label.set_text
+local go_set, msg_post = go.set, msg.post
+
+local function AllocCanvas(wr, hr, er)
+end
+
+local function UpdateCanvas(ms, dt)
+end
+
+
+-- Input & UI
+--
+local CtrlPressed, AltPressed
+local ButtonCallbacks = {}
+
+
+-- Lifecycle
+--
+function init(self)
+	go_set("Nm:/Hint#Model", TINTW, 0.637)
+end
