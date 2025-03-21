@@ -22,6 +22,7 @@ static constexpr luaL_Reg Arf4Lib[] = {
 		{"BarToMs", Ar::BarToMs},
 		{"Mirror", Ar::Mirror},
 	#else
+		{"LoadArf", Ar::LoadArf},
 		{"JudgeArf", Ar::JudgeArf},
 		{"SetJudgeZone", Ar::SetJudgeZone},
 		{"SetInputDelta", Ar::SetInputDelta},
@@ -29,7 +30,6 @@ static constexpr luaL_Reg Arf4Lib[] = {
 		{"SetSpeed", Ar::SetSpeed},
 		{"Ease", Ar::Ease},
 	#endif
-		{"LoadArf", Ar::LoadArf},
 		{"UpdateArf", Ar::UpdateArf},
 		{"SetCam", Ar::SetCam},
 		{nullptr, nullptr}
