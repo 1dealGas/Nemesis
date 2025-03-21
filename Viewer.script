@@ -26,26 +26,26 @@ local Audio, AudioPlaying, AudioLen
 local PlayUnit, StopUnit = AcAudio.PlayUnit, AcAudio.StopUnit
 local HitSounds, HsWhich = {}, 1
 
-local function LoadAudio(name)   -- The `Load` button loads the Fumen first, and then the music if succeeded
+local function LoadAudio(name)
 	local ok, data, len
 
 	-- Opus
 	--
 	ok, data = AcAudio.CreateSource( sys.get_save_file("Nemesis Works", name .. ".opus") )
 	if ok then
-		ok, data, len = AcAudio.CreateUnit(data)
-		if ok then
+		data, len = AcAudio.CreateUnit(data)
+		if data then
 			Audio, AudioLen = data, len
 			return true
 		end
 	end
 
-	-- Then Vorbis
+	-- Then WAV
 	--
-	ok, data = AcAudio.CreateSource( sys.get_save_file("Nemesis Works", name .. ".ogg") )
+	ok, data = AcAudio.CreateSource( sys.get_save_file("Nemesis Works", name .. ".wav") )
 	if ok then
-		ok, data, len = AcAudio.CreateUnit(data)
-		if ok then
+		data, len = AcAudio.CreateUnit(data)
+		if data then
 			Audio, AudioLen = data, len
 			return true
 		end
@@ -53,9 +53,9 @@ local function LoadAudio(name)   -- The `Load` button loads the Fumen first, and
 end
 
 
--- Canvas
+-- Canvas & Fumen
 --
-local CanvasMs, CanvasBefore, ObjectCount
+local CanvasMs, CanvasBefore, ObjectCount = 0, 0, 0
 local XScale, YScale, XDelta, CamSpeed = 1, 1, 0, 1
 
 local WgoCnt, HgoCnt, EgoCnt, AgoCnt = 0, 0, 0, 0
@@ -142,6 +142,14 @@ local function AllocCanvas(wr, hr, er)
 	WgoCnt, HgoCnt, EgoCnt, AgoCnt = wr, hr, er, ar
 end
 
+local function CreateNlenv()
+	local G = {}
+	G.Arf4, G.assert, G.pairs, G.ipairs, G.next, G.print = Arf4, assert, pairs, ipairs, next, print
+	G.select, G.tonumber, G.tostring, G.type, G.unpack, G.bit = select, tonumber, tostring, type, unpack, bit
+	G.math, G.string, G.table = math, string, table
+	return G
+end
+
 local function UpdateCanvas(dt)
 	if CanvasMs > CanvasBefore then
 		return
@@ -216,6 +224,56 @@ local function UpdateCanvas(dt)
 	end
 end
 
+local function LoadFumen(PATH, isInitialLoad)
+	local scriptFile = io.open(PATH)
+	if not scriptFile then
+		label_set_text(MessageLabel, "·][· Script File Not Found")
+		return
+	end
+
+	local scriptOk, scriptFn = pcall( setfenv, loadstring( HEADER .. scriptFile:read("*a") ), CreateNlenv() )
+	if not (scriptFile:close() and scriptOk) then
+		label_set_text(MessageLabel, "·][· Lua: " .. scriptFn)
+		return
+	end
+
+	local callOk, callErr = pcall(scriptFn)
+	if not callOk then
+		label_set_text(MessageLabel, "·][· Lua: " .. callErr)
+		return
+	end
+
+	local b, w, h, e, o = Arf4.OrganizeArf()
+	if not b then
+		label_set_text(MessageLabel, "·][· " .. w)
+		return
+	end
+
+	-- Refresh Canvas
+	--
+	AllocCanvas(w, h, e)
+	CanvasBefore, ObjectCount = math.min(b, AudioLen), o
+	UpdateCanvas(0)
+
+	-- Make the Fumen Loaded
+	--
+	if isInitialLoad then
+		local lastModification = lfs.attributes(PATH, "modification")
+		return function()
+			local modification = lfs.attributes(PATH, "modification")
+			if modification then
+				if modification ~= lastModification then
+					lastModification = modification
+					LoadFumen(PATH, false)
+				end
+			else   -- *.lua deleted
+				label_set_text(MessageLabel, "·][· File Listening Aborted")
+				FumenLoaded = NIL
+			end
+		end
+	end
+end
+
 
 -- UI & Actions
 --
@@ -246,6 +304,11 @@ local ButtonFns = {
 	end,
 
 	[2] = function()   -- Load
+		if LoadAudio(InputText) then
+			FumenLoaded = LoadFumen( sys.get_save_file( "Nemesis Works", InputText .. ".lua" ), true ) or FumenLoaded
+		else
+			label_set_text(MessageLabel, "·][· Failed to Load Audio File (*.opus/*.wav)")
+		end
 	end,
 
 	[3] = function()   -- Bar
@@ -405,15 +468,14 @@ function init(self)
 
 	-- Init Addon, Proof & License
 	--
-	local AF = io.open( sys.get_save_file("Nemesis Works", "[Addon]"), "r" )
+	local AF = io.open( sys.get_save_file("Nemesis Works", "[Addon]") )
 	if AF then
 		local newHeader = table.concat{ HEADER, AF:read("*a"), "\n" }
-		local newHeaderOk, newHeaderFunc = pcall(loadstring, newHeader)
-		HEADER = (newHeaderOk and pcall(newHeaderFunc) == true) and newHeader or HEADER
+		HEADER = pcall( loadstring(newHeader) ) and newHeader or HEADER
 		AF:close()
 	end
 
-	local PF = io.open( sys.get_save_file("Nemesis Works", "[Proof]"), "r" )
+	local PF = io.open( sys.get_save_file("Nemesis Works", "[Proof]") )
 	if PF then
 		Proof = PF:read("*a")
 		PF:close()
