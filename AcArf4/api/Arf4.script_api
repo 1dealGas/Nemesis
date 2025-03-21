@@ -131,6 +131,8 @@
       type: number
     - name: echo_go_used
       type: number
+    - name: echo_helper_go_used
+      type: number
     - name: anim_go_used
       type: number
     - name: hint_play_hitsound
