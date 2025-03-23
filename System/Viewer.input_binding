@@ -3,10 +3,6 @@ key_trigger {
   action: "backspace"
 }
 key_trigger {
-  input: KEY_SPACE
-  action: "space"
-}
-key_trigger {
   input: KEY_DOWN
   action: "down"
 }
