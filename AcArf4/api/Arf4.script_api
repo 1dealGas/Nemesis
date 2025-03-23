@@ -4,7 +4,7 @@
 
   - name: LoadArf
     type: function
-    desc: Player Only
+    desc: With Lower Priority in Viewer Builds
     parameters:
     - name: path
       type: string
@@ -256,10 +256,16 @@
     type: function
     desc: Viewer Only
     returns:
-      - name: ok
-        type: boolean
-      - name: err
-        type: [string, nil]
+      - name: before
+        type: [number, boolean]
+      - name: object_count
+        type: number
+      - name: wgo_required
+        type: number
+      - name: hgo_required
+        type: number
+      - name: ego_required
+        type: number
 
   - name: ExportArf
     type: function
