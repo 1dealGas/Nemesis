@@ -705,7 +705,7 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 	/* Usage:
 	 * local before_or_false, objcnt, wgo_required, hgo_required, ego_required = Arf4.OrganizeArf()
 	 */
-	Fumen F = { .isAuto = true };
+	Fumen F;
 
 	// Organize Deltas
 	F.deltas.reserve( N.deltas.size() + 1 ), F.deltas.push_back({ .val = 0 });
@@ -716,8 +716,8 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 							 .absV = (uint64_t)( fmin( abs(value), 8 - 1.0/1024 ) * 1024 ),
 							 .base = (uint64_t)( base * 1024 ) });
 	}
-	if( F.deltas.size() > 8191 )   /* inout.cpp 1/9 */
-		return lua_pushboolean(L, false), lua_pushfstring(L, NEMESIS_SLE, "DeltaNodes", LI 8191), 2;
+	if( F.deltas.size() > 8190 )   /* inout.cpp 1/9 */
+		return lua_pushboolean(L, false), lua_pushfstring(L, NEMESIS_SLE, "DeltaNodes", LI 8190), 2;
 
 	// Organize Echoes
 	valueMap.clear();
@@ -787,8 +787,8 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 	/* Generate hIdx & eIdx, Count scored objects
 	 * Metadata: before, objectCount, hgoRequired, egoRequired
 	 */
-	const size_t hIdxSize = (   /* inout.cpp "hIdx" 4/9 */
-		(F.before = F.hints.back().ms + 470) >> 10   // This is the first time to assign F.before
+	const int16_t hIdxSize = (   /* inout.cpp "hIdx" 4/9 */
+		F.hints.empty()  ?  -1 : (F.before = F.hints.back().ms + 470) >> 10   // 1st time to assign F.before
 	) + 1;
 	idxProto.clear(), idxProto.resize( hIdxSize );
 
@@ -811,8 +811,8 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 		else if( F.hIdx.push_back({ .f = since, .c = count }),  count > F.hgoRequired )
 			F.hgoRequired = count;
 
-	const size_t eIdxSize = (   /* inout.cpp "eIdx" 5/9 */
-		(F.before = fmax( F.before, F.echoes.back().ms + 470 )) >> 10
+	const int16_t eIdxSize = (   /* inout.cpp "eIdx" 5/9 */
+		F.echoes.empty()  ?  -1 : (F.before = fmax( F.before, F.echoes.back().ms + 470 )) >> 10
 	) + 1;
 	idxProto.clear(), idxProto.resize( eIdxSize );
 
@@ -911,10 +911,9 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 			idxProto[i].push_back( wView );
 	}
 
-	const uint16_t idxSize = F.before >> 10;
-	idxProto.resize(idxSize >> 1);   /* inout.cpp "wIdx" 8/9 */
-	F.hIdx.resize(idxSize);
-	F.eIdx.resize(idxSize);
+	idxProto.resize(F.before >> 11 + 1);   /* inout.cpp "wIdx" 8/9 */
+	F.hIdx.resize(F.before >> 10 + 1);
+	F.eIdx.resize(F.before >> 10 + 1);
 
 	/* Flatten Wishes
 	 * Metadata: wgoRequired
@@ -940,9 +939,14 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 				F.wgoRequired = groupWgoUsed;
 		}
 
-	return  lua_pushinteger(L, F.before),			lua_pushinteger(L, F.objectCount),
-			lua_pushinteger(L, F.wgoRequired),		lua_pushinteger(L, F.hgoRequired),
-			lua_pushinteger(L, F.egoRequired),		Arf = std::move(F),
+	return  Arf = { .isAuto = true, .val = F.val },
+			F.deltas.swap(Arf.deltas),				F.nodes.swap(Arf.nodes),
+			F.echoes.swap(Arf.echoes),				F.wishes.swap(Arf.wishes),
+			F.hints.swap(Arf.hints),				F.wishChilds.swap(Arf.wishChilds),
+			F.hIdx.swap(Arf.hIdx),					F.wIdx.swap(Arf.wIdx),
+			F.eIdx.swap(Arf.eIdx),					lua_pushinteger(L, F.before),
+			lua_pushinteger(L, F.objectCount),		lua_pushinteger(L, F.wgoRequired),
+			lua_pushinteger(L, F.hgoRequired),		lua_pushinteger(L, F.egoRequired),
 	5;
 }
 #endif

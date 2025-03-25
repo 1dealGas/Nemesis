@@ -141,7 +141,7 @@ local function CreateNlenv()
 end
 
 local function UpdateCanvas(dt)
-	if CanvasMs > CanvasBefore then
+	if CanvasMs >= CanvasBefore then
 		return
 	end
 
@@ -214,7 +214,7 @@ local function UpdateCanvas(dt)
 	end
 end
 
-local function LoadFumenAr(PATH, isInitialLoad)
+local function LoadFumenAr(PATH, isInitialLoad, AL)
 	local b, o, w, h, e = Arf4.LoadArf(PATH, true, Proof)
 	if not b then
 		return false, "·][· Arf4: Failed to Load the Fumen"
@@ -222,7 +222,7 @@ local function LoadFumenAr(PATH, isInitialLoad)
 
 	-- Refresh Canvas
 	--
-	CanvasBefore, ObjectCount = math.min(b, AudioLen), o
+	CanvasBefore, ObjectCount = math.min(b, AL), o
 	if isInitialLoad or (CanvasMs > CanvasBefore) then
 		CanvasMs = 0
 	end
@@ -240,7 +240,7 @@ local function LoadFumenAr(PATH, isInitialLoad)
 			if modification then
 				if modification ~= lastModification then
 					lastModification = modification
-					return LoadFumenAr(PATH, false)
+					return LoadFumenAr(PATH, false, AudioLen)
 				end
 			else   -- *.lua deleted
 				FumenLoaded = NIL
@@ -250,7 +250,7 @@ local function LoadFumenAr(PATH, isInitialLoad)
 	end
 end
 
-local function LoadFumenNm(PATH, isInitialLoad)
+local function LoadFumenNm(PATH, isInitialLoad, AL)
 	local scriptFile = io.open(PATH)
 	local scriptStr = HEADER .. scriptFile:read("*a")
 	scriptFile:close()
@@ -272,7 +272,7 @@ local function LoadFumenNm(PATH, isInitialLoad)
 
 	-- Refresh Canvas
 	--
-	CanvasBefore, ObjectCount = math.min(b, AudioLen), o
+	CanvasBefore, ObjectCount = math.min(b, AL), o
 	if isInitialLoad or (CanvasMs > CanvasBefore) then
 		CanvasMs = 0
 	end
@@ -290,7 +290,7 @@ local function LoadFumenNm(PATH, isInitialLoad)
 			if modification then
 				if modification ~= lastModification then
 					lastModification = modification
-					return LoadFumenNm(PATH, false)
+					return LoadFumenNm(PATH, false, AudioLen)
 				end
 			else   -- *.lua deleted
 				FumenLoaded = NIL
@@ -332,7 +332,7 @@ local ButtonFns = {
 
 		local pBase = sys.get_save_file("Nemesis Works", InputText)
 		if lfs.attributes( pBase .. ".lua" ) then
-			local L1, L2 = LoadFumenNm(pBase .. ".lua", true)
+			local L1, L2 = LoadFumenNm(pBase .. ".lua", true, A2)
 			if L1 then
 				ProjectName, FumenLoaded = InputText, L1
 				Audio, AudioLen = A1, A2
@@ -342,7 +342,7 @@ local ButtonFns = {
 		return end
 
 		if lfs.attributes( pBase .. ".ar" ) then
-			local F1, F2 = LoadFumenAr(pBase .. ".ar" , true)
+			local F1, F2 = LoadFumenAr(pBase .. ".ar", true, A2)
 			if F1 then
 				ProjectName, FumenLoaded = InputText, F1
 				Audio, AudioLen = A1, A2
@@ -401,7 +401,7 @@ local ButtonFns = {
 	[9] = function()   -- Export
 		if FumenLoaded then
 			local fileName = string.format("%s - %s.ar", ProjectName, os.date"%g%m%d")
-			local file, fmOut = io.open(fileName, "wb"), Arf4.ExportArf(Proof)
+			local file, fmOut = io.open( sys.get_save_file("Nemesis Works", fileName) , "wb" ), Arf4.ExportArf(Proof)
 			if file and fmOut then
 				file:write(fmOut)		file:close()
 				os.execute(WorksCmd)
@@ -415,9 +415,13 @@ local ButtonFns = {
 
 	[11] = function()  -- Play
 		if FumenLoaded then
-			CanvasMs = CanvasMs > CanvasBefore  and  CanvasBefore  or  CanvasMs
-			AcAudio.SetTime(Audio, CanvasMs)
-			PlayUnit(Audio, false)
+			if AudioPlaying then
+				StopUnit(Audio, false)
+			else
+				CanvasMs = CanvasMs > CanvasBefore  and  CanvasBefore  or  CanvasMs
+				AcAudio.SetTime(Audio, CanvasMs)
+				PlayUnit(Audio, false)
+			end
 		end
 	end
 }
@@ -502,6 +506,7 @@ local ActionFns = {
 			if FumenLoaded and (not AudioPlaying) then
 				local t = (CtrlPressed or AltPressed) and (CanvasMs + 370) or (CanvasMs + 37)
 				CanvasMs = t > CanvasBefore  and  CanvasBefore  or  t < 0  and  0  or  t
+				UpdateCanvas(0)
 				Scrolling = 1
 			end
 		end
@@ -512,6 +517,7 @@ local ActionFns = {
 			if FumenLoaded and (not AudioPlaying) then
 				local t = (CtrlPressed or AltPressed) and (CanvasMs - 370) or (CanvasMs - 37)
 				CanvasMs = t > CanvasBefore  and  CanvasBefore  or  t < 0  and  0  or  t
+				UpdateCanvas(0)
 				Scrolling = 1
 			end
 		end
@@ -522,6 +528,7 @@ local ActionFns = {
 			if FumenLoaded and (not AudioPlaying) then
 				local t = (CtrlPressed or AltPressed) and (CanvasMs + 370) or (CanvasMs + 37)
 				CanvasMs = t > CanvasBefore  and  CanvasBefore  or  t < 0  and  0  or  t
+				UpdateCanvas(0)
 			end
 		end
 	end,
@@ -531,6 +538,7 @@ local ActionFns = {
 			if FumenLoaded and (not AudioPlaying) then
 				local t = (CtrlPressed or AltPressed) and (CanvasMs - 370) or (CanvasMs - 37)
 				CanvasMs = t > CanvasBefore  and  CanvasBefore  or  t < 0  and  0  or  t
+				UpdateCanvas(0)
 			end
 		end
 	end
@@ -592,8 +600,10 @@ function init(self)
 end
 
 function update(self, dt)
-	if FumenLoaded and CheckPlaying(Audio) then
-		local ms = GetTime(Audio)
+	if FumenLoaded then
+		AudioPlaying = CheckPlaying(Audio)
+		if AudioPlaying then
+			local ms = GetTime(Audio)
 			if ms > CanvasBefore then
 				StopUnit(Audio, false)
 				AcAudio.SetTime(Audio, CanvasBefore)
@@ -601,7 +611,7 @@ function update(self, dt)
 				CanvasMs = ms
 				UpdateCanvas(dt)
 			end
-		AudioPlaying = (ms > CanvasBefore)
+		end
 	end
 end
 
