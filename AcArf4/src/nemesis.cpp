@@ -788,7 +788,7 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 	 * Metadata: before, objectCount, hgoRequired, egoRequired
 	 */
 	const size_t hIdxSize = (   /* inout.cpp "hIdx" 4/9 */
-		(F.before = F.hints.back().ms + 470) >> 9   // This is the first time to assign F.before
+		(F.before = F.hints.back().ms + 470) >> 10   // This is the first time to assign F.before
 	) + 1;
 	idxProto.clear(), idxProto.resize( hIdxSize );
 
@@ -797,8 +797,8 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 		if( F.sHit < 31 )		F.sHit += h.status;
 		else					F.hints[i].status = NJUDGED;
 
-		const size_t endGroup = (h.ms + 470) >> 9;
-		for( size_t group = (h.ms - 510) >> 9;  group <= endGroup;  ++group )
+		const size_t endGroup = (h.ms + 470) >> 10;
+		for( size_t group = (h.ms - 510) >> 10;  group <= endGroup;  ++group )
 			idxProto[group].push_back({ .val = i });
 	}
 
@@ -807,12 +807,12 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 		if( uint32_t since, count;  group.empty() )
 			F.hIdx.push_back({ .f = 0, .c = 0 });
 		else if( since = group[0].val,  count = group.back().val - since + 1,  count > 511 )   /* Arf4.h */
-			return lua_pushboolean(L, 0), lua_pushfstring(L, NEMESIS_SLE, "Hints within 512ms", LI 511), 2;
+			return lua_pushboolean(L, 0), lua_pushfstring(L, NEMESIS_SLE, "Hints within 1024ms", LI 511), 2;
 		else if( F.hIdx.push_back({ .f = since, .c = count }),  count > F.hgoRequired )
 			F.hgoRequired = count;
 
 	const size_t eIdxSize = (   /* inout.cpp "eIdx" 5/9 */
-		(F.before = fmax( F.before, F.echoes.back().ms + 470 )) >> 9
+		(F.before = fmax( F.before, F.echoes.back().ms + 470 )) >> 10
 	) + 1;
 	idxProto.clear(), idxProto.resize( eIdxSize );
 
@@ -825,8 +825,8 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 		if( initMs < 0 )
 			initMs = 0;
 
-		const size_t endGroup = (e.ms + 470) >> 9;
-		for( size_t group = initMs >> 9;  group <= endGroup;  ++group )
+		const size_t endGroup = (e.ms + 470) >> 10;
+		for( size_t group = initMs >> 10;  group <= endGroup;  ++group )
 			idxProto[group].push_back({ .val = i });
 	}
 
@@ -835,15 +835,14 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 		if( uint32_t since, count;  group.empty() )
 			F.eIdx.push_back({ .f = 0, .c = 0 });
 		else if( since = group[0].val,  count = group.back().val - since + 1,  count > 511 )   /* Arf4.h */
-			return lua_pushboolean(L, 0), lua_pushfstring(L, NEMESIS_SLE, "Echoes within 512ms", LI 511), 2;
+			return lua_pushboolean(L,0), lua_pushfstring(L, NEMESIS_SLE, "Echoes within 1024ms", LI 511), 2;
 		else if( F.eIdx.push_back({ .f = since, .c = count }),  count > F.egoRequired )
 			F.egoRequired = count;
 
 	/* Flatten Nodes & WishChilds
 	 * Metadata: before
 	 */
-	idxProto.clear();
-	idxProto.resize(2048);
+	idxProto.clear(), idxProto.resize(2048);
 	std::ranges::sort( N.wishes, [](const auto& a, const auto& b) {
 		return a.nodes.front().beat < b.nodes.front().beat;
 	});
@@ -907,35 +906,36 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 		if( F.before < lastMs )
 			F.before = lastMs;
 
-		const uint16_t endGroup = lastMs >> 9;
-		for( uint32_t i = (uint32_t)w.nodes.front().beat >> 9;  i <= endGroup;  ++i )
+		const uint16_t endGroup = lastMs >> 11;
+		for( uint32_t i = (uint32_t)w.nodes.front().beat >> 11;  i <= endGroup;  ++i )
 			idxProto[i].push_back( wView );
 	}
 
-	const uint16_t idxSize = F.before >> 9;
-	idxProto.resize(idxSize);   /* inout.cpp "wIdx" 8/9 */
+	const uint16_t idxSize = F.before >> 10;
+	idxProto.resize(idxSize >> 1);   /* inout.cpp "wIdx" 8/9 */
 	F.hIdx.resize(idxSize);
 	F.eIdx.resize(idxSize);
 
 	/* Flatten Wishes
 	 * Metadata: wgoRequired
 	 */
-	F.wishes.reserve(16383);
+	F.wishes.reserve(65535);
 	for( auto& group : idxProto )
 		if( const size_t groupSize = group.size();  !groupSize )
 			F.wIdx.push_back({ .f = 0, .c = 0 });
 		else if( uint16_t groupWgoUsed = 0;  groupSize > 1023 )   /* Arf4.h */
-			return lua_pushboolean(L,0), lua_pushfstring(L, NEMESIS_SLE, "Wishes within 512ms", LI 1023), 2;
+			return lua_pushboolean(L, false),
+				   lua_pushfstring(L, NEMESIS_SLE, "Wishes within 2048ms", LI 1023), 2;
 		else {
 			F.wIdx.push_back({ .f = (uint32_t)F.wishes.size(), .c = (uint32_t)groupSize });
 			for( auto wish : group )
 				groupWgoUsed += wish.cIndex,	wish.cIndex = 0 /* End of the borrow */,
 				F.wishes.push_back( wish );
-			if( F.wishes.size() > 16383 )   /* inout.cpp 9/9 */
-				return lua_pushboolean(L, false), lua_pushfstring(L, NEMESIS_SLE, "Wishes", LI 16383), 2;
+			if( F.wishes.size() > 65535 )   /* inout.cpp 9/9 */
+				return lua_pushboolean(L, false), lua_pushfstring(L, NEMESIS_SLE, "Wishes", LI 65535), 2;
 			if( groupWgoUsed > 1023 )   /* Arf4.h */
 				return lua_pushboolean(L, false),
-					   lua_pushfstring(L, NEMESIS_SLE, "Wishes within 512ms", LI 1023), 2;
+					   lua_pushfstring(L, NEMESIS_SLE, "Wishes within 2048ms", LI 1023), 2;
 			if( groupWgoUsed > F.wgoRequired )
 				F.wgoRequired = groupWgoUsed;
 		}

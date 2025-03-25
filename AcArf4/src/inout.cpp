@@ -17,11 +17,11 @@ namespace bitsery {
 	Inout( Delta, inout.ext(its.val, CV); )
 
 	Inout( Fumen,
-		inout.container(its.deltas, 8191);			inout.container(its.nodes, 32767);
-		inout.container(its.echoes, 32767);			inout.container(its.wishes, 16383);
+		inout.container(its.deltas, 8191);			inout.container(its.nodes, 32767);   // Consider "Equal"
+		inout.container(its.echoes, 32767);			inout.container(its.wishes, 65535);  // Wishes
 		inout.container(its.hints, 32767);			inout.container(its.wishChilds, 32767);
-		inout.container(its.hIdx, 2048);			inout.container(its.wIdx, 2048);
-		inout.container(its.eIdx, 2048);			inout.value8b(its.val);
+		inout.container(its.hIdx, 1024);			inout.container(its.wIdx, 512);
+		inout.container(its.eIdx, 1024);			inout.value8b(its.val);
 	)
 
 	struct Arf4Config {

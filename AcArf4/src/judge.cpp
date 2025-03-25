@@ -148,7 +148,7 @@ static Echo scanEcho(Echo echo, const int32_t deltaMs, const Duo validTouches[])
 #include <dmsdk/dlib/time.h>
 static void judgeArfInternal(const Duo validTouches[], const bool anyPressed, const bool anyRel) noexcept {
 	const uint64_t msTime = Arf.msTime + dmTime::GetMonotonicTime() - UsysTime,
-						G = msTime >> 9;
+						G = msTime >> 10;
 	if( anyRel )
 		blockPos.clear();
 	if( uint32_t minJudgedMs = NULL;  anyPressed ) {
@@ -213,7 +213,7 @@ static void judgeArfInternal(const Duo validTouches[], const bool anyPressed, co
 }
 
 void Ar::JudgeArfSweep() noexcept {
-	const uint32_t G = Arf.msTime >> 9;
+	const uint32_t G = Arf.msTime >> 10;
 	for(const Info ei = Arf.eIdx[G];  Echo& echo : std::span(Arf.echoes).subspan(ei.f, ei.c))
 		if( const int32_t deltaMs = Arf.msTime - echo.ms;  deltaMs > 255 ) {}
 		else if( deltaMs > 100 )												   /* [3] Lost Behavior */

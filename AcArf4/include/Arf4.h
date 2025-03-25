@@ -15,8 +15,8 @@ namespace Arf4 {
 	struct Point {
 		Ar64(																// cdx: [-32,32) 1/8
 			i64  cdx:9, cdy:8;				u64  ease:2, ms:20;				// cdy: [-16,16) 1/8
-			u64  radius:6;					i64  deg:19;					// rad  [0,16) 1/4
-		)																	// deg  [-1024,1023) recommended
+			u64  radius:6;					i64  deg:11;					// rad  [0,16) 1/4
+		)																	// deg  [-1024,1023) 1/1
 	};
 	struct Child {
 		Ar64(
@@ -66,7 +66,7 @@ namespace Arf4 {
 		std::vector<Point>		nodes;
 		std::vector<Delta>		deltas;										// [0] Index
 		std::vector<Child>		wishChilds;
-		std::vector<Info>		wIdx, hIdx, eIdx;
+		std::vector<Info>		wIdx, hIdx, eIdx;							// [WI] 2048ms  [HI/EI] 1024ms
 		std::vector<Wish>		wishes;
 		std::vector<Echo>		echoes;
 		std::vector<Hint>		hints;

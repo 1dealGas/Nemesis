@@ -134,11 +134,11 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 			zDt[1] = thiz.base - (Arf.msTime - thiz.t * 4.0) * thiz.absV;
 		Arf.deltas[0].val = it - initIt;
 	}
-	timer.t >>= 7;
+	timer.t >>= 8;
 
 	/* Wish */
-	lastWgo.clear();		  // timer.t == Arf.msTime >> 9 since here
-	for(const Info wi = Arf.wIdx[timer.t];  Wish& wish : std::span(Arf.wishes).subspan(wi.f, wi.c)) {
+	lastWgo.clear();		  // timer.t == Arf.msTime >> 10 since here
+	for(const Info wi = Arf.wIdx[timer.t >> 1];  Wish& wish : std::span(Arf.wishes).subspan(wi.f, wi.c)) {
 		Wish w = wish;
 
 		/* Nodes */
