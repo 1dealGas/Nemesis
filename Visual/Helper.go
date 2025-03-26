@@ -10,8 +10,8 @@ embedded_components {
   "  w: 15.0\n"
   "}\n"
   "size {\n"
-  "  x: 215.0\n"
-  "  y: 215.0\n"
+  "  x: 103.7\n"
+  "  y: 103.7\n"
   "}\n"
   "size_mode: SIZE_MODE_MANUAL\n"
   "textures {\n"
@@ -22,5 +22,9 @@ embedded_components {
   rotation {
     z: 0.38268343
     w: 0.9238795
+  }
+  scale {
+    x: 2.0
+    y: 2.0
   }
 }

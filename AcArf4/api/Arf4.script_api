@@ -14,15 +14,15 @@
       type: [string, nil]
     returns:
     - name: before
-      type: [number, boolean]
+      type: [number, nil]
     - name: object_count
-      type: number
+      type: [number, nil]
     - name: wgo_required
-      type: number
+      type: [number, nil]
     - name: hgo_required
-      type: number
+      type: [number, nil]
     - name: ego_required
-      type: number
+      type: [number, nil]
 
   - name: JudgeArf
     type: function

@@ -15,7 +15,7 @@ typedef dmVMath::Vector3 v3i, *v3;				typedef dmVMath::Point3 P3;
 typedef dmVMath::Vector4 v4i, *v4;				typedef dmVMath::Quat Qt;
 
 struct AuInfo {
-	uint64_t frameDt:10 = 0, aUsed:11 = 0, wUsed:10 = 0, eUsed:10 = 0, xUsed:10 = 0, hUsed:9 = 0;
+	uint64_t frameDt:12 = 0, wUsed:10 = 0, aUsed:10 = 0, eUsed:9 = 0, xUsed:9 = 0, hUsed:9 = 0;
 	uint64_t sType:2 = false, playH:1 = false, playE:1 = false;
 };
 
@@ -40,7 +40,7 @@ static AuInfo renderWish(lua_State* L, AuInfo info, Duo Pos, const Duo zw) {
 
 				// Transform
 				SetPosition( wGo, P3(Pos.a, Pos.b, zw.a) );
-				SetScale( wGo, 1.074 - 0.437 * zw.b * (2-zw.b) );   // Scale: 1.074 -> 0.637
+				SetScale   ( wGo, 1.074 - 0.437 * zw.b * (2-zw.b) );   // Scale: 1.074 -> 0.637
 				lua_pop(L, 1);
 			}
 			else {
@@ -70,7 +70,7 @@ static AuInfo renderAnim(lua_State* L, AuInfo info, const Duo Pos, const int16_t
 	// Tint
 	tint -> setXYZ( AnimTint[info.sType] );
 	if( double w;  msPast < 73 )
-		w = msPast * 0.01,			tint -> setW( 0.17199 + 0.637 * w * (2-w) );
+		w = (msPast+27) * 0.01,		tint -> setW( 0.637 * w * (2-w) );
 	else
 		w = (msPast-73) / 297.0,	tint -> setW( 0.637 * (1 - w*w) );
 
@@ -100,9 +100,8 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 	 * local wgo_used, hgo_used, ego_used, ehgo_used, ago_used, h_playhs, e_playhs = Arf4.UpdateArf(
 	 *       ms, dt, wgos, hgos, egos, ehgos, agols, agors, wtints, htints, etints, ehtints, atints)
 	 */
-	Arf.msTime = lua_tointeger(L, 1);
-		if( Arf.msTime >= Arf.before )			return 0;
-			Arf.msTime = fmax(Arf.msTime, 2);	UsysTime = dmTime::GetMonotonicTime();
+	if( UsysTime = dmTime::GetMonotonicTime(), Arf.msTime = lua_tointeger(L, 1),  Arf.msTime >= Arf.before )
+		return 0;
 	#ifndef AR_BUILD_VIEWER
 		if(! Arf.isAuto )						JudgeArfSweep();
 	#endif
@@ -111,21 +110,21 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 	const double eSpeed = (PlayerSpeed * Arf.cSpeed + 11) / 1500.0,
 				 dSpeed = eSpeed / 1024 /* 1/1024 -> 1 */;			double zDt[2] = { Arf.msTime * 1024.0 };
 	AuInfo info = { .frameDt = (uint64_t)(lua_tonumber(L, 2) * 1000) };
-	Delta timer = { .t = (uint64_t)(Arf.msTime >> 2) };
+	auto zTimer = (uint64_t)(Arf.msTime >> 2);
 
 	/* Delta
 	 * zDt = Scale * 1024, Dt = Scale * xSpeed
 	 */
-	if( const Delta lastDt = Arf.deltas.back();  timer.t >= lastDt.t )
+	if( const Delta lastDt = Arf.deltas.back();  zTimer >= lastDt.t )
 		zDt[1] = lastDt.base + (Arf.msTime - lastDt.t * 4.0) * lastDt.absV;
 	else {
 		const auto initIt = Arf.deltas.begin() + 1, lastIt = Arf.deltas.end() - 1;
 			  auto it = initIt + Arf.deltas[0].val;
-		if( it != initIt  &&  timer.t < it->t )
+		if( it != initIt  &&  zTimer < it->t )
 			do	 --it;
-			while( it != initIt  &&  timer.t < it->t );
+			while( it != initIt  &&  zTimer < it->t );
 		/**/auto nextIt = it + 1;
-		while( it != lastIt  &&  timer.t >= nextIt->t )
+		while( it != lastIt  &&  zTimer >= nextIt->t )
 			++it, ++nextIt;
 
 		if( const Delta thiz = *it;  thiz.base <= nextIt->base )
@@ -134,11 +133,11 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 			zDt[1] = thiz.base - (Arf.msTime - thiz.t * 4.0) * thiz.absV;
 		Arf.deltas[0].val = it - initIt;
 	}
-	timer.t >>= 8;
+	zTimer >>= 8;
 
 	/* Wish */
-	lastWgo.clear();		  // timer.t == Arf.msTime >> 10 since here
-	for(const Info wi = Arf.wIdx[timer.t >> 1];  Wish& wish : std::span(Arf.wishes).subspan(wi.f, wi.c)) {
+	lastWgo.clear();		  // zTimer == Arf.msTime >> 10 since here
+	for(const Info wi = Arf.wIdx[zTimer >> 1];  Wish& wish : std::span(Arf.wishes).subspan(wi.f, wi.c)) {
 		Wish w = wish;
 
 		/* Nodes */
@@ -176,11 +175,9 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 				if( uint16_t prevCidx = w.cIndex - 1;  w.cIndex  &&  wZdt < wChilds[prevCidx].zDt )
 					do	 --w.cIndex, --prevCidx;
 					while( w.cIndex  &&  wZdt < wChilds[prevCidx].zDt );
-				else {
-					const uint16_t lastCidx = w.cCount - 1;
-					while( w.cIndex < lastCidx  &&  wZdt >= wChilds[w.cIndex].zDt )
+				else if( const uint16_t lastCidx = w.cCount - 1;  true )
+					while(w.cIndex < lastCidx  &&  wZdt >= wChilds[w.cIndex].zDt)
 						++w.cIndex;
-				}
 
 				// Traverse Subspan
 				for( const auto c : wChilds.subspan(w.cIndex) )
@@ -199,8 +196,8 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 	}
 
 	/* Hint & Echo */
-	if( Arf.isAuto ) {   // There are much more boilerplate lines...
-		for(const Info hi = Arf.hIdx[timer.t];  const Hint h : std::span(Arf.hints).subspan(hi.f, hi.c)) {
+	if( info.sType = 0,  Arf.isAuto ) {   // There are much more boilerplate lines...
+		for(const Info hi = Arf.hIdx[zTimer];  const Hint h : std::span(Arf.hints).subspan(hi.f, hi.c)) {
 			const int16_t lifeMs = Arf.msTime - h.ms;
 			if( lifeMs > +370 )		continue;   // +470 if not Auto
 			if( lifeMs < -510 )		break;
@@ -224,7 +221,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 					:--info.hUsed,   // Hint Go acquired, but not used
 				info.playH = lifeMs < info.frameDt;
 		}
-		for(const Info ei = Arf.eIdx[timer.t];  const Echo e : std::span(Arf.echoes).subspan(ei.f, ei.c)) {
+		for(const Info ei = Arf.eIdx[zTimer];  const Echo e : std::span(Arf.echoes).subspan(ei.f, ei.c)) {
 			const int16_t lifeMs = Arf.msTime - e.ms;
 			if( lifeMs > 370 )
 				continue;
@@ -240,7 +237,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 			else if( double x8d;  R += lifeMs * eSpeed / fmax(e.radius * 0.25, 6),  R < 0 )
 				goto MISC_UPDATE_AUTO;
 			else
-				x8d = R * (e.radius << 1),   /* 1/4 -> 1/8 */
+				x8d = (1-R) * (e.radius << 1),   /* 1/4 -> 1/8 */
 				ePos.a = 360 * (e.initLoop / 64.0 + e.deltaLoop / 8.0 * R),  ePos = CosSin(ePos),
 				ePos.a = mPos.a + x8d * ePos.a * Arf.xScale,
 				ePos.b = mPos.b + x8d * ePos.b * Arf.yScale,
@@ -278,7 +275,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 				info.playE = (lifeMs < info.frameDt) && (e.status == SPECIAL);
 			else if( lifeMs > -511 ) {
 				const GO helper = ( lua_rawgeti(L, EH, ++info.xUsed), dmScript::CheckGOInstance(L,-1) );
-				lua_pushnumber( L, R = -lifeMs / 510.0 ), lua_rawseti(L, EHTINT, info.xUsed);
+				lua_pushnumber( L, R = 1 + lifeMs / 510.0 ), lua_rawseti(L, EHTINT, info.xUsed);
 				SetPosition( helper, P3(mPos.a, mPos.b, 0.0625) );
 				SetScale( helper, 1.237 - R * (2-R) );
 				lua_pop(L, 1);
@@ -286,7 +283,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 		}
 	}
 	else {
-		for(const Info hi = Arf.hIdx[timer.t];  const Hint h : std::span(Arf.hints).subspan(hi.f, hi.c)) {
+		for(const Info hi = Arf.hIdx[zTimer];  const Hint h : std::span(Arf.hints).subspan(hi.f, hi.c)) {
 			const int16_t lifeMs = Arf.msTime - h.ms;
 			if( lifeMs > +470 )		continue;
 			if( lifeMs < -510 )		break;
@@ -338,7 +335,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 				default:;
 			}
 		}
-		for(const Info ei = Arf.eIdx[timer.t];  const Echo e : std::span(Arf.echoes).subspan(ei.f, ei.c)) {
+		for(const Info ei = Arf.eIdx[zTimer];  const Echo e : std::span(Arf.echoes).subspan(ei.f, ei.c)) {
 			const int16_t lifeMs = Arf.msTime - e.ms;
 			if( lifeMs > 470 )
 				continue;
@@ -356,7 +353,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 			else if( double x8d;  R += lifeMs * eSpeed / fmax(e.radius * 0.25, 6),  R < 0 )
 				goto MISC_UPDATE;
 			else
-				x8d = R * (e.radius << 1),   /* 1/4 -> 1/8 */
+				x8d = (1-R) * (e.radius << 1),   /* 1/4 -> 1/8 */
 				ePos.a = 360 * (e.initLoop / 64.0 + e.deltaLoop / 8.0 * R),  ePos = CosSin(ePos),
 				ePos.a = mPos.a + x8d * ePos.a * Arf.xScale,
 				ePos.b = mPos.b + x8d * ePos.b * Arf.yScale,
@@ -408,7 +405,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 				if( lifeMs > -511 ) {
 					const GO helper = ( lua_rawgeti(L, EH, ++info.xUsed), dmScript::CheckGOInstance(L,-1) );
 					if( lifeMs < 0 )
-						lua_pushnumber( L, R = -lifeMs / 510.0 ), lua_rawseti(L, EHTINT, info.xUsed),
+						lua_pushnumber( L, R = 1 + lifeMs / 510.0 ), lua_rawseti(L, EHTINT, info.xUsed),
 						SetScale( helper, 1.237 - R * (2-R) );
 					else
 						lua_pushnumber(L, 1), lua_rawseti(L, EHTINT, info.xUsed),

@@ -11,30 +11,23 @@ local Time, Delta = NM_WRAP(Arf4.NewBuild), NM_WRAP(Arf4.SetDelta);
 ]], function() end
 
 
--- Env
+-- Env & Audio
 --
-local MessageLabel = msg.url("Nm:/Viewer#[Message]")
-local WorksCmd = sys.get_sys_info().system_name == "Darwin"
-	and "open " .. string.gsub( sys.get_save_file("Nemesis Works", "") , "%s", "\\ " )
-	or  "explorer " .. sys.get_save_file("Nemesis Works", "")
+local WorksCmd
 local Proof, FumenLoaded   -- FumenLoaded: A Closure to reload the Fumen if updated. Nullable.
+local MessageLabel = msg.url("Nm:/Viewer#[Message]")
 
-
--- Audio
---
 local Audio, AudioLen, AudioPlaying
 local PlayUnit, StopUnit = AcAudio.PlayUnit, AcAudio.StopUnit
 local HitSounds, HsWhich = {}, 1
 
 local function LoadAudio(name)
-	-- Opus
-	--
 	local ok, data = AcAudio.CreateSource( sys.get_save_file("Nemesis Works", name .. ".opus") )
 	if ok then
 		return AcAudio.CreateUnit(data)
 	end
 
-	-- Then WAV
+	-- Try *.wav when *.opus is not available
 	--
 	ok, data = AcAudio.CreateSource( sys.get_save_file("Nemesis Works", name .. ".wav") )
 	if ok then
@@ -49,22 +42,21 @@ local CanvasMs, CanvasBefore, ObjectCount = 0, 0, 0
 local XScale, YScale, XDelta, CamSpeed = 1, 1, 0, 1
 
 local WgoCnt, HgoCnt, EgoCnt, AgoCnt = 0, 0, 0, 0
-local LastWgoUsed, LastHgoUsed, LastEgoUsed, LastEhgoUsed, LastAgoUsed = 0, 0, 0, 0, 0
-
 local WGOs, HGOs, EGOs, EHGOs, AlGOs, ArGOs = {}, {}, {}, {}, {}, {}
 local WishSprites, HintSprites, EchoSprites, HelperSprites, AlSprites, ArSprites = {}, {}, {}, {}, {}, {}
 local WishTints, WishSpecial, HintTints, EchoTints, HelperTints, AnimTints = {}, {}, {}, {}, {}, {}
+local LastWgoUsed, LastHgoUsed, LastEgoUsed, LastEhgoUsed, LastAgoUsed = 0, 0, 0, 0, 0
 
 local UPDATE_MSG_FMT = "·][·  %u of %u ms  ·  %u Object(s)"
+local SPRITE, WISHSP, WISH, DOT, NM = hash "Sprite", hash "WishSP", hash "Wish", hash "Echodot", hash "Nm"
 local ENABLE, DISABLE, TINTW, TINT = hash "enable", hash "disable", hash "tint.w", hash "tint"
-local SPRITE, WISHSP, WISH, NM = hash "Sprite", hash "WishSP", hash "Wish", hash "Nm"
 
-local UpdateArf = Arf4.UpdateArf
+local UpdateArf, SetCam = Arf4.UpdateArf, Arf4.SetCam
 local go_set, msg_post, sprite_play_flipbook = go.set, msg.post, sprite.play_flipbook
 local label_set_text, string_format = label.set_text, string.format
 
 local function AllocCanvas(wr, hr, er)
-	local factory_create, vmath_vector4, go_delete, msg_url = factory.create, vmath.vector4, go.delete, msg.url
+	local factory_create, vmath_vector4, msg_url = factory.create, vmath.vector4, msg.url
 	local Echoc, Helperc = msg_url("Nm:/Viewer#Echoc"), msg_url("Nm:/Viewer#Helperc")
 	local Wishc, Hintc = msg_url("Nm:/Viewer#Wishc"), msg_url("Nm:/Viewer#Hintc")
 	local Animc = msg_url("Nm:/Viewer#Animc")
@@ -73,63 +65,45 @@ local function AllocCanvas(wr, hr, er)
 	if wr > WgoCnt then
 		for i = WgoCnt+1, wr do
 			local W = factory_create(Wishc)
-			WGOs[i], WishSprites[i], WishTints[i] = W, msg_url(NM, W, SPRITE), 0
-			msg_post(W, DISABLE)
-		end
-	elseif WgoCnt > wr then
-		for i = wr+1, WgoCnt do
-			WGOs[i] = go_delete( WGOs[i] )   -- nil
-		end
+			WGOs[i], WishSprites[i], WishTints[i] = W, msg_url(NM, W, SPRITE), 0				end
+		WgoCnt = wr
 	end
 
 	if hr > HgoCnt then
 		for i = HgoCnt+1, hr do
 			local H = factory_create(Hintc)
-			HGOs[i], HintSprites[i], HintTints[i] = H, msg_url(NM, H, SPRITE), vmath_vector4(0,0,0,1)
-			msg_post(H, DISABLE)
-		end
-	elseif HgoCnt > hr then
-		for i = hr+1, HgoCnt do
-			HGOs[i] = go_delete( HGOs[i] )
-		end
+			HGOs[i], HintSprites[i] = H, msg_url(NM, H, SPRITE)
+			HintTints[i] = vmath_vector4(0,0,0,1)												end
+		HgoCnt = hr
 	end
 
 	if er > EgoCnt then
 		for i = EgoCnt+1, er do
 			local E = factory_create(Echoc)
 			EGOs[i], EchoSprites[i], EchoTints[i] = E, msg_url(NM, E, SPRITE), vmath_vector4()
-			msg_post(E, DISABLE)
+			go_set( msg_url(NM, E, DOT), TINTW, 0.637 )
 
 			local EH = factory_create(Helperc)
-			EHGOs[i], HelperSprites[i], HelperTints[i] = EH, msg_url(NM, EH, SPRITE), 0
-			msg_post(EH, DISABLE)
-		end
-	elseif EgoCnt > er then
-		for i = er+1, EgoCnt do
-			EGOs[i], EHGOs[i] = go_delete( EGOs[i] ), go_delete( EHGOs[i] )
-		end
+			EHGOs[i], HelperSprites[i], HelperTints[i] = EH, msg_url(NM, EH, SPRITE), 0			end
+		EgoCnt = er
 	end
 
 	if ar > AgoCnt then
 		for i = AgoCnt+1, ar do
-			local AL = factory_create(Animc)
+			local AL, AR = factory_create(Animc), factory_create(Animc)
 			AlGOs[i], AlSprites[i] = AL, msg_url(NM, AL, SPRITE)
-			msg_post(AL, DISABLE)
-
-			local AR = factory_create(Animc)
 			ArGOs[i], ArSprites[i] = AR, msg_url(NM, AR, SPRITE)
-			msg_post(AR, DISABLE)
-
-			AnimTints[i] = vmath_vector4()
-		end
-	elseif AgoCnt > ar then
-		for i = ar+1, AgoCnt do
-			AlGOs[i], ArGOs[i] = go_delete( AlGOs[i] ), go_delete( ArGOs[i] )
-		end
+			AnimTints[i] = vmath_vector4()														end
+		AgoCnt = ar
 	end
 
 	LastWgoUsed, LastHgoUsed, LastEgoUsed, LastAgoUsed = 0, 0, 0, 0
-	WgoCnt, HgoCnt, EgoCnt, AgoCnt = wr, hr, er, ar
+	for i = 1, wr do	msg_post(WishSprites[i], DISABLE)		end
+	for i = 1, hr do	msg_post(HGOs[i], DISABLE)				end
+	for i = 1, er do	msg_post(HelperSprites[i], DISABLE)
+						msg_post(EGOs[i], DISABLE)				end
+	for i = 1, ar do	msg_post(AlSprites[i], DISABLE)
+						msg_post(ArSprites[i], DISABLE)			end
 end
 
 local function CreateNlenv()
@@ -147,6 +121,7 @@ local function UpdateCanvas(dt)
 
 	-- Args
 	--
+	SetCam(XScale, YScale, XDelta, CamSpeed)
 	local wu, hu, eu, xu, au, hp, ep = UpdateArf(CanvasMs, dt,
 		WGOs, HGOs, EGOs, EHGOs, AlGOs, ArGOs, WishTints, HintTints, EchoTints, HelperTints, AnimTints
 	)
@@ -227,7 +202,6 @@ local function LoadFumenAr(PATH, isInitialLoad, AL)
 		CanvasMs = 0
 	end
 
-	Arf4.SetCam(XScale, YScale, XDelta, CamSpeed)
 	AllocCanvas(w, h, e)
 	UpdateCanvas(0)
 
@@ -277,7 +251,6 @@ local function LoadFumenNm(PATH, isInitialLoad, AL)
 		CanvasMs = 0
 	end
 
-	Arf4.SetCam(XScale, YScale, XDelta, CamSpeed)
 	AllocCanvas(w, h, e)
 	UpdateCanvas(0)
 
@@ -361,6 +334,7 @@ local ButtonFns = {
 				val = Arf4.BarToMs(val)
 				if val >= 0 and val <= CanvasBefore then
 					CanvasMs = val
+					UpdateCanvas(0)
 				end
 			end
 		end
@@ -371,6 +345,7 @@ local ButtonFns = {
 			local val = tonumber(InputText)
 			if val and val >= 0 and val <= CanvasBefore then
 				CanvasMs = val
+				UpdateCanvas(0)
 			end
 		end
 	end,
@@ -577,6 +552,13 @@ function init(self)
 					  go_set(InputLabel, COLOR, GREY)
 	go_set("Nm:/Hint#Model", TINTW, 0.637)
 
+	local SN = sys.get_sys_info().system_name
+	if SN == "Windows" then
+		WorksCmd = "explorer " .. sys.get_save_file("Nemesis Works", "")
+	else
+		WorksCmd = (SN=="Darwin" and "open " or "xdg-open ") .. string.gsub( sys.get_save_file("Nemesis Works", "") , "%s", "\\ " )
+	end
+
 	-- Init Addon, Proof & License
 	--
 	local AF = io.open( sys.get_save_file("Nemesis Works", "[Addon]") )
@@ -639,9 +621,7 @@ function fixed_update(self)
 
 	if FumenLoaded then
 		local _, msg = FumenLoaded()
-		if msg then
-			label_set_text(MessageLabel, msg)
-		end
+		_ = msg and label_set_text(MessageLabel, msg)
 	end
 end
 

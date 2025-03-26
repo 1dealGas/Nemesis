@@ -13,51 +13,39 @@ using namespace Ar;
 static constexpr uint16_t OBJECT_SIZE = 456,
 							HALF_SIZE = OBJECT_SIZE >> 1;
 static bool hasTouchNear(const int16_t cdx, const int16_t cdy, const Duo validTouches[]) noexcept {
-	switch( Arf.isAnyX | Arf.isAnyY<<1 ) {
+	switch( uint8_t whichTouch = 0;  Arf.isAnyX | Arf.isAnyY<<1 ) {
 		case 3:
 			return true;
 		case 2: /* isAnyY */ {
-			uint8_t whichTouch = 0;
 			const float l = (900.0f - HALF_SIZE) + cdx * Arf.xScale + Arf.xDelta, r = l + OBJECT_SIZE;
-			while(~ validTouches[whichTouch].val ) {   // Using {.a=NaN, .b=NaN} as the ending identifier
-				const float touchX = validTouches[whichTouch].a;
-				if( touchX >= l  &&  touchX <= r )
+			while(~ validTouches[whichTouch].val )   // Using {.a=NaN, .b=NaN} as the ending identifier
+				if( const float touchX = validTouches[whichTouch].a;	  whichTouch++,
+					touchX >= l  &&  touchX <= r )
 					return true;
-				++whichTouch;
-			}
 			return false;
 		}
 		case 1: /* isAnyX */ {
-			uint8_t whichTouch = 0;
 			const float d = (540.0f - HALF_SIZE) + cdy * Arf.yScale, u = d + OBJECT_SIZE;
-			while(~ validTouches[whichTouch].val ) {
-				const float touchY = validTouches[whichTouch].b;
-				if( touchY >= d  &&  touchY <= u )
+			while(~ validTouches[whichTouch].val )
+				if( const float touchY = validTouches[whichTouch].b;	  whichTouch++,
+					touchY >= d  &&  touchY <= u )
 					return true;
-				++whichTouch;
-			}
 			return false;
 		}
 		[[likely]] default: {
-			uint8_t whichTouch = 0;
 			const float l = (900.0f - HALF_SIZE) + cdx * Arf.xScale + Arf.xDelta, r = l + OBJECT_SIZE;
 			const float d = (540.0f - HALF_SIZE) + cdy * Arf.yScale, u = d + OBJECT_SIZE;
-			while(~ validTouches[whichTouch].val ) {
-				const float touchX = validTouches[whichTouch].a;
-				if( touchX >= l  &&  touchX <= r ) {
-					const float touchY = validTouches[whichTouch].b;
-					if( touchY >= d  &&  touchY <= u )
-						return true;
-				}
-				++whichTouch;
-			}
+			while(~ validTouches[whichTouch].val )
+				if( const Duo touch = validTouches[whichTouch];			  whichTouch++,
+					touch.a >= l  &&  touch.a <= r  &&  touch.b >= d  &&  touch.b <= u )
+					return true;
 			return false;
 		}
 	}
 }
 
 #include <vector>
-static std::vector<Duo> blockPos;
+static std::vector<Duo> blockedPos;
 static bool testAnmitsuSafety(const int16_t cdx, const int16_t cdy, const bool isScored) noexcept {
 	const float x = 900.0f + cdx * Arf.xScale + Arf.xDelta,  y = 540.0f + cdy * Arf.yScale,
 				l = x-OBJECT_SIZE,  r = x+OBJECT_SIZE,  d = y-OBJECT_SIZE,  u = y+OBJECT_SIZE;
@@ -65,23 +53,22 @@ static bool testAnmitsuSafety(const int16_t cdx, const int16_t cdy, const bool i
 		case 3:
 			return false;
 		case 2: /* isAnyY */
-			for(const auto i : blockPos)
+			for(const auto i : blockedPos)
 				if( i.a > l  &&  i.a < r )
 					return false;
 			break;
 		case 1: /* isAnyX */
-			for(const auto i : blockPos)
+			for(const auto i : blockedPos)
 				if( i.b > d  &&  i.b < u )
 					return false;
 			break;
 		[[likely]] default:
-			for(const auto i : blockPos)
-				if( i.a > l  &&  i.a < r )
-					if( i.b > d  &&  i.b < u )
-						return false;
+			for(const auto i : blockedPos)
+				if( i.a > l  &&  i.a < r  &&  i.b > d  &&  i.b < u )
+					return false;
 	}
 	if( isScored )   // Push "Safe when Anmitsu" Objects
-		blockPos.push_back({ .a = x, .b = y });
+		blockedPos.push_back({ .a = x, .b = y });
 	return true;
 }
 
@@ -150,90 +137,88 @@ static void judgeArfInternal(const Duo validTouches[], const bool anyPressed, co
 	const uint64_t msTime = Arf.msTime + dmTime::GetMonotonicTime() - UsysTime,
 						G = msTime >> 10;
 	if( anyRel )
-		blockPos.clear();
+		blockedPos.clear();
 	if( uint32_t minJudgedMs = NULL;  anyPressed ) {
-		for(const Info ei = Arf.eIdx[G];  Echo& e : std::span(Arf.echoes).subspan(ei.f, ei.c)) {
-			const int32_t deltaMs = Arf.msTime - e.ms;
+		for(const Info ei = Arf.eIdx[G];  Echo& E : std::span(Arf.echoes).subspan(ei.f, ei.c)) {
+			const int32_t deltaMs = Arf.msTime - E.ms;
 			if( deltaMs < -370 )		break;
 			if( deltaMs > +470 )		continue;
-			e = scanEcho(e, deltaMs, validTouches);
+			E = scanEcho(E, deltaMs, validTouches);
 
-			if( e.status == NJUDGED_LIT  ||  e.status == SPECIAL_LIT )
-				if( deltaMs > -101  &&  deltaMs < 101 ) {
-					/* [1] Tap Behavior -- Earliest & Anmitsu Path */
-					const bool safeToAnmitsu = testAnmitsuSafety(e.cdx, e.cdy, e.status==SPECIAL_LIT);
+			if( E.status == NJUDGED_LIT  ||  E.status == SPECIAL_LIT )
+				if( deltaMs > -101  &&  deltaMs < 101 ) {	/* [1] Tap Behavior · Earliest & Anmitsu Path */
+					const bool safeToAnmitsu = testAnmitsuSafety(E.cdx, E.cdy, E.status==SPECIAL_LIT);
 					if( !minJudgedMs )
-						minJudgedMs = e.ms;
-					else if( minJudgedMs != e.ms )				  // Consider if maxDt < 0
+						minJudgedMs = E.ms;
+					else if( minJudgedMs != E.ms )				  // Consider if maxDt < 0
 						if( !safeToAnmitsu || deltaMs < Arf.minDt || deltaMs > Arf.maxDt )
 							continue;
-					Arf.eHit += (e.status == SPECIAL_LIT), e.status = HIT_LIT;
-					e.deltaMs = deltaMs;
+					Arf.eHit += (E.status == SPECIAL_LIT), E.status = HIT_LIT;
+					E.deltaMs = deltaMs;
 				}
 		}
-		for(const Info hi = Arf.hIdx[G];  Hint& h : std::span(Arf.hints).subspan(hi.f, hi.c)) {
-			const int32_t deltaMs = Arf.msTime - h.ms;
+		for(const Info hi = Arf.hIdx[G];  Hint& H : std::span(Arf.hints).subspan(hi.f, hi.c)) {
+			const int32_t deltaMs = Arf.msTime - H.ms;
 			if( deltaMs < -370 )		break;
 			if( deltaMs > +470 )		continue;
-			h = scanHint(h, validTouches);
+			H = scanHint(H, validTouches);
 
-			if( h.status == NJUDGED_LIT  ||  h.status == SPECIAL_LIT )
+			if( H.status == NJUDGED_LIT  ||  H.status == SPECIAL_LIT )
 				if( deltaMs > -101  &&  deltaMs < 101 ) {
-					const bool safeToAnmitsu = testAnmitsuSafety(h.cdx, h.cdy, true);
-					if( !minJudgedMs  ||  minJudgedMs >= h.ms )
-						minJudgedMs = h.ms;
+					const bool safeToAnmitsu = testAnmitsuSafety(H.cdx, H.cdy, true);
+					if( !minJudgedMs  ||  minJudgedMs >= H.ms )
+						minJudgedMs = H.ms;
 					else if( !safeToAnmitsu || deltaMs < Arf.minDt || deltaMs > Arf.maxDt )
 						continue;
-					Arf.sHit += (h.status == SPECIAL_LIT);
+					Arf.sHit += (H.status == SPECIAL_LIT);
 
 					if( deltaMs < Arf.minDt )
-						++Arf.early, h.status = EARLY_LIT;
-					else if( deltaMs <= Arf.maxDt )
-						++Arf.hHit, h.status = HIT_LIT;
+						++Arf.early, H.status = EARLY_LIT;
+					else if( deltaMs <= Arf.maxDt )  [[likely]]
+						++Arf.hHit, H.status = HIT_LIT;
 					else
-						++Arf.late, h.status = LATE_LIT;
-					h.deltaMs = deltaMs;
+						++Arf.late, H.status = LATE_LIT;
+					H.deltaMs = deltaMs;
 				}
 		}
 	}
 	else {
-		for(const Info ei = Arf.eIdx[G];  Echo& e : std::span(Arf.echoes).subspan(ei.f, ei.c)) {
-			const int32_t deltaMs = Arf.msTime - e.ms;
+		for(const Info ei = Arf.eIdx[G];  Echo& E : std::span(Arf.echoes).subspan(ei.f, ei.c)) {
+			const int32_t deltaMs = Arf.msTime - E.ms;
 			if( deltaMs < -370 )		break;
 			if( deltaMs > +470 )		continue;
-			e = scanEcho(e, deltaMs, validTouches);
+			E = scanEcho(E, deltaMs, validTouches);
 		}
-		for(const Info hi = Arf.hIdx[G];  Hint& h : std::span(Arf.hints).subspan(hi.f, hi.c)) {
-			const int32_t deltaMs = Arf.msTime - h.ms;
+		for(const Info hi = Arf.hIdx[G];  Hint& H : std::span(Arf.hints).subspan(hi.f, hi.c)) {
+			const int32_t deltaMs = Arf.msTime - H.ms;
 			if( deltaMs < -370 )		break;
 			if( deltaMs > +470 )		continue;
-			h = scanHint(h, validTouches);
+			H = scanHint(H, validTouches);
 		}
 	}
 }
 
 void Ar::JudgeArfSweep() noexcept {
-	const uint32_t G = Arf.msTime >> 10;
-	for(const Info ei = Arf.eIdx[G];  Echo& echo : std::span(Arf.echoes).subspan(ei.f, ei.c))
-		if( const int32_t deltaMs = Arf.msTime - echo.ms;  deltaMs > 255 ) {}
-		else if( deltaMs > 100 )												   /* [3] Lost Behavior */
-			switch( echo.status ) {
-				case SPECIAL: case SPECIAL_LIT:		echo.status = SPECIAL_LOST;  Arf.lost++;  break;
-				case NJUDGED: case NJUDGED_LIT:		echo.status = LOST;
+	const uint16_t G = Arf.msTime >> 10;
+	for(const Info ei = Arf.eIdx[G];  Echo& E : std::span(Arf.echoes).subspan(ei.f, ei.c))
+		if( const int32_t deltaMs = Arf.msTime - E.ms;  deltaMs > 255 ) [[unlikely]] {}
+		else if( deltaMs > 100 )													 /* [3] Lost Behavior */
+			switch( E.status ) {
+				case SPECIAL: case SPECIAL_LIT:		E.status = SPECIAL_LOST;  Arf.lost++;  break;
+				case NJUDGED: case NJUDGED_LIT:		E.status = LOST;
 				default:;
 			}
-		else if( deltaMs >= 0 )										 /* [2] Echo Behavior -- Catch Path */
-			switch( echo.status ) {
+		else if( deltaMs >= 0 )											/* [2] Echo Behavior · Catch Path */
+			switch( E.status ) {
 				case SPECIAL_LIT:					Arf.eHit++;
-				case NJUDGED_LIT:					echo.status = HIT_LIT, echo.deltaMs = deltaMs;
+				case NJUDGED_LIT:					E.status = HIT_LIT, E.deltaMs = deltaMs;
 				default:;
 			}
 		else break;
-
-	for(const Info hi = Arf.hIdx[G];  Hint& hint : std::span(Arf.hints).subspan(hi.f, hi.c))
-		if( const int32_t deltaMs = Arf.msTime - hint.ms;  deltaMs > 255 ) {}
+	for(const Info hi = Arf.hIdx[G];  Hint& H : std::span(Arf.hints).subspan(hi.f, hi.c))
+		if( const int32_t deltaMs = Arf.msTime - H.ms;  deltaMs > 255 ) [[unlikely]] {}
 		else if( deltaMs > 100 )
-			hint.status < HIT  ?  hint.status = LOST, Arf.lost++ : 0;
+			H.status < HIT  ?  H.status = LOST, Arf.lost++ : 0;
 		else break;
 }
 
@@ -243,7 +228,7 @@ int Ar::JudgeArf(lua_State* L) noexcept {
 	 */
 	Duo validTouches[33];
 	uint8_t touchCount = 0, anyPressed = false, anyReleased = false;
-	for( uint8_t i = 1 ; i < 33 ; i++ ) {
+	for( uint8_t i = 1 ; i < 33 ; i++ )
 		switch( lua_rawgeti(L, 3, i), lua_tointeger(L, -1) ) {
 			case 1:
 				anyPressed = true;
@@ -257,7 +242,6 @@ int Ar::JudgeArf(lua_State* L) noexcept {
 			[[likely]] default:
 				lua_pop(L, 1);
 		}
-	}
 	return validTouches[touchCount].val = -1,   // Actually ~0
 		   judgeArfInternal(validTouches, anyPressed, anyReleased), 0;
 }

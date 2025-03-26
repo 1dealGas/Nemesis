@@ -49,7 +49,7 @@ namespace N4 {
 		double				wX, wY, wNx, wNy, wDegree;
 	};
 	struct Build {
-		std::vector<Tempo>	tempoList = {{ 0,4,4 }};
+		std::vector<Tempo>	tempoList = {{ 0, .a=4, .b=4 }};
 		std::vector<Delta>	beatToMs = {{ 0, 60000/170.0 }},  deltas = {{ 0,1 }};
 		std::vector<Wish>	wishes;
 		std::vector<Echo>	echoes;
@@ -450,7 +450,7 @@ int Ar::NewWish(lua_State* L) noexcept {
 		nodeMap[( nodeMap.contains(beat) ? nextDouble(beat) : beat )] = point;
 		lua_pop(L, 4);
 	}
-	if( nodeMap.empty()  ||  nodeMap.cbegin()->second.beat == nodeMap.crbegin()->second.beat )
+	if( nodeMap.empty()  ||  nodeMap.crbegin()->second.beat <= nextDouble( nodeMap.cbegin()->second.beat ) )
 		return lua_pushnil(L), 1;
 
 	W.nodes.reserve( nodeMap.size() );
@@ -490,7 +490,7 @@ int Ar::NewHelper(lua_State* L) noexcept {
 		nodeMap[( nodeMap.contains(beat) ? nextDouble(beat) : beat )] = point;
 		lua_pop(L, 4);
 	}
-	if( nodeMap.empty()  ||  nodeMap.cbegin()->second.beat == nodeMap.crbegin()->second.beat )
+	if( nodeMap.empty() )
 		return W->~Wish(), lua_pushnil(L), 1;   // Let Lua GC free the mem of W
 
 	nodes.reserve( nodeMap.size() );
@@ -587,7 +587,7 @@ int Ar::NewEcho(lua_State* L) noexcept {
 		return lua_pushboolean(L, false), lua_pushfstring(L, NOT_A_TABLE, "Echo"), 2;
 	const bool isSpecial = (lua_getfield(L, 1, "Special"), lua_toboolean(L, -1));
 		   double radius = (lua_getfield(L, 1, "Radius"), lua_tonumber(L, -1)), initLoop = 0, deltaLoop = 0;
-				  radius = radius ? (radius > 7.75 ? 7.75 : radius) : 7;
+				  radius = radius > 7.75 ? 7.75  :  radius < 0 ? 0  :  radius;
 	lua_pop(L, 2);
 
 	if( radius )
@@ -673,18 +673,18 @@ int Ar::DeltaTone(lua_State* L) noexcept {
 	 * local delta_tone = DeltaTone( {1, 1/16}, {2, 5/32} )
 	 */
 	double LT;
-	if( double S;  lua_istable(L, 1) )   // [-2] sinceBar  [-1] withTone
-		lua_rawgeti(L, 1, 1),  lua_rawgeti(L, 1, 2),  S = barToTone( lua_tonumber(L, -2) ),
-		LT = lua_tonumber(L, -1),  LT = barToBeat(toneToBar(  S + ( LT<0 ? -LT/16 : LT )  ));
+	if( lua_istable(L, 1) )
+		LT = ( lua_rawgeti(L, 1, 2), lua_tonumber(L, -1) ),										// withTone
+		LT = barToTone(( lua_rawgeti(L, 1, 1), lua_tonumber(L, -1) )) + ( LT<0 ? -LT/16 : LT ); // sinceBar
 	else
-		LT = lua_tonumber(L, +1),  LT = barToBeat(toneToBar(  N.sinceTone + ( LT<0 ? -LT/16 : LT )  ));
+		LT = lua_tonumber(L, 1),  LT = N.sinceTone + ( LT<0 ? -LT/16 : LT );
 
 	double RT;
-	if( double S;  lua_istable(L, 2) )   // [-2] sinceBar  [-1] withTone
-		lua_rawgeti(L, 2, 1),  lua_rawgeti(L, 2, 2),  S = barToTone( lua_tonumber(L, -2) ),
-		RT = lua_tonumber(L, -1),  RT = barToBeat(toneToBar(  S + ( RT<0 ? -RT/16 : RT )  ));
+	if( lua_istable(L, 2) )
+		RT = ( lua_rawgeti(L, 2, 2), lua_tonumber(L, -1) ),										// withTone
+		RT = barToTone(( lua_rawgeti(L, 2, 1), lua_tonumber(L, -1) )) + ( RT<0 ? -RT/16 : RT ); // sinceBar
 	else
-		RT = lua_tonumber(L, +2),  RT = barToBeat(toneToBar(  N.sinceTone + ( RT<0 ? -RT/16 : RT )  ));
+		RT = lua_tonumber(L, 2),  RT = N.sinceTone + ( RT<0 ? -RT/16 : RT );
 
 	lua_pushnumber( L, RT - LT );
 	return 1;
@@ -856,7 +856,7 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 		// Time & Count Checked
 		for( const auto [x, y, beat, radius, degree, ease] : w.nodes )
 			F.nodes.push_back({ .cdx = (int64_t)( (x - 8) * 8 ),
-								.cdy = (int64_t)( (y - 8) * 8 ),
+								.cdy = (int64_t)( (y - 4) * 8 ),
 								.ease = ease, .ms = (uint64_t)beat,
 								.radius = (uint64_t)( radius * 4 ),
 								.deg = (int64_t)degree });

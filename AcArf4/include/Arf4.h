@@ -25,18 +25,18 @@ namespace Arf4 {
 		)
 	};
 	struct Wish {
-		Ar64(
-			u64  nCount:6,  nSince:15;		u64  withDt:1;
-			u64  cCount:10, cSince:15;		u64  isSpecial:1;
-			u64  nIndex:6,  cIndex:10;
+		Ar64(																// Limits:
+			u64  nCount:6,  nSince:15;		u64  withDt:1;					// Node	  [1] 63	[T] 32767
+			u64  cCount:10, cSince:15;		u64  isSpecial:1;				// Child  [1] 1023	[T] 32767
+			u64  nIndex:6,  cIndex:10;										// Wish   [X] 1023	[T] 65535
 		)
 	};
 
 /* Object */
 	struct Hint {
 		Ar64(
-			i64  cdx:9, cdy:8;				u64  ms:20, status:4;
-			i64  deltaMs:8;
+			i64  cdx:9, cdy:8;				u64  ms:20, status:4;			// Limits for Objects:
+			i64  deltaMs:8;													// [X] 511  [T] 32767
 		)
 	};
 	struct Echo {
@@ -64,7 +64,7 @@ namespace Arf4 {
 /* Fumen */
 	struct Fumen {
 		std::vector<Point>		nodes;
-		std::vector<Delta>		deltas;										// [0] Index
+		std::vector<Delta>		deltas;										// [0] Index	[Max] 1+8190
 		std::vector<Child>		wishChilds;
 		std::vector<Info>		wIdx, hIdx, eIdx;							// [WI] 2048ms  [HI/EI] 1024ms
 		std::vector<Wish>		wishes;

@@ -8,8 +8,8 @@ float Ar::Eased(const double ratio, const uint8_t type) noexcept {
 	switch(type) {
 	  default:	case STATIC:	return 0;
 	[[likely]]	case LINEAR:	return ratio;
-				case INSINE:	return inSine [(uint16_t)(ratio * 4096)];
-				case OUTSINE:	return outSine[(uint16_t)(ratio * 4096)];
+				case INSINE:	return inSine [(uint16_t)(ratio * 1024)];
+				case OUTSINE:	return outSine[(uint16_t)(ratio * 1024)];
 	}
 }
 
