@@ -49,7 +49,7 @@ namespace N4 {
 		double				wX, wY, wNx, wNy, wDegree;
 	};
 	struct Build {
-		std::vector<Tempo>	tempoList = {{ 0, .a=4, .b=4 }};
+		std::vector<Tempo>	tempoList = {{ .a=4, .b=4 }};
 		std::vector<Delta>	beatToMs = {{ 0, 60000/170.0 }},  deltas = {{ 0,1 }};
 		std::vector<Wish>	wishes;
 		std::vector<Echo>	echoes;
@@ -722,7 +722,7 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 	// Organize Echoes
 	valueMap.clear();
 	for( const auto [x, y, beat, radius, initLoop, deltaLoop, isSpecial] : N.echoes )
-		if( const uint64_t ms = beatToMs(beat);  ms < 510  ||  ms > 1048575 - 470 )   /* Arf4.h */
+		if( const uint64_t ms = beatToMs(beat);  ms < 637  ||  ms > 1048575 - 470 )   /* Arf4.h */
 			return lua_pushboolean(L, false), lua_pushfstring(L, NEMESIS_TIME_OOR, "Echo"), 2;
 		else if( const Echo baseEcho = { .cdx = (int64_t)( (x - 8) * 8 ),
 										 .cdy = (int64_t)( (y - 4) * 8 ),  .ms = ms,
@@ -821,7 +821,7 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 		const Echo e = F.echoes[i];
 		F.objectCount += e.status;
 
-		int32_t initMs = e.ms - (e.radius ? 1011 : 510);
+		int32_t initMs = e.ms - (e.radius ? 1011 : 637);
 		if( initMs < 0 )
 			initMs = 0;
 

@@ -13,15 +13,12 @@ embedded_components {
   "  texture: \"/Visual/UI.atlas\"\n"
   "}\n"
   ""
-  position {
-    z: 0.001
-  }
 }
 embedded_components {
   id: "Sprite"
   type: "sprite"
   data: "default_animation: \"Hint\"\n"
-  "material: \"/builtins/materials/sprite.material\"\n"
+  "material: \"/System/Echo.material\"\n"
   "slice9 {\n"
   "  x: 15.0\n"
   "  y: 15.0\n"

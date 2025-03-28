@@ -1,4 +1,8 @@
 path_settings {
+  path: "/Visual/Quad.atlas"
+  profile: "N"
+}
+path_settings {
   path: "/Visual/Wish.atlas"
   profile: "UI"
 }
@@ -30,6 +34,18 @@ profiles {
       format: TEXTURE_FORMAT_RGBA
       compressor: "BasisU"
       compressor_preset: "BASISU_HIGHEST"
+    }
+    mipmaps: false
+  }
+}
+profiles {
+  name: "N"
+  platforms {
+    os: OS_ID_GENERIC
+    formats {
+      format: TEXTURE_FORMAT_RGB
+      compressor: "Uncompressed"
+      compressor_preset: "UNCOMPRESSED"
     }
     mipmaps: false
   }

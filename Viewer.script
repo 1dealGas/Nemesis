@@ -550,7 +550,7 @@ function init(self)
 	}
 	for i = 1, 11 do  go_set(ButtonPanels[i], TINTW, 0.73)	end
 					  go_set(InputLabel, COLOR, GREY)
-	go_set("Nm:/Hint#Model", TINTW, 0.637)
+	go_set("Nm:/Viewer#[RenderHint]", TINTW, 0.637)
 
 	local SN = sys.get_sys_info().system_name
 	if SN == "Windows" then

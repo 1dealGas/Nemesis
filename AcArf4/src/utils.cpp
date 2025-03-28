@@ -64,7 +64,7 @@ int Ar::SetCam(lua_State* L) noexcept {
 	Arf.xDelta = lua_tonumber(L, 3);
 
 	const lua_Number cSpeed = lua_tonumber(L, 4);
-		Arf.cSpeed = cSpeed < 0 ? 0 : cSpeed > 1.25 ? 1.25 : cSpeed;
+		Arf.cSpeed = cSpeed < 0 ? 0  :  cSpeed > 1.25 ? 1.25  :  cSpeed;
 	return 0;
 }
 
@@ -73,7 +73,7 @@ int Ar::SetSpeed(lua_State* L) noexcept {
 	 * Arf4.SetSpeed(speed)
 	 */
 	const lua_Number  pSpeed = lua_tonumber(L, 1);
-		PlayerSpeed = pSpeed < 0.5 ? 0.5 : pSpeed > 10 ? 10 : pSpeed;
+		PlayerSpeed = pSpeed < 0.5 ? 0.5  :  pSpeed > 10 ? 10  :  pSpeed;
 	return 0;
 }
 
@@ -82,7 +82,7 @@ int Ar::SetJudgeZone(lua_State* L) noexcept {
 	 * Arf4.SetJudgeZone(ms, is_any_x, is_any_y)   -- ms ∈ [1,100]
 	 */
 	const uint8_t zone = lua_tointeger(L, 1);
-	Arf.judgeRange = zone > 99 ? 100 : zone < 1 ? 1 : zone;
+	Arf.judgeRange = zone > 99 ? 100  :  zone < 1 ? 1  :  zone;
 
 	Arf.minDt = InputDelta - Arf.judgeRange;		Arf.minDt = Arf.minDt < -100 ? -100 : Arf.minDt ;
 	Arf.maxDt = InputDelta + Arf.judgeRange;		Arf.maxDt = Arf.maxDt >  100 ?  100 : Arf.maxDt ;
@@ -106,7 +106,7 @@ int Ar::SetInputDelta(lua_State* L) noexcept {
 	 * Arf4.SetInputDelta(ms)   -- [-63,63]
 	 */
 	const int8_t inputDeltaParam = lua_tointeger(L, 1);
-	InputDelta = inputDeltaParam > 63 ? 63 : inputDeltaParam < -63 ? -63 : inputDeltaParam;
+	InputDelta = inputDeltaParam > 63 ? 63  :  inputDeltaParam < -63 ? -63  :  inputDeltaParam;
 
 	Arf.minDt = InputDelta - Arf.judgeRange;		Arf.minDt = Arf.minDt < -100 ? -100 : Arf.minDt;
 	Arf.maxDt = InputDelta + Arf.judgeRange;		Arf.maxDt = Arf.maxDt >  100 ?  100 : Arf.maxDt;

@@ -33,14 +33,14 @@ http_thread_count = 0
 app_manifest = /System/Viewer.appmanifest
 
 [resource]
-max_resources = 77
+max_resources = 76
 
 [graphics]
 verify_graphics_calls = 0
 texture_profiles = /System/Viewer.texture_profiles
 
 [collection]
-max_instances = 4604
+max_instances = 4603
 max_input_stack_entries = 1
 
 [osx]
@@ -58,7 +58,7 @@ max_count = 0
 max_count = 0
 
 [sprite]
-max_count = 5635
+max_count = 5636
 
 [tilemap]
 max_count = 0
@@ -78,7 +78,7 @@ max_particle_count = 0
 max_particle_buffer_count = 0
 
 [model]
-max_count = 1
+max_count = 0
 
 [mesh]
 max_count = 0
