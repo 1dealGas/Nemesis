@@ -357,7 +357,7 @@ embedded_instances {
   "}\n"
   ""
   position {
-    z: -0.99998
+    z: 0.99999
   }
   scale3 {
     x: 0.5
@@ -654,7 +654,7 @@ embedded_instances {
   "}\n"
   ""
   position {
-    z: -0.99999
+    z: 0.99998
   }
   scale3 {
     x: 0.5

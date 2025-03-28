@@ -2,7 +2,7 @@ embedded_components {
   id: "Sprite"
   type: "sprite"
   data: "default_animation: \"Anim\"\n"
-  "material: \"/System/Echo.material\"\n"
+  "material: \"/System/Ehl.material\"\n"
   "slice9 {\n"
   "  x: 15.0\n"
   "  y: 15.0\n"
@@ -10,8 +10,8 @@ embedded_components {
   "  w: 15.0\n"
   "}\n"
   "size {\n"
-  "  x: 103.7\n"
-  "  y: 103.7\n"
+  "  x: 120.0\n"
+  "  y: 120.0\n"
   "}\n"
   "size_mode: SIZE_MODE_MANUAL\n"
   "textures {\n"
@@ -24,7 +24,7 @@ embedded_components {
     w: 0.9238795
   }
   scale {
-    x: 2.0
-    y: 2.0
+    x: 1.73
+    y: 1.73
   }
 }

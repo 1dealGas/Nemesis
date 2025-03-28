@@ -53,7 +53,7 @@ static AuInfo renderWish(lua_State* L, AuInfo info, Duo Pos, const Duo zw) {
 					lua_pushnumber(L, info.sType ? -1 : 1), lua_rawseti(L, WTINT, idx);
 
 				// Transform
-				SetPosition( wGo, GetPosition(wGo).setZ(0.01) );
+				SetPosition( wGo, GetPosition(wGo).setZ(0.03) );
 				SetScale   ( wGo, 0.637 );
 				lua_pop(L, 2);
 			}
@@ -70,9 +70,9 @@ static AuInfo renderAnim(lua_State* L, AuInfo info, const Duo Pos, const int16_t
 	// Tint
 	tint -> setXYZ( AnimTint[info.sType] );
 	if( double w;  msPast < 73 )
-		w = (msPast+27) * 0.01,		tint -> setW( 0.637 * w * (2-w) );
+		w = (msPast + 27) * 0.01,		tint -> setW( 0.637 * w * (2-w) );
 	else
-		w = (msPast-73) / 297.0,	tint -> setW( 0.637 * (1 - w*w) );
+		w = (370-msPast) / 297.0,		tint -> setW( 0.637 * w * w );
 
 	// Transform
 	const float PosZ = msPast * 0.0001;
@@ -120,8 +120,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 	else {
 		const auto initIt = Arf.deltas.begin() + 1, lastIt = Arf.deltas.end() - 1;
 			  auto it = initIt + Arf.deltas[0].val;
-		while( it != initIt  &&  zTimer < it->t )
-			--it;
+		while( it != initIt  &&  zTimer < it->t ) { --it; }
 		/**/auto nextIt = it + 1;
 		while( it != lastIt  &&  zTimer >= nextIt->t )
 			++it, ++nextIt;
@@ -184,8 +183,8 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 						Duo childPos = CosSin({
 							.a = (float)( 360 * (c.initLoop / 64.0 + c.deltaLoop / 8.0 * cQuot) )
 						});
-						const float cTint  = cQuot / 0.237;
-									cQuot *= c.radius << 1;   /* 1/4 -> 1/8 */
+						const float cTint = cQuot / 0.237;
+									cQuot = (1-cQuot) * (c.radius << 1);   /* 1/4 -> 1/8 */
 						childPos.a = nodePos.a + cQuot * childPos.a;
 						childPos.b = nodePos.b + cQuot * childPos.b;
 						info = renderWish(L, info, childPos, { .a = 0.03f, .b = fmin(cTint, 1.0f) });
@@ -195,7 +194,8 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 	}
 
 	/* Hint & Echo */
-	if( info.sType = 0,  Arf.isAuto ) {   // There are much more boilerplate lines...
+	info.sType = 0;
+	if( Arf.isAuto ) {   // There are much more boilerplate lines...
 		for(const Info hi = Arf.hIdx[zTimer];  const Hint h : std::span(Arf.hints).subspan(hi.f, hi.c)) {
 			const int16_t lifeMs = Arf.msTime - h.ms;
 			if( lifeMs > +370 )		continue;   // +470 if not Auto
