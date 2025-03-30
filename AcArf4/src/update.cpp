@@ -1,7 +1,6 @@
 ﻿//  Arf4 Update  //
 #include <Arf4.h>
 #include <dmsdk/dlib/time.h>
-#include <unordered_map>
 #include <span>
 
 static const dmVMath::Vector3
@@ -26,37 +25,20 @@ static auto rotationToQuat(const float degree) noexcept {
 	return Qt(0, 0, cosSin.b, cosSin.a);
 }
 
-static std::unordered_map<uint64_t, int16_t> lastWgo;
 static AuInfo renderWish(lua_State* L, AuInfo info, Duo Pos, const Duo zw) {
 	if( Pos.b = 540 + Pos.b * Arf.yScale,  Pos.b >= -36  &&  Pos.b <= 1116 )
-		if( Pos.a = 900 + Pos.a * Arf.xScale + Arf.xDelta,  Pos.a >= -36  &&  Pos.a <= 1836 )
-			if( const uint16_t idx = lastWgo[Pos.val];  idx == 0 ) {
-				lastWgo[Pos.val] = ++info.wUsed;
-				const auto wGo = ( lua_rawgeti(L, WGO, info.wUsed),
-								   dmScript::CheckGOInstance(L, -1) );
-				// Tint
-				lua_pushnumber(L, info.sType ? -zw.b : zw.b);
-				lua_rawseti(L, WTINT, info.wUsed);
+		if( Pos.a = 900 + Pos.a * Arf.xScale + Arf.xDelta,  Pos.a >= -36  &&  Pos.a <= 1836 ) {
+			const auto wGo = ( lua_rawgeti(L, WGO, ++info.wUsed),
+							   dmScript::CheckGOInstance(L,-1) );
+			// Tint
+			lua_pushnumber(L, info.sType ? -zw.b : zw.b);
+			lua_rawseti(L, WTINT, info.wUsed);
 
-				// Transform
-				SetPosition( wGo, P3(Pos.a, Pos.b, zw.a) );
-				SetScale   ( wGo, 1.074 - 0.437 * zw.b * (2-zw.b) );   // Scale: 1.074 -> 0.637
-				lua_pop(L, 1);
-			}
-			else {
-				const auto wGo = ( lua_rawgeti(L, WGO, idx),
-								   dmScript::CheckGOInstance(L, -1) );
-				// Tint
-				if(( lua_rawgeti(L, WTINT, idx), lua_tonumber(L, -1) ) < 0)
-					lua_pushnumber(L, -1), lua_rawseti(L, WTINT, idx);
-				else
-					lua_pushnumber(L, info.sType ? -1 : 1), lua_rawseti(L, WTINT, idx);
-
-				// Transform
-				SetPosition( wGo, GetPosition(wGo).setZ(0.03) );
-				SetScale   ( wGo, 0.637 );
-				lua_pop(L, 2);
-			}
+			// Transform
+			SetPosition( wGo, P3(Pos.a, Pos.b, zw.a) );
+			SetScale   ( wGo, 1.074 - 0.437 * zw.b * (2-zw.b) );   // Scale: 1.074 -> 0.637
+			lua_pop(L, 1);
+		}
 	return info;
 }
 
@@ -131,10 +113,9 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 			zDt[1] = thiz.base - (Arf.msTime - thiz.t * 4.0) * thiz.absV;
 		Arf.deltas[0].val = it - initIt;
 	}
-	zTimer >>= 8;
+	zTimer >>= 8;   // zTimer == Arf.msTime >> 10 since here
 
 	/* Wish */
-	lastWgo.clear();		  // zTimer == Arf.msTime >> 10 since here
 	for(const Info wi = Arf.wIdx[zTimer >> 1];  Wish& wish : std::span(Arf.wishes).subspan(wi.f, wi.c)) {
 		Wish w = wish;
 
@@ -162,7 +143,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 		Duo nodePos   = CosSin({ .a = thiz.deg + (next.deg - thiz.deg) * ratio });
 			nodePos.a = thiz.cdx + (next.cdx - thiz.cdx) * ratio + radius * nodePos.a /* cos(deg) */ ;
 			nodePos.b = thiz.cdy + (next.cdy - thiz.cdy) * ratio + radius * nodePos.b /* sin(deg) */ ;
-		info = renderWish(L, info, nodePos, { .a = 0.01f, .b = fmin(tint, 1.0f) });
+		info = renderWish(L, info, nodePos, { .a = 0.01f, .b = (float)fmin(tint, 1.0f) });
 
 		/* WishChild */
 		if( double wZdt;  w.cCount )
@@ -187,7 +168,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 									cQuot = (1-cQuot) * (c.radius << 1);   /* 1/4 -> 1/8 */
 						childPos.a = nodePos.a + cQuot * childPos.a;
 						childPos.b = nodePos.b + cQuot * childPos.b;
-						info = renderWish(L, info, childPos, { .a = 0.03f, .b = fmin(cTint, 1.0f) });
+						info = renderWish(L, info, childPos, { .a = 0.03f, .b = (float)fmin(cTint, 1.0f) });
 					}
 			}
 		wish = w;   // `w` is a value, while `wish` is a ref
@@ -344,7 +325,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 			double R = 1;
 			Duo ePos, mPos = { .a = 900 + e.cdx * Arf.xScale + Arf.xDelta, .b = 540 + e.cdy * Arf.yScale };
 			if( lifeMs > 370 )
-				goto UPDATE_ANIM;
+				goto EANIM;
 
 			if( lifeMs >= 0 )
 				ePos = mPos;
@@ -415,9 +396,8 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 					lua_pop(L, 1);
 				}
 			}
-			else UPDATE_ANIM:
-				if( e.status < LOST )
-					info = renderAnim(L, info, mPos, lifeMs - e.deltaMs);
+			else EANIM: if( e.status < LOST )
+				info = renderAnim(L, info, mPos, lifeMs - e.deltaMs);
 		}
 	}
 #endif

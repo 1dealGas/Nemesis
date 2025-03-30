@@ -513,7 +513,7 @@ int Ar::NewChild(lua_State* L) noexcept {
 
 	const double minBeat = W->nodes.front().beat;
 	const size_t inputLen = lua_objlen(L, 1);			W->wishChilds.reserve( inputLen );
-	for( size_t i = 1;  i < inputLen;  ++i )
+	for( size_t i = 1;  i <= inputLen;  ++i )
 		if( const double beat = (lua_rawgeti(L, 1, i), checkTime(L, -1));  lua_pop(L, 1),  beat > minBeat )
 			W->wishChilds.push_back({ beat, radius, initLoop, deltaLoop, hintSpecial });
 	return lua_pushboolean(L, true), 1;
@@ -542,7 +542,7 @@ int Ar::NewHint(lua_State* L) noexcept {
 	const double minBeat = W->nodes.front().beat,
 				 maxBeat = W->nodes.back().beat;
 	const size_t inputLen = lua_objlen(L, 1);			W->manualHints.reserve( inputLen );
-	for( size_t i = 1;  i < inputLen;  ++i )
+	for( size_t i = 1;  i <= inputLen;  ++i )
 		if( const double beat = ( lua_rawgeti(L, 1, i), checkTime(L, -1) );  lua_pop(L, 1),
 			beat > minBeat  &&  beat <= maxBeat )
 			W->manualHints.push_back({ beat, hintSpecial });
