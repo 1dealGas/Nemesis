@@ -95,6 +95,7 @@
     - name: result
       type: number
 
+
   - name: UpdateArf
     type: function
     parameters:
@@ -151,6 +152,7 @@
       type: number
     - name: camera_speed
       type: number
+
 
   - name: NewBuild
     type: function
@@ -239,7 +241,7 @@
       type: table
     returns:
       - name: helper
-        type: [table, nil]
+        type: [table, boolean, nil]
       - name: err
         type: [string, nil]
 
@@ -277,17 +279,15 @@
     - name: result
       type: [string, nil]
 
-  - name: DeltaTone
+  - name: SinceTone
     type: function
     desc: Viewer Only
     parameters:
-    - name: from
-      type: [table, number]
-    - name: to
-      type: [table, number]
+    - name: set_to
+      type: [number, nil]
     returns:
-    - name: src_or_msg
-      type: [table, string]
+    - name: since_tone
+      type: [number, nil]
 
   - name: BarToMs
     type: function

@@ -94,17 +94,17 @@ namespace Ar {
 	using namespace Arf4;
 
 	/* Build */
-	int  NewBuild(lua_State* L) noexcept;
-	int  SetDelta(lua_State* L) noexcept;
-	int  NewVerse(lua_State* L) noexcept;
-	int  NewWish(lua_State* L) noexcept;
-	int  NewHint(lua_State* L) noexcept;
-	int  NewEcho(lua_State* L) noexcept;
-	int  NewChild(lua_State* L) noexcept;
-	int  NewHelper(lua_State* L) noexcept;
-	int  DeltaTone(lua_State* L) noexcept;
-	int  BarToMs(lua_State* L) noexcept;
-	int  Mirror(lua_State* L) noexcept;
+	int  NewBuild(lua_State*) noexcept;
+	int  SetDelta(lua_State*) noexcept;
+	int  NewVerse(lua_State*) noexcept;
+	int  NewWish(lua_State*) noexcept;
+	int  NewHint(lua_State*) noexcept;
+	int  NewEcho(lua_State*) noexcept;
+	int  NewChild(lua_State*) noexcept;
+	int  NewHelper(lua_State*) noexcept;
+	int  SinceTone(lua_State*) noexcept;
+	int  BarToMs(lua_State*) noexcept;
+	int  Mirror(lua_State*) noexcept;
 
 	/* Internal */
   float  Eased(double, uint8_t) noexcept;
@@ -112,17 +112,17 @@ namespace Ar {
 	Duo  CosSin(Duo) noexcept;
 
 	/* Operation */
-	int  LoadArf(lua_State* L);
-	int  ExportArf(lua_State* L);
-	int  OrganizeArf(lua_State* L) noexcept;
-	int  UpdateArf(lua_State* L) noexcept;
-	int  JudgeArf(lua_State* L) noexcept;
+	int  LoadArf(lua_State*);
+	int  ExportArf(lua_State*);
+	int  OrganizeArf(lua_State*) noexcept;
+	int  UpdateArf(lua_State*) noexcept;
+	int  JudgeArf(lua_State*) noexcept;
 
 	/* Runtime Utils */
-	int  Ease(lua_State* L) noexcept;
-	int  SetCam(lua_State* L) noexcept;
-	int  SetSpeed(lua_State* L) noexcept;
-	int  SetJudgeZone(lua_State* L) noexcept;
-	int  GetJudgeStat(lua_State* L) noexcept;
-	int  SetInputDelta(lua_State* L) noexcept;
+	int  Ease(lua_State*) noexcept;
+	int  SetCam(lua_State*) noexcept;
+	int  SetSpeed(lua_State*) noexcept;
+	int  SetJudgeZone(lua_State*) noexcept;
+	int  GetJudgeStat(lua_State*) noexcept;
+	int  SetInputDelta(lua_State*) noexcept;
 }

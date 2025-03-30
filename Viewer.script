@@ -2,14 +2,19 @@
 -- Copyright(c) 2025- 1dealGas, under the Apache 2.0 License.
 --
 local HEADER, NIL = [[
-local Arf4, Assert, STATIC, LINEAR, INSINE, OUTSINE = Arf4, assert, 0, 1, 2, 3
-local Verse, Mirror, DeltaTone = Arf4.NewVerse, Arf4.Mirror, Arf4.DeltaTone
+local Arf4 = Arf4
+local Assert, Tonumber, STATIC, LINEAR, INSINE, OUTSINE = assert, tonumber, 0, 1, 2, 3
+local Verse, Mirror, SinceTone = Arf4.NewVerse, Arf4.Mirror, Arf4.SinceTone
 local function NM_WRAP(x) return  function(y) return Assert(x(y)) end  end
 local Wish, Hint, Echo = NM_WRAP(Arf4.NewWish), NM_WRAP(Arf4.NewHint), NM_WRAP(Arf4.NewEcho)
 local Child, Helper = NM_WRAP(Arf4.NewChild), NM_WRAP(Arf4.NewHelper)
-local Time, Delta = NM_WRAP(Arf4.NewBuild), NM_WRAP(Arf4.SetDelta);
-]], function() end
+local Time, Delta = NM_WRAP(Arf4.NewBuild), NM_WRAP(Arf4.SetDelta)
 
+local function Timeof(t)
+	if not Tonumber(t) then  Helper(t) ; t = t[2]  end
+	return {0, SinceTone() + (t<0 and -t/16 or t)}
+end;
+]], function() end
 
 -- Env & Audio
 --
@@ -109,9 +114,9 @@ end
 
 local function CreateNlenv()
 	local G = {}
-	G.Arf4, G.assert, G.pairs, G.ipairs, G.next, G.print = Arf4, assert, pairs, ipairs, next, print
-	G.select, G.tonumber, G.tostring, G.type, G.unpack, G.bit = select, tonumber, tostring, type, unpack, bit
-	G.math, G.string, G.table = math, string, table
+	G.Arf4, G.assert, G.pairs, G.ipairs, G.next = Arf4, assert, pairs, ipairs, next
+	G.print, G.select, G.tonumber, G.tostring, G.type, G.unpack = print, select, tonumber, tostring, type, unpack
+	G.bit, G.math, G.string, G.table = bit, math, string, table
 	return G
 end
 
@@ -539,6 +544,7 @@ function init(self)
 	if AF then
 		local newHeader = table.concat{ HEADER, AF:read("*a"), "\n" }
 		HEADER = pcall(loadstring(newHeader)) and newHeader or HEADER
+		print(HEADER)   -- To verify if addons are loaded successfully
 		AF:close()
 	end
 

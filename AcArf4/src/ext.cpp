@@ -16,7 +16,7 @@ static constexpr luaL_Reg Arf4Lib[] = {
 		{"NewEcho", Ar::NewEcho},
 		{"NewChild", Ar::NewChild},
 		{"NewHelper", Ar::NewHelper},
-		{"DeltaTone", Ar::DeltaTone},
+		{"SinceTone", Ar::SinceTone},
 		{"OrganizeArf", Ar::OrganizeArf},
 		{"ExportArf", Ar::ExportArf},
 		{"BarToMs", Ar::BarToMs},
