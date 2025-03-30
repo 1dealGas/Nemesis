@@ -6,9 +6,8 @@ local Arf4 = Arf4
 local Assert, Tonumber, STATIC, LINEAR, INSINE, OUTSINE = assert, tonumber, 0, 1, 2, 3
 local Verse, Mirror, SinceTone = Arf4.NewVerse, Arf4.Mirror, Arf4.SinceTone
 local function NM_WRAP(x) return  function(y) return Assert(x(y)) end  end
-local Wish, Hint, Echo = NM_WRAP(Arf4.NewWish), NM_WRAP(Arf4.NewHint), NM_WRAP(Arf4.NewEcho)
-local Child, Helper = NM_WRAP(Arf4.NewChild), NM_WRAP(Arf4.NewHelper)
-local Time, Delta = NM_WRAP(Arf4.NewBuild), NM_WRAP(Arf4.SetDelta)
+local Wish, Child, Hint, Echo = NM_WRAP(Arf4.NewWish), NM_WRAP(Arf4.NewChild), NM_WRAP(Arf4.NewHint), NM_WRAP(Arf4.NewEcho)
+local Helper, Delta, Time = NM_WRAP(Arf4.NewHelper), NM_WRAP(Arf4.SetDelta), NM_WRAP(Arf4.NewBuild)
 
 local function Timeof(t)
 	if not Tonumber(t) then  Helper(t) ; t = t[2]  end
@@ -18,7 +17,7 @@ end;
 
 -- Env & Audio
 --
-local WorksCmd
+local Title, WorksCmd = "Nemesis", nil
 local Proof, FumenLoaded   -- FumenLoaded: A Closure to reload the Fumen if updated. Nullable.
 local MessageLabel = msg.url("Nm:/Viewer#[Message]")
 
@@ -149,7 +148,7 @@ local function UpdateCanvas(dt)   -- Should be delegated to update(self, dt) exc
 	for i = 1, au do	go_set(AlSprites[i], TINT, AnimTints[i])
 						go_set(ArSprites[i], TINT, AnimTints[i])			end
 
-	-- Enable / Disable
+	-- Enable / Disable & HitSound
 	--
 	if wu > LastWgoUsed then
 		for i = LastWgoUsed+1, wu do	msg_post(WishSprites[i], ENABLE)	end
@@ -183,8 +182,6 @@ local function UpdateCanvas(dt)   -- Should be delegated to update(self, dt) exc
 										msg_post(ArSprites[i], DISABLE)		end
 	end
 
-	-- Misc
-	--
 	LastWgoUsed, LastHgoUsed, LastEgoUsed, LastEhgoUsed, LastAgoUsed = wu, hu, eu, xu, au
 	if dt and (hp or ep) then
 		PlayUnit(HitSounds[HsWhich], false)
@@ -296,6 +293,9 @@ local ButtonFns = {
 				Audio, AudioLen = A1, A2
 				label_set_text( MessageLabel, string_format(UPDATE_MSG_FMT, CanvasMs, AudioLen, ObjectCount) )
 				ProjectName, FumenLoaded = InputText, L1
+				window.set_title(
+					string_format( "%s -- %s.lua", Title, ProjectName )
+				)
 			else
 				label_set_text(MessageLabel, L2)
 			end
@@ -307,6 +307,9 @@ local ButtonFns = {
 				Audio, AudioLen = A1, A2
 				label_set_text( MessageLabel, string_format(UPDATE_MSG_FMT, CanvasMs, AudioLen, ObjectCount) )
 				ProjectName, FumenLoaded = InputText, F1
+				window.set_title(
+					string_format( "%s -- %s.ar", Title, ProjectName )
+				)
 			else
 				label_set_text(MessageLabel, F2)
 			end
@@ -543,8 +546,9 @@ function init(self)
 	local AF = io.open( sys.get_save_file("Nemesis Works", "[Addon]") )
 	if AF then
 		local newHeader = table.concat{ HEADER, AF:read("*a"), "\n" }
-		HEADER = pcall(loadstring(newHeader)) and newHeader or HEADER
-		print(HEADER)   -- To verify if addons are loaded successfully
+		if pcall(loadstring(newHeader)) then
+			HEADER, Title = newHeader, "Nemesis with Addon"
+			window.set_title(Title)								end
 		AF:close()
 	end
 
@@ -586,12 +590,8 @@ function fixed_update(self)
 	end
 
 	if not AudioPlaying then
-		if Scrolling == 1 then
-			sys.set_update_frequency(0)
-			Scrolling = 2
-		elseif Scrolling == 2 then
-			sys.set_update_frequency(15)
-			Scrolling = false
+		if Scrolling == 1 then			Scrolling = sys.set_update_frequency(0) or 2
+		elseif Scrolling == 2 then		Scrolling = sys.set_update_frequency(15)
 		end
 	end
 

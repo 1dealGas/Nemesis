@@ -764,7 +764,7 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 	for( size_t i = 0;  i < hintSize;  ++i ) {
 		const Hint h = F.hints[i];
 		if( F.sHit < 31 )		F.sHit += h.status;
-		else [[likely]]			F.hints[i].status = NJUDGED;
+		else [[unlikely]]		F.hints[i].status = NJUDGED;
 
 		const size_t endGroup = (h.ms + 470) >> 10;
 		for( size_t group = (h.ms - 510) >> 10;  group <= endGroup;  ++group )
