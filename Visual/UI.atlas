@@ -4,7 +4,4 @@ images {
 images {
   image: "/Visual/Hint.png"
 }
-images {
-  image: "/Visual/Icon.png"
-}
 margin: 1

@@ -241,7 +241,7 @@
       type: table
     returns:
       - name: helper
-        type: [table, number, nil]
+        type: [table, boolean, nil]
       - name: err
         type: [string, nil]
 

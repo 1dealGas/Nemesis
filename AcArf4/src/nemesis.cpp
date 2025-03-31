@@ -220,8 +220,8 @@ static int freeHelper(lua_State* L) noexcept {
 }
 
 
-/* Error Reasons */
-constexpr auto
+/* Script APIs */
+constexpr auto   // Error Reasons
 	NOT_SUF = "Count of Node(s) is not sufficient to create a Wish / Helper.",
 	NEMESIS_TIME_OOR = R"(Nemesis Compiler: Time(ms) of %s out of range)",
 	NEMESIS_SLE = R"(Nemesis Compiler: Count limit of %s(%L) exceeded)",
@@ -230,8 +230,6 @@ constexpr auto
 	NO_WISH = R"(API "%s": No valid Wish to add "%s"(s) to)";
 #define LI (lua_Integer)
 
-
-/* Script APIs */
 static std::map<double, N4::Delta> bpmMap;
 static std::map<double, N4::Tempo> tempoMap;
 int Ar::NewBuild(lua_State* L) noexcept {
@@ -454,7 +452,7 @@ int Ar::NewHelper(lua_State* L) noexcept {
 	if(! lua_istable(L, 1) )
 		return lua_pushnil(L), lua_pushfstring(L, NOT_A_TABLE, "Helper"), 2;
 	if( lua_objlen(L,1) < 3 )   // Time Context Helper: normal_time = abst[ Helper(abst) ]
-		return checkTime(L, 1), lua_pushinteger(L, 2), 1;
+		return checkTime(L, 1), lua_pushboolean(L, true), 1;
 	const auto  W = new(lua_newuserdata( L, sizeof(N4::Wish) )) N4::Wish;
 		  auto& nodes = W -> nodes;
 	nodeMap.clear();
@@ -652,7 +650,7 @@ int Ar::SinceTone(lua_State* L) noexcept {
 	/* Usage:
 	 * local since_tone_or_nil = SinceTone(set_to_or_nil)
 	 */
-	if( lua_isnil(L, 1) )
+	if(! lua_isnumber(L, 1) )
 		return lua_pushnumber(L, N.sinceTone), 1;
 	if( const double sinceTone = lua_tonumber(L, 1);  sinceTone >= 0 )
 		N.sinceTone = sinceTone;
@@ -668,6 +666,7 @@ int Ar::BarToMs(lua_State* L) noexcept {
 
 
 /* Arf Compile Fn */
+static std::map<double, int16_t> childMap;
 static std::map<uint64_t, int16_t> valueMap;
 static std::vector< std::vector<Arf4::Wish> > idxProto;
 int Ar::OrganizeArf(lua_State* L) noexcept {
@@ -854,16 +853,16 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 		}
 
 		// Calculate wgoRequired for this Wish (Here the `.cIndex` field is borrowed)
-		valueMap.clear();
+		childMap.clear();
 		for( const auto& c : w.wishChilds ) {
 			constexpr double LOWEST_SPEED = 11 / 1500.0;
 				const double to = c.beat * LOWEST_SPEED,
 							 from = to - fmax(c.radius, 6) * LOWEST_SPEED;
-			valueMap[from] += 1, valueMap[to] -= 1;
+			childMap[from] += 1, childMap[to] -= 1;
 		}
 
 		int16_t currentStep = 1;   // The Wish itself
-		for( const auto [_, stepDelta] : valueMap )
+		for( const auto [_, stepDelta] : childMap )
 			if( (currentStep += stepDelta) > wView.cIndex )
 				wView.cIndex = currentStep;
 
@@ -905,6 +904,7 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 					   lua_pushfstring(L, NEMESIS_SLE, "Wishes within 2048ms", LI 1023), 2;
 			F.wgoRequired = groupWgoUsed > F.wgoRequired  ?  groupWgoUsed : F.wgoRequired;
 		}
+
 	return  Arf = { .val = F.val, .isAuto = true },
 			F.deltas.swap(Arf.deltas),				F.nodes.swap(Arf.nodes),
 			F.echoes.swap(Arf.echoes),				F.wishes.swap(Arf.wishes),

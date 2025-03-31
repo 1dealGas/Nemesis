@@ -10,7 +10,7 @@ local Wish, Child, Hint, Echo = NM_WRAP(Arf4.NewWish), NM_WRAP(Arf4.NewChild), N
 local Helper, Delta, Time = NM_WRAP(Arf4.NewHelper), NM_WRAP(Arf4.SetDelta), NM_WRAP(Arf4.NewBuild)
 
 local function Timeof(t)
-	if not Tonumber(t) then t = t[Helper(t)] end
+	if not Tonumber(t) then t = Helper(t) and t[2] or 0 end
 	return {0, SinceTone() + (t<0 and -t/16 or t)}
 end;
 ]], function() end
