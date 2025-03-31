@@ -276,8 +276,9 @@ local ButtonPanels, ButtonXs = nil, {   -- Y range [20,70]
 
 local ButtonFns = {
 	[1] = function()   -- Args Input
-		InputMode = true
-		go_set(ButtonPanels[1], TINTW, 0.88)
+		InputMode, InputText = true, ""
+		go_set(ButtonPanels[1], TINTW, 0.88) ; go_set(InputLabel, COLOR, GREY)
+		label_set_text(InputLabel, "Args Input")
 	end,
 
 	[2] = function()   -- Load
@@ -501,12 +502,11 @@ local ActionFns = {
 --
 local LastPlaying = false
 local CheckPlaying, GetTime = AcAudio.CheckPlaying, AcAudio.GetTime
-
 function init(self)
 	-- Init Window & UI
 	--
 	sys.set_update_frequency(15)
-	msg.post(".", "acquire_input_focus")
+	msg_post(".", "acquire_input_focus")
 	window.set_listener( function(_, event, data)
 		if event == 2 then
 			WindowCenterX, WindowCenterY = data.width / 2, data.height / 2
