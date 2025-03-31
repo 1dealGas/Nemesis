@@ -220,8 +220,8 @@ static int freeHelper(lua_State* L) noexcept {
 }
 
 
-/* Script APIs */
-constexpr auto   // Error Reasons
+/* Error Reasons */
+constexpr auto
 	NOT_SUF = "Count of Node(s) is not sufficient to create a Wish / Helper.",
 	NEMESIS_TIME_OOR = R"(Nemesis Compiler: Time(ms) of %s out of range)",
 	NEMESIS_SLE = R"(Nemesis Compiler: Count limit of %s(%L) exceeded)",
@@ -230,6 +230,8 @@ constexpr auto   // Error Reasons
 	NO_WISH = R"(API "%s": No valid Wish to add "%s"(s) to)";
 #define LI (lua_Integer)
 
+
+/* Script APIs */
 static std::map<double, N4::Delta> bpmMap;
 static std::map<double, N4::Tempo> tempoMap;
 int Ar::NewBuild(lua_State* L) noexcept {
@@ -666,7 +668,6 @@ int Ar::BarToMs(lua_State* L) noexcept {
 
 
 /* Arf Compile Fn */
-static std::map<double, int16_t> childMap;
 static std::map<uint64_t, int16_t> valueMap;
 static std::vector< std::vector<Arf4::Wish> > idxProto;
 int Ar::OrganizeArf(lua_State* L) noexcept {
@@ -853,16 +854,15 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 		}
 
 		// Calculate wgoRequired for this Wish (Here the `.cIndex` field is borrowed)
-		childMap.clear();
+		deltaMap.clear();
 		for( const auto& c : w.wishChilds ) {
-			constexpr double LOWEST_SPEED = 11 / 1500.0;
-				const double to = c.beat * LOWEST_SPEED,
-							 from = to - fmax(c.radius, 6) * LOWEST_SPEED;
-			childMap[from] += 1, childMap[to] -= 1;
+			constexpr double LOWEST_SPEED_RCP = 1500.0 / 11;
+				const double from = fmax(0, c.beat - fmax(c.radius, 6) * LOWEST_SPEED_RCP);
+			deltaMap[from] += 1, deltaMap[c.beat] -= 1;
 		}
 
 		int16_t currentStep = 1;   // The Wish itself
-		for( const auto [_, stepDelta] : childMap )
+		for( const auto [_, stepDelta] : deltaMap )
 			if( (currentStep += stepDelta) > wView.cIndex )
 				wView.cIndex = currentStep;
 

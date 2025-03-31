@@ -4,7 +4,6 @@
 
   - name: LoadArf
     type: function
-    desc: With Lower Priority in Viewer Builds
     parameters:
     - name: path
       type: string
@@ -95,13 +94,10 @@
     - name: result
       type: number
 
-
   - name: UpdateArf
     type: function
     parameters:
     - name: ms
-      type: number
-    - name: dt
       type: number
     - name: wish_gos
       type: table

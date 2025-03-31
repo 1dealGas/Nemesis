@@ -14,7 +14,7 @@ typedef dmVMath::Vector3 v3i, *v3;				typedef dmVMath::Point3 P3;
 typedef dmVMath::Vector4 v4i, *v4;				typedef dmVMath::Quat Qt;
 
 struct AuInfo {
-	uint64_t frameDt:12 = 0, wUsed:10 = 0, aUsed:10 = 0, eUsed:9 = 0, xUsed:9 = 0, hUsed:9 = 0;
+	uint64_t frameDt:6 = 0, wUsed:10 = 0, aUsed:10 = 0, eUsed:9 = 0, xUsed:9 = 0, hUsed:9 = 0;
 	uint64_t sType:2 = false, playH:1 = false, playE:1 = false;
 };
 
@@ -79,20 +79,22 @@ static AuInfo renderAnim(lua_State* L, AuInfo info, const Duo Pos, const int16_t
 /* Main */
 int Ar::UpdateArf(lua_State* L) noexcept {
 	/* Usage:
-	 * local wgo_used, hgo_used, ego_used, ehgo_used, ago_used, h_playhs, e_playhs = Arf4.UpdateArf(
-	 *       ms, dt, wgos, hgos, egos, ehgos, agols, agors, wtints, htints, etints, ehtints, atints)
+	 * local wgo_used, hgo_used, ego_used, ehgo_used, ago_used, h_plhs, e_plhs = Arf4.UpdateArf(
+	 *       ms, wgos, hgos, egos, ehgos, agols, agors, wtints, htints, etints, ehtints, atints)
 	 */
-	if( UsysTime = dmTime::GetMonotonicTime(), Arf.msTime = lua_tointeger(L, 1),  Arf.msTime >= Arf.before )
+	UsysTime = dmTime::GetMonotonicTime();
+
+	AuInfo info;
+	if( int32_t lastMs = Arf.msTime;  Arf.msTime = lua_tointeger(L, 1),  Arf.msTime >= Arf.before )
 		return 0;
+	else if( lastMs = Arf.msTime - lastMs,  lastMs > 0 )
+		info.frameDt = lastMs > 33 ? 34 : lastMs;
 	#ifndef AR_BUILD_VIEWER
 		if(! Arf.isAuto )						JudgeArfSweep();
 	#endif
 
-	/* Info */
-	const double eSpeed = (PlayerSpeed * Arf.cSpeed + 11) / 1500.0,
-				 dSpeed = eSpeed / 1024 /* 1/1024 -> 1 */;			double zDt[2] = { Arf.msTime * 1024.0 };
-	AuInfo info = { .frameDt = (uint64_t)(lua_tonumber(L, 2) * 1000) };
-	auto zTimer = (uint32_t)(Arf.msTime >> 2);
+	const double eSpeed = (PlayerSpeed * Arf.cSpeed + 11) / 1500.0;	  double zDt[2] = {Arf.msTime * 1024.0};
+	const double dSpeed = eSpeed / 1024 /* 1/1024 -> 1 */;				auto zTimer = (Arf.msTime >> 2);
 
 	/* Delta
 	 * zDt = Scale * 1024, Dt = Scale * xSpeed
@@ -175,8 +177,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 	}
 
 	/* Hint & Echo */
-	info.sType = 0;
-	if( Arf.isAuto ) {   // There are much more boilerplate lines...
+	if( info.sType = 0,  Arf.isAuto ) {   // There are much more boilerplate lines...
 		for(const Info hi = Arf.hIdx[zTimer];  const Hint h : std::span(Arf.hints).subspan(hi.f, hi.c)) {
 			const int16_t lifeMs = Arf.msTime - h.ms;
 			if( lifeMs > +370 )		continue;   // +470 if not Auto
@@ -262,7 +263,6 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 			}
 		}
 	}
-
 #ifndef AR_BUILD_VIEWER
 	else {
 		for(const Info hi = Arf.hIdx[zTimer];  const Hint h : std::span(Arf.hints).subspan(hi.f, hi.c)) {

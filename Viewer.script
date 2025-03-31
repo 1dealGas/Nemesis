@@ -121,9 +121,9 @@ local function CreateNlenv()
 	return G
 end
 
-local function UpdateCanvas(dt)   -- Should be delegated to update(self, dt) except LoadFumen*
+local function UpdateCanvas(playHs)   -- Should be delegated to update() except LoadFumen*
 	SetCam(XScale, YScale, XDelta, CamSpeed)
-	local wu, hu, eu, xu, au, hp, ep = UpdateArf(CanvasMs, dt,
+	local wu, hu, eu, xu, au, hp, ep = UpdateArf(CanvasMs,
 		WGOs, HGOs, EGOs, EHGOs, AlGOs, ArGOs, WishTints, HintTints, EchoTints, HelperTints, AnimTints
 	)
 
@@ -185,7 +185,7 @@ local function UpdateCanvas(dt)   -- Should be delegated to update(self, dt) exc
 	end
 
 	LastWgoUsed, LastHgoUsed, LastEgoUsed, LastEhgoUsed, LastAgoUsed = wu, hu, eu, xu, au
-	if dt and (hp or ep) then
+	if playHs and (hp or ep) then
 		PlayUnit(HitSounds[HsWhich], false)
 		HsWhich = (HsWhich == 32) and 1 or (HsWhich+1)
 		StopUnit(HitSounds[HsWhich], true)
@@ -215,7 +215,7 @@ local function LoadFumenAr(PATH, isInitialLoad)
 				return LoadFumenAr(PATH, false)
 			end
 		end
-	end
+	end return true
 end
 
 local function LoadFumenNm(PATH, isInitialLoad)
@@ -255,7 +255,7 @@ local function LoadFumenNm(PATH, isInitialLoad)
 				return LoadFumenNm(PATH, false)
 			end
 		end
-	end
+	end return true
 end
 
 
@@ -502,7 +502,7 @@ local ActionFns = {
 --
 local LastPlaying = false
 local CheckPlaying, GetTime = AcAudio.CheckPlaying, AcAudio.GetTime
-function init(self)
+function init()
 	-- Init Window & UI
 	--
 	sys.set_update_frequency(15)
@@ -563,19 +563,19 @@ function init(self)
 	end
 end
 
-function update(self, dt)
+function update()
 	if FumenLoaded then
 		if CheckPlaying(Audio) then
 			AudioPlaying, CanvasMs = true, GetTime(Audio)
 			label_set_text( MessageLabel, string_format(UPDATE_FMT, CanvasMs, AudioLen, ObjectCount) )
-			UpdateCanvas(dt)
+			UpdateCanvas(true)
 		else
 			AudioPlaying = UpdateCanvas()
 		end
 	end
 end
 
-function fixed_update(self)
+function fixed_update()
 	if AudioPlaying ~= LastPlaying then
 		LastPlaying = AudioPlaying
 		if AudioPlaying then
@@ -594,9 +594,9 @@ function fixed_update(self)
 	end
 
 	if FumenLoaded then
-		local loc, _, er = ObjectCount, FumenLoaded()
-		if ObjectCount ~= loc then		label_set_text( MessageLabel, string_format(UPDATE_FMT, CanvasMs, AudioLen, ObjectCount) )
-		elseif er then					label_set_text( MessageLabel, er )
+		local updated, er = FumenLoaded()
+		if updated then		label_set_text( MessageLabel, string_format(UPDATE_FMT, CanvasMs, AudioLen, ObjectCount) )
+		elseif er then		label_set_text( MessageLabel, er )
 		end
 	end
 end
