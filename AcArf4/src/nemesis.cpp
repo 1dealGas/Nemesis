@@ -190,8 +190,8 @@ static N4::Point checkPointArg(lua_State* L, const int where) noexcept {   // St
 		const auto d = ( lua_rawgeti(L, where, 2), lua_tonumber(L, -1) );					lua_pop(L, 1);
 		const auto e = ( lua_rawgeti(L, where, 3), lua_tointeger(L, -1) );					lua_pop(L, 1);
 		return {
-			.radius = fmin((uint8_t)(r * 4), 31) * 0.25,
-			.degree = d < -1024 ? -1024 : d > 1023 ? 1023 : d,
+			.radius = r < 0 ? 0  :  r > 15.75 ? 15.75  :  r,
+			.degree = d < -1024 ? -1024  :  d > 1023 ? 1023  :  d,
 			.ease = (uint8_t)(e > Arf4::OUTSINE  ?  Arf4::LINEAR : e)
 		};
 	}
@@ -674,6 +674,7 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 	/* Usage:
 	 * local before_or_false, objcnt, wgo_required, hgo_required, ego_required = Arf4.OrganizeArf()
 	 */
+	#define FIX(x, y)  ( (x)<(y) ? -0.5 : 0.5 )
 	Fumen F = { .val = 0 };
 
 	// Organize Deltas
@@ -693,11 +694,11 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 	for( const auto [x, y, beat, radius, initLoop, deltaLoop, isSpecial] : N.echoes )
 		if( const uint64_t ms = beatToMs(beat);  ms < 637  ||  ms > 1048575 - 470 )   /* Arf4.h */
 			return lua_pushboolean(L, false), lua_pushfstring(L, NEMESIS_TIME_OOR, "Echo"), 2;
-		else if( const Echo baseEcho = { .cdx = (int64_t)( (x - 8) * 8 ),			.ms = ms,
-										 .cdy = (int64_t)( (y - 4) * 8 ),			.status = 0,
-										 .radius = (uint64_t)( radius * 4 ),		.deltaMs = 0,
-										 .initLoop = (uint64_t)( initLoop * 64 ),
-										 .deltaLoop = (int64_t)( deltaLoop * 8 ) };
+		else if( const Echo baseEcho = { .cdx = (int64_t)( FIX(x,8) + (x-8) * 8 ),		.ms = ms,
+										 .cdy = (int64_t)( FIX(y,4) + (y-4) * 8 ),		.status = 0,
+										 .radius = (uint64_t)( 0.5 + radius * 4 ),		.deltaMs = 0,
+										 .initLoop = (uint64_t)( 0.5 + initLoop * 64 ),
+										 .deltaLoop = (int64_t)( FIX(deltaLoop, 0) + deltaLoop * 8 ) };
 		valueMap[baseEcho.val] == false ) [[likely]]   // Insertion and Value Checking, in one sentence
 			valueMap[baseEcho.val] = isSpecial;
 
@@ -722,8 +723,8 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 		for( auto& c : w.wishChilds )   // Use valueMap to deduplicate & sort childs later
 			if( (c.beat = beatToMs( c.beat )) <= w.nodes.back().beat  &&  c.beat >= 510 ) {
 				wishCacheT(w, c.beat);
-				if( const Hint baseHint = { .cdx = (int64_t)( (w.wX - 8) * 8 ),		.status = 0,
-											.cdy = (int64_t)( (w.wY - 4) * 8 ),		.deltaMs = 0,
+				if( const Hint baseHint = { .cdx = (int64_t)( FIX(w.wX,8) + (w.wX-8) * 8 ),   .status = 0,
+											.cdy = (int64_t)( FIX(w.wY,4) + (w.wY-4) * 8 ),   .deltaMs = 0,
 											.ms = (uint64_t)c.beat };
 				valueMap[baseHint.val] == false )
 					valueMap[baseHint.val] = c.hintSpecial;
@@ -734,8 +735,8 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 		for( auto [beat, isSpecial] : w.manualHints )
 			if( beat = beatToMs(beat), beat >= 510 ) {
 				wishCacheT(w, beat);
-				if( const Hint baseHint = { .cdx = (int64_t)( (w.wX - 8) * 8 ),		.status = 0,
-											.cdy = (int64_t)( (w.wY - 4) * 8 ),		.deltaMs = 0,
+				if( const Hint baseHint = { .cdx = (int64_t)( FIX(w.wX,8) + (w.wX-8) * 8 ),   .status = 0,
+											.cdy = (int64_t)( FIX(w.wY,4) + (w.wY-4) * 8 ),   .deltaMs = 0,
 											.ms = (uint64_t)beat };
 				valueMap[baseHint.val] == false )
 					valueMap[baseHint.val] = isSpecial;
@@ -828,16 +829,16 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 		if( wView.nSince + wView.nCount > 32767 )   /* inout.cpp 6/9 */
 			return lua_pushboolean(L, false), lua_pushfstring(L, NEMESIS_SLE, "Wish Nodes", LI 32767), 2;
 		for( const auto [x, y, beat, radius, degree, ease] : w.nodes )
-			F.nodes.push_back({ .cdx = (int64_t)( (x - 8) * 8 ),  .ms = (uint64_t)beat,
-								.cdy = (int64_t)( (y - 4) * 8 ),  .ease = ease,
-								.radius = (uint64_t)( radius * 4 ),
-								.deg = (int64_t)degree });
+			F.nodes.push_back({ .cdx = (int64_t)( FIX(x,8) + (x-8) * 8 ),   .ms = (uint64_t)beat,
+								.cdy = (int64_t)( FIX(y,4) + (y-4) * 8 ),   .ease = ease,
+								.radius = (uint64_t)( 0.5 + radius * 4 ),
+								.deg = (int64_t)( FIX(degree, 0) + degree) });
 		// Organize WishChilds
 		valueMap.clear();
 		for(const auto& nC : w.wishChilds) {
-			const Child c = { .radius = (uint64_t)( nC.radius * 4 ),
-							  .initLoop = (uint64_t)( nC.initLoop * 64 ),
-							  .deltaLoop = (int64_t)( nC.deltaLoop * 8 ),
+			const Child c = { .radius = (uint64_t)( 0.5 + nC.radius * 4 ),
+							  .initLoop = (uint64_t)( 0.5 + nC.initLoop * 64 ),
+							  .deltaLoop = (int64_t)( FIX(nC.deltaLoop, 0) + nC.deltaLoop * 8 ),
 							  .zDt = (uint64_t)( nC.beat * 1024 ) };
 			valueMap[c.val] = 0;
 		}
@@ -854,12 +855,11 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 		}
 
 		// Calculate wgoRequired for this Wish (Here the `.cIndex` field is borrowed)
-		deltaMap.clear();
-		for( const auto& c : w.wishChilds ) {
-			constexpr double LOWEST_SPEED_RCP = 1500.0 / 11;
-				const double from = fmax(0, c.beat - fmax(c.radius, 6) * LOWEST_SPEED_RCP);
-			deltaMap[from] += 1, deltaMap[c.beat] -= 1;
-		}
+        deltaMap.clear();
+        constexpr double LOWEST_SPEED_RCP = 1500.0 / 11;
+        for( const auto& c : w.wishChilds )
+            /* From */  deltaMap[ fmax(0, c.beat - fmax(c.radius, 6) * LOWEST_SPEED_RCP) ] += 1,
+            /*  To  */  deltaMap[ c.beat ] -= 1;
 
 		int16_t currentStep = 1;   // The Wish itself
 		for( const auto [_, stepDelta] : deltaMap )

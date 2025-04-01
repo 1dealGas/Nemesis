@@ -115,7 +115,7 @@ end
 
 local function CreateNlenv()
 	local G = {}
-	G.Arf4, G.assert, G.pairs, G.ipairs, G.next = Arf4, assert, pairs, ipairs, next
+	G.Arf4, G.assert, G.pairs, G.ipairs, G.next, G.pprint = Arf4, assert, pairs, ipairs, next, pprint
 	G.print, G.select, G.tonumber, G.tostring, G.type, G.unpack = print, select, tonumber, tostring, type, unpack
 	G.bit, G.math, G.string, G.table = bit, math, string, table
 	return G
