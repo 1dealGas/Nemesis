@@ -148,7 +148,7 @@ static double nextDouble(const double d) noexcept {   // Little Endian Only
 static void wishCacheT(N4::Wish& w, const double beat) noexcept {
 	if( const auto& first = w.nodes.front();  beat < first.beat ) [[unlikely]]
 		w.wNx = first.x, w.wNy = first.y, w.wRadius = first.radius, w.wDegree = first.degree;
-	else if( const auto& last = w.nodes.back();  beat >= last. beat )
+	else if( const auto& last = w.nodes.back();  beat >= last.beat )
 		w.wNx = last.x, w.wNy = last.y, w.wRadius = last.radius, w.wDegree = last.degree;
 	else [[likely]] {
 		std::vector<N4::Point>::const_iterator thiz, next;
@@ -200,17 +200,17 @@ static N4::Point checkPointArg(lua_State* L, const int where) noexcept {   // St
 }
 
 static int wishGetInfo(lua_State* L) noexcept {
-	const auto w = (N4::Wish*)lua_touserdata(L, 1);
-	wishCacheT( *w, checkTime(L, 2, true) );
-	lua_createtable(L, 0, 6);
+	const auto w = (N4::Wish*)lua_touserdata(L, 1);		// [1] Wish / Helper
+	wishCacheT( *w, checkTime(L, 2, true) );			// [2] Time
+	lua_createtable(L, 0, 6);							// [3]
 
 	return
-		lua_pushnumber(L, w->wX),		lua_setfield(L, -2, "x"),
-		lua_pushnumber(L, w->wY),		lua_setfield(L, -2, "y"),
-		lua_pushnumber(L, w->wNx),		lua_setfield(L, -2, "node_x"),
-		lua_pushnumber(L, w->wNy),		lua_setfield(L, -2, "node_y"),
-		lua_pushnumber(L, w->wRadius),	lua_setfield(L, -2, "radius"),
-		lua_pushnumber(L, w->wDegree),	lua_setfield(L, -2, "degree"),
+		lua_pushnumber(L, w->wX),		lua_setfield(L, 3, "x"),
+		lua_pushnumber(L, w->wY),		lua_setfield(L, 3, "y"),
+		lua_pushnumber(L, w->wNx),		lua_setfield(L, 3, "node_x"),
+		lua_pushnumber(L, w->wNy),		lua_setfield(L, 3, "node_y"),
+		lua_pushnumber(L, w->wRadius),	lua_setfield(L, 3, "radius"),
+		lua_pushnumber(L, w->wDegree),	lua_setfield(L, 3, "degree"),
 	1;
 }
 
@@ -455,7 +455,8 @@ int Ar::NewHelper(lua_State* L) noexcept {
 		return lua_pushnil(L), lua_pushfstring(L, NOT_A_TABLE, "Helper"), 2;
 	if( lua_objlen(L,1) < 3 )   // Time Context Helper: normal_time = abst[ Helper(abst) ]
 		return checkTime(L, 1), lua_pushboolean(L, true), 1;
-	const auto  W = new(lua_newuserdata( L, sizeof(N4::Wish) )) N4::Wish;
+	const auto  W = new(lua_newuserdata( L, sizeof(N4::Wish) ))  N4::Wish  { .isSpecial = false,
+																			 .withDt = false  };
 		  auto& nodes = W -> nodes;
 	nodeMap.clear();
 
@@ -582,11 +583,9 @@ int Ar::NewEcho(lua_State* L) noexcept {
 		const double beat = ( lua_rawgeti(L, 1, i), checkTime(L, -1) ),
 					 x = ( lua_rawgeti(L, 1, i+1), lua_tonumber(L, -1) ),
 					 y = ( lua_rawgeti(L, 1, i+2), lua_tonumber(L, -1) );
-		N.echoes.push_back({
-			.x = x < -23.875 ? -23.875  :  x > 39.875 ? 39.875  :  x,
-			.y = y < -11.875 ? -11.875  :  y > 19.875 ? 19.875  :  y,
-			beat, radius, initLoop, deltaLoop, isSpecial
-		});
+		N.echoes.push_back({ .x = x < -23.875 ? -23.875  :  x > 39.875 ? 39.875  :  x,
+							 .y = y < -11.875 ? -11.875  :  y > 19.875 ? 19.875  :  y,
+							 beat, radius, initLoop, deltaLoop, isSpecial });
 	}
 	return lua_pushboolean(L, true), 1;
 }
@@ -833,6 +832,7 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 								.cdy = (int64_t)( FIX(y,4) + (y-4) * 8 ),   .ease = ease,
 								.radius = (uint64_t)( 0.5 + radius * 4 ),
 								.deg = (int64_t)( FIX(degree, 0) + degree) });
+
 		// Organize WishChilds
 		valueMap.clear();
 		for(const auto& nC : w.wishChilds) {
