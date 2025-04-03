@@ -235,7 +235,7 @@ constexpr auto
 static std::map<double, N4::Delta> bpmMap;
 static std::map<double, N4::Tempo> tempoMap;
 int Ar::NewBuild(lua_State* L) noexcept {
-	/* Example:
+	/* Examples:
 	 * Time {						-- For 4/4-only tracks
 	 *     Offset = 0,				-- Beat 0 starts from 0ms
 	 *     0, 170,					-- Bar, BPM
@@ -523,7 +523,7 @@ int Ar::NewChild(lua_State* L) noexcept {
 }
 
 int Ar::NewHint(lua_State* L) noexcept {
-	/* Usage:
+	/* Example:
 	 * Hint {
 	 *     Wish = myWish,			-- The last Wish of the Fumen by default
 	 *     Special = false,			-- False by default
@@ -553,10 +553,10 @@ int Ar::NewHint(lua_State* L) noexcept {
 }
 
 int Ar::NewEcho(lua_State* L) noexcept {
-	/* Usage:
+	/* Example:
 	 * Echo {
 	 *     Radius = 7.0,			-- 0 by Default
-	 *     Special = false,			-- Scored if true, false by default
+	 *     Special = false,			-- Scored if true. false by default
 	 *     InitLoop = 0.25,			-- 0.25 by default, ignored if Radius is 0
 	 *     DeltaLoop = 1.25,		-- 0 by default, ignored if Radius is 0
 	 *     {1}, 8, 0.5,				-- T1, X1, Y1
