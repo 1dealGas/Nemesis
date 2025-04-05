@@ -155,7 +155,7 @@ When the user types a new absolute time (`{bar, tone}`, like`{1, 1/16}`) into an
 
 1. Convert all user-input times into tones with `Toneof(t)` **AT FIRST**, and then store the current time context with `local S = SinceTone()` **IMMEDIATELY**;
 
-2. **ALWAYS** call API functions with zero-bar absolute time(s) like `{0, tone}`;
+2. **ALWAYS** call API functions with zero-bar absolute time(s) like `{0, tone}`, or `tone` time(s) after setting `SinceTone` to 0;
 
 3. **ALWAYS** reset the time context with `SinceTone(S)` before exiting an Addon function.
 
@@ -172,21 +172,21 @@ local DUO_HINT_SPECIAL = false
 
 local function Duo(t, x, y, ...)
     t = Toneof(t)
-    local S, degs = SinceTone(), {...}
-    if degs[1] then
-        local from, to = {0, t-DUO_BEFORE_TONE}, {0,t}
+    local S, degs = SinceTone(), SinceTone(0) or {...}
+    if t > DUO_BEFORE_TONE and degs[1] then
         for i = 1, #degs do
             local deg = degs[i]
             Wish {  Special = DUO_WISH_SPECIAL,
-                    from, x, y, {DUO_RADIUS, deg, DUO_EASE},
-                    to, x, y, {0, deg}                        }
+                    t-DUO_BEFORE_TONE, x, y, {DUO_RADIUS, deg, DUO_EASE},
+                    t, x, y, {0, deg}  }
         end
         if degs[2] then
-            Hint { Special = DUO_HINT_SPECIAL, to }
+            Hint { Special = DUO_HINT_SPECIAL, t }
         end
     end
     SinceTone(S)
 end
+
 
 -- Rail
 --
@@ -208,20 +208,20 @@ local function Rail(x, ...)
 
         local tprv = args[1]
         if tprv > RAIL_BEFORE_TONE then
-            local tgl, tg = 1, {{0,tprv}}
+            local tgl, tg = 1, {tprv}
             local gsl, gs = 1, {tg}
             for i = 2, arglen do
                 local tcur = args[i]
-                if tcur-tprv <= RAIL_BEFORE_TONE then  tgl = tgl+1  tg[tgl] = {0,tcur}
-                else                                   gsl = gsl+1  tg,tgl = {{0,tcur}},1  gs[gsl] = tg
-                end                                    tprv = tcur
+                if tcur-tprv <= RAIL_BEFORE_TONE then   tgl = tgl+1   tg[tgl] = tcur
+                else                                    gsl = gsl+1   tg,tgl = {tcur},1   gs[gsl] = tg
+                end                                     tprv = tcur
             end
 
-            local S, unpack = SinceTone(), unpack
+            local S, unpack = SinceTone(), SinceTone(0) or unpack
             for i = 1, gsl do
                 local tsi = gs[i]
                 Wish {  Special = RAIL_WISH_SPECIAL, WithDt = RAIL_WISH_WITHDT,
-                        {0, tsi[1][2]-RAIL_BEFORE_TONE}, x, RAIL_Y, STATIC,
+                        tsi[1]-RAIL_BEFORE_TONE, x, RAIL_Y, STATIC,
                         tsi[#tsi], x, RAIL_Y  }
                 Child { Radius = RAIL_RADIUS,       Special = RAIL_CHILD_SPECIAL,
                         InitLoop = RAIL_INITLOOP, DeltaLoop = RAIL_DELTALOOP, unpack(tsi) } end
@@ -229,6 +229,7 @@ local function Rail(x, ...)
         end
     end
 end
+
 
 -- Slide
 --
@@ -244,15 +245,14 @@ local function Slide(T)
         T[i] = end_time
     end
 
-    local helper, S = Helper(T), SinceTone()
+    local S, helper = SinceTone(), SinceTone(0) or Helper(T)
     local echo1 = { Radius = T.Radius, InitLoop = T.InitLoop, DeltaLoop = T.DeltaLoop                 }
     local echo2 = { Radius = T.Radius, InitLoop = T.InitLoop, DeltaLoop = T.DeltaLoop, Special = true }
     local k, e1, e2, cur = 1, 1, 1, T[1]+SLIDE_INTERVAL
     while cur < end_time do
-        local t = {0, cur}
-        local xy = helper(t)
-        if k % SLIDE_MOD ~= 0 then  echo1[e1], echo1[e1+1], echo1[e1+2], e1 = t, xy.x, xy.y, e1+3
-        else                        echo2[e2], echo2[e2+1], echo2[e2+2], e2 = t, xy.x, xy.y, e2+3   end
+        local xy = helper(cur)
+        if k % SLIDE_MOD ~= 0 then echo1[e1], echo1[e1+1], echo1[e1+2], e1 = cur, xy.x, xy.y, e1+3
+        else                       echo2[e2], echo2[e2+1], echo2[e2+2], e2 = cur, xy.x, xy.y, e2+3  end
         k, cur = k+1, cur+SLIDE_INTERVAL
     end
     Echo(echo1) ; Echo(echo2)
