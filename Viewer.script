@@ -8,12 +8,14 @@ local Verse, Mirror, SinceTone = Arf4.NewVerse, Arf4.Mirror, Arf4.SinceTone
 local function NM_WRAP(x) return  function(y) return Assert(x(y)) end  end
 local Wish, Child, Hint, Echo = NM_WRAP(Arf4.NewWish), NM_WRAP(Arf4.NewChild), NM_WRAP(Arf4.NewHint), NM_WRAP(Arf4.NewEcho)
 local Helper, Delta, Time = NM_WRAP(Arf4.NewHelper), NM_WRAP(Arf4.SetDelta), NM_WRAP(Arf4.NewBuild)
+local Arf4
 
 local function Toneof(t)
 	if not Tonumber(t) then t = Helper(t) and t[2] or 0 end
 	return SinceTone() + (t<0 and -t/16 or t)
 end;
 ]], function() end
+
 
 -- Env & Audio
 --
@@ -61,9 +63,8 @@ local label_set_text, string_format = label.set_text, string.format
 
 local function AllocCanvas(wgoReq, hgoReq, egoReq)
 	local factory_create, vmath_vector4, go_delete, msg_url = factory.create, vmath.vector4, go.delete, msg.url
+	local Wishc, Hintc, Animc = msg_url("Nm:/Viewer#Wishc"), msg_url("Nm:/Viewer#Hintc"), msg_url("Nm:/Viewer#Animc")
 	local Echoc, Helperc = msg_url("Nm:/Viewer#Echoc"), msg_url("Nm:/Viewer#Helperc")
-	local Wishc, Hintc = msg_url("Nm:/Viewer#Wishc"), msg_url("Nm:/Viewer#Hintc")
-	local Animc = msg_url("Nm:/Viewer#Animc")
 	local agoReq = hgoReq + egoReq
 
 	if wgoReq > WgoCnt then for i = WgoCnt+1, wgoReq do
@@ -264,10 +265,9 @@ end
 local ProjectName = ""
 local COLOR, BLACK, GREY = hash "color", vmath.vector4(0, 0, 0, 1), vmath.vector4(0.37, 0.37, 0.37, 1)
 local InputLabel, InputText, InputMode = msg.url("Nm:/Labels#1-Input"), "", false
-local Scrolling = false
 
 local WindowCenterX, WindowCenterY, WindowRatio = 900, 540, 1
-local CtrlPressed, AltPressed, ButtonPressed = false, false, nil
+local Scrolling, CtrlPressed, AltPressed, ButtonPressed = false, false, false, nil
 local ButtonPanels, ButtonXs = nil, {   -- Y range [20,70]
 	24, 224,			248, 348,			372, 459.5,			483.5, 558.5,
 	582.5, 657.5,		681.5, 756.5,		780.5, 855.5,		879.5, 954.5,
