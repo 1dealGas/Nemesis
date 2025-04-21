@@ -11,6 +11,7 @@ namespace Arf4 {
 	enum  EaseType   : uint8_t  {   STATIC = 0, LINEAR, INSINE, OUTSINE									  };
 	enum  Status     : uint8_t  {  NJUDGED = 0, SPECIAL, NJUDGED_LIT, SPECIAL_LIT, HIT, HIT_LIT, LOST,
 								  SPECIAL_LOST, EARLY, EARLY_LIT, LATE, LATE_LIT						  };
+
 /* Wish */
 	struct Point {
 		Ar64(																// cdx: [-32,32) 1/8
@@ -26,10 +27,9 @@ namespace Arf4 {
 	};
 	struct Wish {
 		Ar64(																// Limits:
-			u64  nCount:6,  nSince:15;		u64  withDt:1;					// Node	  [1] 63	[T] 32767
-			u64  cCount:10, cSince:15;		u64  isSpecial:1;				// Child  [1] 1023	[T] 32767
-			u64  nIndex:6,  cIndex:10;										// Wish   [X] 1023	[T] 65535
-		)
+			u64  withDt:1 , isSpecial:1;	u64  nCount:6, nSince:15;		// Node	  [1] 63	[T] 32767
+			u64  cCount:10, cSince:15;		u64  nIndex:6, cIndex:10;		// Child  [1] 1023	[T] 32767
+		)																	// Wish   [X] 1023	[T] 65535
 	};
 
 /* Object */

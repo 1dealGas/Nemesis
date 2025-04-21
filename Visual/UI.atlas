@@ -1,7 +1,19 @@
 images {
-  image: "/Visual/Anim.png"
+  image: "/Visual/Wish.png"
+  sprite_trim_mode: SPRITE_TRIM_MODE_8
+}
+images {
+  image: "/Visual/WishSP.png"
+  sprite_trim_mode: SPRITE_TRIM_MODE_8
 }
 images {
   image: "/Visual/Hint.png"
+}
+images {
+  image: "/Visual/Echo.png"
+  sprite_trim_mode: SPRITE_TRIM_MODE_8
+}
+images {
+  image: "/Visual/Anim.png"
 }
 margin: 1

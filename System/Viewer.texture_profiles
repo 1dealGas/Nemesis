@@ -3,10 +3,6 @@ path_settings {
   profile: "N"
 }
 path_settings {
-  path: "/Visual/Wish.atlas"
-  profile: "UI"
-}
-path_settings {
   path: "/Visual/UI.atlas"
   profile: "UI"
 }

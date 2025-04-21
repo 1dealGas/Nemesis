@@ -5,7 +5,7 @@ embedded_components {
   "material: \"/builtins/materials/sprite.material\"\n"
   "textures {\n"
   "  sampler: \"texture_sampler\"\n"
-  "  texture: \"/Visual/Wish.atlas\"\n"
+  "  texture: \"/Visual/UI.atlas\"\n"
   "}\n"
   ""
   rotation {

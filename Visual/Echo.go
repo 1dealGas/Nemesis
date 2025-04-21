@@ -1,26 +1,7 @@
 embedded_components {
-  id: "Echodot"
-  type: "sprite"
-  data: "default_animation: \"Anim\"\n"
-  "material: \"/builtins/materials/sprite.material\"\n"
-  "size {\n"
-  "  x: 32.0\n"
-  "  y: 32.0\n"
-  "}\n"
-  "size_mode: SIZE_MODE_MANUAL\n"
-  "textures {\n"
-  "  sampler: \"texture_sampler\"\n"
-  "  texture: \"/Visual/UI.atlas\"\n"
-  "}\n"
-  ""
-  position {
-    z: 0.001
-  }
-}
-embedded_components {
   id: "Sprite"
   type: "sprite"
-  data: "default_animation: \"Hint\"\n"
+  data: "default_animation: \"Echo\"\n"
   "material: \"/builtins/materials/sprite.material\"\n"
   "slice9 {\n"
   "  x: 15.0\n"

@@ -11,7 +11,7 @@ height = 1080
 
 [project]
 title = Nemesis
-version = 0.1.1
+version = 0.1.2
 publisher = 1dealGas
 developer = 1dealGas
 custom_resources = Viewer.wav, Viewer.license
@@ -33,7 +33,7 @@ http_thread_count = 0
 app_manifest = /System/Viewer.appmanifest
 
 [resource]
-max_resources = 76
+max_resources = 72
 
 [graphics]
 verify_graphics_calls = 0
@@ -58,7 +58,7 @@ max_count = 0
 max_count = 0
 
 [sprite]
-max_count = 5636
+max_count = 4614
 
 [tilemap]
 max_count = 0

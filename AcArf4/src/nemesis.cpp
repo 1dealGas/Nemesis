@@ -399,8 +399,8 @@ static std::map<double, N4::Point> nodeMap;
 int Ar::NewWish(lua_State* L) noexcept {
 	/* Example:
 	 * local myWish = Wish {		-- When failed, a nil will be returned.
+	 *     WithDt = true,			-- true by default
 	 *     Special = true,			-- false by default
-	 *     WithDelta = true,		-- true by default
 	 *     {1}, 4, 3, LINEAR,		-- Bar 1, X=4, Y=3, Linear Ease
 	 *
 	 *     -- Add Radius(5 here) & Degree(0 here) like this
@@ -412,7 +412,7 @@ int Ar::NewWish(lua_State* L) noexcept {
 		return lua_pushnil(L), lua_pushfstring(L, NOT_A_TABLE, "Wish"), 2;
 	N4::Wish W = {
 		.isSpecial = (uint8_t)( lua_getfield(L, 1, "Special"), lua_toboolean(L,-1) ),
-		.withDt = (uint8_t)( lua_getfield(L, 1, "WithDelta"), lua_isnil(L,-1) ? true : lua_toboolean(L,-1) )
+		.withDt = (uint8_t)( lua_getfield(L, 1, "WithDt"), lua_isnil(L,-1) ? true : lua_toboolean(L,-1) )
 	};
 	lua_pop(L, 2);
 
@@ -866,7 +866,7 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 			if( (currentStep += stepDelta) > wView.cIndex )
 				wView.cIndex = currentStep;
 
-		/* Push this Wish into wIdxProto
+		/* Push this Wish into idxProto
 		 * Update F.before
 		 */
 		const uint32_t lastMs = w.nodes.back().beat;
@@ -895,7 +895,7 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 		else [[likely]] {
 			F.wIdx.push_back({ .f = (uint32_t)F.wishes.size(),  .c = (uint32_t)groupSize });
 			for( auto wish : group )
-				groupWgoUsed += wish.cIndex,	wish.cIndex = 0 /* End of the borrow */,
+				groupWgoUsed += wish.cIndex,	wish.cIndex = 0 /* End of the borrowing */,
 				F.wishes.push_back( wish );
 			if( F.wishes.size() > 65535 )   /* inout.cpp 9/9 */
 				return lua_pushboolean(L, false), lua_pushfstring(L, NEMESIS_SLE, "Wishes", LI 65535), 2;

@@ -65,8 +65,8 @@ Delta {
 ```lua
 --[ Example: ]--
 local myWish = Wish {        -- When failed, a nil will be returned.
+    WithDt = true,           -- true by default
     Special = true,          -- false by default
-    WithDelta = true,        -- true by default
     {1}, 4, 3, LINEAR,       -- Bar 1, X=4, Y=3, Linear Ease
 
     -- Add Radius(5 here) & Degree(0 here) like this
@@ -164,27 +164,27 @@ Official addons are as follows, **under the `Apache-2.0` License**. Considering 
 ```lua
 -- Duo
 --
-local DUO_EASE = 1
 local DUO_RADIUS = 3
+local DUO_WITHDT = false
 local DUO_BEFORE_TONE = 0.5
-local DUO_WISH_SPECIAL = false
 local DUO_HINT_SPECIAL = false
 
 local function Duo(t, x, y, ...)
     t = Toneof(t)
-    local S, degs = SinceTone(), SinceTone(0) or {...}
-    if t > DUO_BEFORE_TONE and degs[1] then
+    local S, t0, degs = SinceTone(), SinceTone(0) or (t - DUO_BEFORE_TONE), {...}
+    if t0 > 0 and degs[1] then
+        Wish { Special = true, WithDt = DUO_WITHDT, t0, x, y, 0, t, x, y }
         for i = 1, #degs do
-            local deg = degs[i]
-            Wish {  Special = DUO_WISH_SPECIAL,
-                    t-DUO_BEFORE_TONE, x, y, {DUO_RADIUS, deg, DUO_EASE},
-                    t, x, y, {0, deg}  }
+            local D = degs[i]
+            if type(D) == "number" then
+                Child { Radius = DUO_RADIUS, Special = DUO_HINT_SPECIAL,
+                        InitLoop = D/360, t }
+            else
+                Child { Radius = DUO_RADIUS, Special = DUO_HINT_SPECIAL,
+                        InitLoop = D[1]/360, DeltaLoop = D[2], t }
+            end
         end
-        if degs[2] then
-            Hint { Special = DUO_HINT_SPECIAL, t }
-        end
-    end
-    SinceTone(S)
+    end SinceTone(S)
 end
 
 
@@ -376,8 +376,7 @@ Delta {
     {71.751}, 3.7,
     {71.755}, 1,
     {72.001}, 3.7,
-    {72.01}, 1,
-    {72.063}, 0,
+    {72.01}, 0.88,
     {73}, 0.5,
     -13, 13/24,
     -14, 14/24,
@@ -460,13 +459,15 @@ Wish {
     {0}, 8, 4, INSINE,
     {1}, 8, 0.5
 }
-Hint{0}
-
+Wish {
+    Special = true,
+    {0, 1}, 8, 0.5, STATIC,
+    {1}, 8, 0.5
+} ; Hint{0}
 Wish {
     {3.5}, 8, 7.5, INSINE,
     {4}, 8, 0.5
-}
-Hint{0}
+} ; Hint{0}
 
 Wish {   -- A1
     {0.5}, 8, 7.5, INSINE,
@@ -503,7 +504,6 @@ Child{ {2}, {3.25}, {4.75}, {5.5} }
 Child{ InitLoop = 17/64, {5.5} }
 Rail(8, {5.875})
 
-
 -- Since {7}
 --
 Wish {   -- B1
@@ -528,7 +528,11 @@ Wish {   -- B2
     {12.25}, 8, 2.5, OUTSINE,
     {13}, 8, 9
 }
-Hint{ {12.25} }
+Wish {
+    Special = true,
+    {11.5}, 8, 2.5, STATIC,
+    {12.25}, 8, 2.5
+} ; Hint{0}
 
 Wish {   -- B3
     {7}, 8, 0.5, STATIC,
@@ -538,7 +542,6 @@ Child {
     {10.5}, {11.25}
 }
 
-DUO_EASE = INSINE
 Duo({7}, 8,4, 0,90,180,270)
 Duo({11.5}, 8,5.5, 45,135,225,315)
 
@@ -779,8 +782,7 @@ Rail(12,
     {40.375}, {43.75}, {47.625}, {49}, {49.25}, {49.75},
     {50.5}, {51.25}, {56.5}, {59.25},
     {60,-13}
-)
-Child{ InitLoop = 15/64, {60,-13} }
+) ; Child{ InitLoop = 15/64, {60,-13} }
 
 DUO_RADIUS = 1
 Duo({60,-8}, 7.125,4, 135,225)
@@ -859,8 +861,7 @@ Rail(5,
 )
 Rail(6,
     {62.75}, {63.125}, {63.75,-1}, {64.25}, {64.875}, {65.375}, {66.25}, {70.75}
-)
-Child{ InitLoop = 17/64, 0 }
+) ; Child{ InitLoop = 17/64, 0 }
 
 Rail(6,
     {71.75,-1}, {75.625}, -2, {76.375}, -2, {79}
@@ -913,8 +914,7 @@ Rail(10,
 )
 Rail(11,
     {67.125}, -2, {67.5}, -2, {70}
-)
-Child{ InitLoop = 15/64, {70} }
+) ; Child{ InitLoop = 15/64, {70} }
 
 Rail(11,
     {72}, {77.125}, -2, {79.375}
@@ -977,17 +977,21 @@ Duo({71.25}, 11.5,3.75, 45,315)
 DUO_RADIUS = 3.5
 Duo({80.5}, 8,5, 0,60,120,180)
 
-DUO_RADIUS = 5
-Duo({73}, 8,4, 0,180)
-
 DUO_RADIUS = 5.25
 Duo({68.125}, 8,2.25, 85,95)
 Duo({69.625}, 8,2.25, 83,97)
 
+DUO_RADIUS, DUO_WITHDT = 5, true
+Duo({73}, 8,4, 0,180)
+
 DUO_RADIUS = 7
-DUO_EASE = LINEAR
 Duo({71.5}, 8,1.125, 88,92)
 
+Wish {
+    Special = true,
+    {65.75}, 8, 4, STATIC,
+    {66.25}, 8, 4
+}
 Wish {
     {65.5}, 8, 4, {3, 270, INSINE},
     {65.875}, 8, 4, {1.5, 270, INSINE},
@@ -1007,8 +1011,7 @@ Wish {
     {65.5}, 8, 4, {2, 90, OUTSINE},
     {65.875}, 8, 4, {0.75, 90, INSINE},
     {66.25}, 8, 4, {0, 270}
-}
-Hint{0}
+} ; Hint{0}
 
 Wish {   -- C1
     {72.75}, 6.5, 0.5, STATIC,
@@ -1018,8 +1021,7 @@ Wish {   -- C1
 Wish {
     {73.25}, 4, 3.5, STATIC,
     {73.75}, 4, 3.5
-}
-Hint{0}
+} ; Hint{0}
 
 Wish {   -- C2
     {72.875}, 8, 0.5, STATIC,
@@ -1029,8 +1031,7 @@ Wish {   -- C2
 Wish {
     {73.5}, 8, 4.5, STATIC,
     {74}, 8, 4.5
-}
-Hint{0}
+} ; Hint{0}
 
 Wish {   -- C3
     {73}, 9.5, 5.5, {5, -90, INSINE},
@@ -1039,8 +1040,7 @@ Wish {   -- C3
 Wish{
     {73.75}, 12, 5.5, STATIC,
     {74.25}, 12, 5.5
-}
-Hint{0}
+} ; Hint{0}
 
 -- Since {81}
 --

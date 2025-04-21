@@ -21,23 +21,20 @@ struct AuInfo {
 /* Utils & Render Methods */
 static const Qt maxQuat(0, 0, 0.594822786751341, 0.803856860617217);
 static auto rotationToQuat(const float degree) noexcept {
-	const auto cosSin = CosSin({ .a = degree * 0.5f });
+	const auto cosSin = CosSin({ degree * 0.5f });
 	return Qt(0, 0, cosSin.b, cosSin.a);
 }
 
 static AuInfo renderWish(lua_State* L, AuInfo info, Duo Pos, const Duo zw) {
 	if( Pos.b = 540 + Pos.b * Arf.yScale,  Pos.b >= -36  &&  Pos.b <= 1116 )
 		if( Pos.a = 900 + Pos.a * Arf.xScale + Arf.xDelta,  Pos.a >= -36  &&  Pos.a <= 1836 ) {
-			const auto wGo = ( lua_rawgeti(L, WGO, ++info.wUsed),
-							   dmScript::CheckGOInstance(L,-1) );
-			// Tint
-			lua_pushnumber(L, info.sType ? -zw.b : zw.b);
-			lua_rawseti(L, WTINT, info.wUsed);
-
-			// Transform
-			SetPosition( wGo, P3(Pos.a, Pos.b, zw.a) );
-			SetScale   ( wGo, 1.074 - 0.437 * zw.b * (2-zw.b) );   // Scale: 1.074 -> 0.637
-			lua_pop(L, 1);
+			const auto wGo = ( lua_rawgeti(L, WGO, ++info.wUsed), dmScript::CheckGOInstance(L,-1) );
+			if( lua_pop(L,1), info.sType )
+				SetPosition( wGo, P3(Pos.a, Pos.b,.009f) ), lua_pushnumber(L,-zw.b), info.sType = 0;
+			else
+				SetPosition( wGo, P3(Pos.a, Pos.b, zw.a) ), lua_pushnumber(L, zw.b);
+			SetScale( wGo, 1.074 - 0.437 * zw.b * (2-zw.b) );   // Scale: 1.074 -> 0.637
+			lua_rawseti(L, WTINT, info.wUsed);   // Tint
 		}
 	return info;
 }
@@ -93,8 +90,8 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 		if(! Arf.isAuto )						JudgeArfSweep();
 	#endif
 
-	const double eSpeed = (PlayerSpeed * Arf.cSpeed + 11) / 1500.0;	  double zDt[2] = {Arf.msTime * 1024.0};
-	const double dSpeed = eSpeed / 1024 /* 1/1024 -> 1 */;				auto zTimer = (Arf.msTime >> 2);
+	const double eSpeed = (PlayerSpeed * Arf.cSpeed + 11) / 375;	  double zDt[2] = {Arf.msTime * 1024.0};
+	const double dSpeed = eSpeed / 1024 /* 1024x -> 4x */;				auto zTimer = (Arf.msTime >> 2);
 
 	/* Delta
 	 * zDt = Scale * 1024, Dt = Scale * xSpeed
@@ -142,15 +139,15 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 		const float tint = (Arf.msTime - nodes[0].ms) / 151.0,
 					ratio = Eased( (double)(Arf.msTime - thiz.ms) / (next.ms - thiz.ms), thiz.ease ),
 					radius = (thiz.radius + (next.radius - thiz.radius) * ratio) * 2; /* 1/4 -> 1/8 */
-		Duo nodePos   = CosSin({ .a = thiz.deg + (next.deg - thiz.deg) * ratio });
+		Duo nodePos   = CosSin({ thiz.deg + (next.deg - thiz.deg) * ratio });
 			nodePos.a = thiz.cdx + (next.cdx - thiz.cdx) * ratio + radius * nodePos.a /* cos(deg) */ ;
 			nodePos.b = thiz.cdy + (next.cdy - thiz.cdy) * ratio + radius * nodePos.b /* sin(deg) */ ;
 		info = renderWish(L, info, nodePos, { .a = 0.01f, .b = (float)fmin(tint, 1.0f) });
 
 		/* WishChild */
 		if( double wZdt;  w.cCount )
-			if( const auto wChilds = std::span(Arf.wishChilds).subspan(w.cSince, w.cCount);
-				(wZdt = zDt[w.withDt]) < wChilds.back().zDt  &&  (wChilds[0].zDt - wZdt) * dSpeed < 8 ) {
+			if( const auto wChilds = std::span(Arf.wishChilds).subspan(w.cSince, w.cCount); /* 8 -> 32/4 */
+				(wZdt = zDt[w.withDt]) < wChilds.back().zDt  &&  (wChilds[0].zDt - wZdt) * dSpeed < 32 ) {
 
 				// Manage cIndex
 				if( uint16_t prevCidx = w.cIndex - 1;  w.cIndex  &&  wZdt < wChilds[prevCidx].zDt )
@@ -161,23 +158,23 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 						++w.cIndex;
 
 				// Traverse Subspan
-				for( const auto c : wChilds.subspan(w.cIndex) )
-					if( double cQuot = 1 - (c.zDt - wZdt) * dSpeed / fmax(c.radius / 4.0, 6);  cQuot > 0 ) {
-						Duo childPos = CosSin({
-							.a = (float)( 360 * (c.initLoop / 64.0 + c.deltaLoop / 8.0 * cQuot) )
-						});
-						const float cTint = cQuot / 0.237;
-									cQuot = (1-cQuot) * (c.radius << 1);   /* 1/4 -> 1/8 */
-						childPos.a = nodePos.a + cQuot * childPos.a;
-						childPos.b = nodePos.b + cQuot * childPos.b;
-						info = renderWish(L, info, childPos, { .a = 0.03f, .b = (float)fmin(cTint, 1.0f) });
+				for( const auto c : wChilds.subspan(w.cIndex) )		/* 6 -> 24/4 */
+					if( double cQuo = 1 + (wZdt-c.zDt) * dSpeed / (c.radius>24 ? c.radius:24);  cQuo > 0 ) {
+						const Duo cZw = { .a = 0.03f, .b = (float)fmin(cQuo / 0.237, 1) };
+						if( w.isSpecial && !w.withDt )
+							cQuo = Eased(cQuo, INSINE);
+						Duo cPos = CosSin({ 360 * (float)(c.initLoop / 64.0 + c.deltaLoop / 8.0 * cQuo) });
+						/**/cQuo = (1-cQuo) * (c.radius << 1);   /* 1/4 -> 1/8 */
+						cPos.a = nodePos.a + cQuo * cPos.a;
+						cPos.b = nodePos.b + cQuo * cPos.b;
+						info = renderWish(L, info, cPos, cZw);
 					}
 			}
 		wish = w;   // `w` is a value, while `wish` is a ref
 	}
 
 	/* Hint & Echo */
-	if( info.sType = 0,  Arf.isAuto ) {   // There are much more boilerplate lines...
+	if( Arf.isAuto ) {   // There are much more boilerplate lines...
 		for(const Info hi = Arf.hIdx[zTimer];  const Hint h : std::span(Arf.hints).subspan(hi.f, hi.c)) {
 			const int16_t lifeMs = Arf.msTime - h.ms;
 			if( lifeMs > +370 )		continue;   // +470 if not Auto
@@ -215,7 +212,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 			else if( !e.radius )
 				if( lifeMs > -638 )		ePos = mPos, R = (lifeMs + 637) / 151.0;
 				else					continue;
-			else if( double x8d;  R += lifeMs * eSpeed / fmax(e.radius * 0.25, 6),  R < 0 )
+			else if( double x8d;  R += lifeMs * eSpeed / (e.radius>24 ? e.radius:24),  R < 0 )
 				goto MISC_UPDATE_AUTO;
 			else
 				x8d = (1-R) * (e.radius << 1),   /* 1/4 -> 1/8 */
@@ -254,13 +251,12 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 			if( lifeMs > 0 )
 				info = renderAnim(L, info, mPos, lifeMs),
 				info.playE = (lifeMs < info.frameDt)  &&  e.status;
-			else if( lifeMs > -511 ) {
-				const GO helper = ( lua_rawgeti(L, EH, ++info.xUsed), dmScript::CheckGOInstance(L,-1) );
-				lua_pushnumber( L, R = 1 + lifeMs / 510.0 ), lua_rawseti(L, EHTINT, info.xUsed);
-				SetPosition( helper, P3(mPos.a, mPos.b, 0.0625) );
-				SetScale( helper, 1.237 - R * (2-R) );
+			else if( GO helper;  lifeMs > -511 )
+				helper = ( lua_rawgeti(L, EH, ++info.xUsed), dmScript::CheckGOInstance(L,-1) ),
+				lua_pushnumber( L, R = 1 + lifeMs / 510.0 ), lua_rawseti(L, EHTINT, info.xUsed),
+				SetPosition( helper, P3(mPos.a, mPos.b, 0.0625) ),
+				SetScale( helper, 1.237 - R * (2-R) ),
 				lua_pop(L, 1);
-			}
 		}
 	}
 #ifndef AR_BUILD_VIEWER
@@ -332,7 +328,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 			else if( !e.radius )
 				if( lifeMs > -638 )		ePos = mPos, R = (lifeMs + 637) / 151.0;
 				else					continue;
-			else if( double x8d;  R += lifeMs * eSpeed / fmax(e.radius * 0.25, 6),  R < 0 )
+			else if( double x8d;  R += lifeMs * eSpeed / (e.radius>24 ? e.radius:24),  R < 0 )
 				goto MISC_UPDATE;
 			else
 				x8d = (1-R) * (e.radius << 1),   /* 1/4 -> 1/8 */

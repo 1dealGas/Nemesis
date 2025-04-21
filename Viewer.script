@@ -3,15 +3,15 @@
 --
 local HEADER, NIL = [[
 local Arf4 = Arf4
-local Assert, Tonumber, STATIC, LINEAR, INSINE, OUTSINE = assert, tonumber, 0, 1, 2, 3
+local Assert, STATIC, LINEAR, INSINE, OUTSINE = assert, 0, 1, 2, 3
 local Verse, Mirror, SinceTone = Arf4.NewVerse, Arf4.Mirror, Arf4.SinceTone
 local function NM_WRAP(x) return  function(y) return Assert(x(y)) end  end
 local Wish, Child, Hint, Echo = NM_WRAP(Arf4.NewWish), NM_WRAP(Arf4.NewChild), NM_WRAP(Arf4.NewHint), NM_WRAP(Arf4.NewEcho)
 local Helper, Delta, Time = NM_WRAP(Arf4.NewHelper), NM_WRAP(Arf4.SetDelta), NM_WRAP(Arf4.NewBuild)
-local Arf4
+local type, Arf4 = type
 
 local function Toneof(t)
-	if not Tonumber(t) then t = Helper(t) and t[2] or 0 end
+	if type(t)=="table" then Helper(t) t=t[2]or 0 end
 	return SinceTone() + (t<0 and -t/16 or t)
 end;
 ]], function() end
@@ -106,9 +106,9 @@ local function AllocCanvas(wgoReq, hgoReq, egoReq)
 
 	WgoCnt, HgoCnt, EgoCnt, AgoCnt = wgoReq, hgoReq, egoReq, agoReq
 	for i = 1, WgoCnt do	msg_post(WishSprites[i], DISABLE)	end
-	for i = 1, HgoCnt do	msg_post(HGOs[i], DISABLE)			end
+	for i = 1, HgoCnt do	msg_post(HintSprites[i], DISABLE)	end
 	for i = 1, EgoCnt do	msg_post(HelperSprites[i], DISABLE)
-							msg_post(EGOs[i], DISABLE)			end
+							msg_post(EchoSprites[i], DISABLE)	end
 	for i = 1, AgoCnt do	msg_post(AlSprites[i], DISABLE)
 							msg_post(ArSprites[i], DISABLE)		end
 	LastWgoUsed, LastHgoUsed, LastEgoUsed, LastAgoUsed = 0, 0, 0, 0
@@ -160,15 +160,15 @@ local function UpdateCanvas(playHs)   -- Should be delegated to update() except 
 	end
 
 	if hu > LastHgoUsed then
-		for i = LastHgoUsed+1, hu do	msg_post(HGOs[i], ENABLE)			end
+		for i = LastHgoUsed+1, hu do	msg_post(HintSprites[i], ENABLE)	end
 	elseif LastHgoUsed > hu then
-		for i = hu+1, LastHgoUsed do	msg_post(HGOs[i], DISABLE)			end
+		for i = hu+1, LastHgoUsed do	msg_post(HintSprites[i], DISABLE)	end
 	end
 
 	if eu > LastEgoUsed then
-		for i = LastEgoUsed+1, eu do	msg_post(EGOs[i], ENABLE)			end
+		for i = LastEgoUsed+1, eu do	msg_post(EchoSprites[i], ENABLE)	end
 	elseif LastEgoUsed > eu then
-		for i = eu+1, LastEgoUsed do	msg_post(EGOs[i], DISABLE)			end
+		for i = eu+1, LastEgoUsed do	msg_post(EchoSprites[i], DISABLE)	end
 	end
 
 	if xu > LastEhgoUsed then
