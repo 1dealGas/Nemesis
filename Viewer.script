@@ -2,26 +2,25 @@
 -- Copyright(c) 2025- 1dealGas, under the Apache 2.0 License.
 --
 local HEADER, NIL = [[
-local Arf4 = Arf4
-local Assert, STATIC, LINEAR, INSINE, OUTSINE = assert, 0, 1, 2, 3
-local Verse, Mirror, SinceTone = Arf4.NewVerse, Arf4.Mirror, Arf4.SinceTone
-local function NM_WRAP(x) return  function(y) return Assert(x(y)) end  end
-local Wish, Child, Hint, Echo = NM_WRAP(Arf4.NewWish), NM_WRAP(Arf4.NewChild), NM_WRAP(Arf4.NewHint), NM_WRAP(Arf4.NewEcho)
-local Helper, Delta, Time = NM_WRAP(Arf4.NewHelper), NM_WRAP(Arf4.SetDelta), NM_WRAP(Arf4.NewBuild)
-local type, Arf4 = type
+local A = Arf4
+local STATIC, LINEAR, INSINE, OUTSINE, _NA = 0,1,2,3, assert
+local function _NW(x) return function(y) return _NA(x(y)) end end
+local Wish, Child, Hint, Echo = _NW(A.NewWish), _NW(A.NewChild), _NW(A.NewHint), _NW(A.NewEcho)
+local Helper, Delta, Time = _NW(A.NewHelper), _NW(A.SetDelta), _NW(A.NewBuild)
+local Verse, Mirror, SinceTone = A.NewVerse, A.Mirror, A.SinceTone
+local _NT, A = type
 
 local function Toneof(t)
-	if type(t)=="table" then Helper(t) t=t[2]or 0 end
+	if _NT(t)=="table" then Helper(t); t=t[2] or 0 end
 	return SinceTone() + (t<0 and -t/16 or t)
 end;
 ]], function() end
-
 
 -- Env & Audio
 --
 local Title, WorksCmd = "Nemesis", nil
 local Proof, FumenLoaded   -- FumenLoaded: A Closure to reload the Fumen if updated. Nullable.
-local MessageLabel = msg.url("Nm:/Viewer#[Message]")
+local BG, Info, Meshes = msg.url("Nm:/Viewer#[BG]"), msg.url("Nm:/Viewer#[Info]"), msg.url("Nm:/Viewer#[Meshes]")
 
 local Audio, AudioLen, AudioPlaying
 local PlayUnit, StopUnit = AcAudio.PlayUnit, AcAudio.StopUnit
@@ -286,7 +285,7 @@ local ButtonFns = {
 	--------
 		local A1, A2 = LoadAudio(InputText)
 		if not A1 then
-			label_set_text(MessageLabel, "·][· Audio (*.opus/*.wav) Not Loaded")
+			label_set_text(Info, "·][· Audio (*.opus/*.wav) Not Loaded")
 		return end
 
 		local pBase = sys.get_save_file("Nemesis Works", InputText)
@@ -294,13 +293,13 @@ local ButtonFns = {
 			local L1, L2 = LoadFumenNm(pBase .. ".lua", true)
 			if L1 then
 				Audio, AudioLen = A1, A2
-				label_set_text( MessageLabel, string_format(UPDATE_FMT, CanvasMs, AudioLen, ObjectCount) )
+				label_set_text( Info, string_format(UPDATE_FMT, CanvasMs, AudioLen, ObjectCount) )
 				ProjectName, FumenLoaded = InputText, L1
 				window.set_title(
 					string_format( "%s -- %s.lua", Title, ProjectName )
 				)
 			else
-				label_set_text(MessageLabel, L2)
+				label_set_text(Info, L2)
 			end
 		return end
 
@@ -308,24 +307,24 @@ local ButtonFns = {
 			local F1, F2 = LoadFumenAr(pBase .. ".ar", true)
 			if F1 then
 				Audio, AudioLen = A1, A2
-				label_set_text( MessageLabel, string_format(UPDATE_FMT, CanvasMs, AudioLen, ObjectCount) )
+				label_set_text( Info, string_format(UPDATE_FMT, CanvasMs, AudioLen, ObjectCount) )
 				ProjectName, FumenLoaded = InputText, F1
 				window.set_title(
 					string_format( "%s -- %s.ar", Title, ProjectName )
 				)
 			else
-				label_set_text(MessageLabel, F2)
+				label_set_text(Info, F2)
 			end
 		return end
 	--------
-		label_set_text(MessageLabel, "·][· Script File Not Found")
+		label_set_text(Info, "·][· Script File Not Found")
 	end,
 
 	[3] = function()   -- Bar
 		if FumenLoaded and (not AudioPlaying) then
 			local t = Arf4.BarToMs( tonumber(InputText) or 0 )
 			CanvasMs = t < 0  and  0  or  t > AudioLen  and  AudioLen - 10  or  t
-			label_set_text( MessageLabel,
+			label_set_text( Info,
 				string_format(UPDATE_FMT, CanvasMs, AudioLen, ObjectCount)
 			)
 		end
@@ -335,7 +334,7 @@ local ButtonFns = {
 		if FumenLoaded and (not AudioPlaying) then
 			local t = tonumber(InputText) or 0
 			CanvasMs = t < 0  and  0  or  t > AudioLen  and  AudioLen - 10  or  t
-			label_set_text( MessageLabel,
+			label_set_text( Info,
 				string_format(UPDATE_FMT, CanvasMs, AudioLen, ObjectCount)
 			)
 		end
@@ -436,9 +435,10 @@ local InputModeFns = {
 
 	[hash"touch"] = function(action)
 		if action.released then
-			InputMode = go_set(ButtonPanels[1], TINTW, 0.73)
-		end
-		ProcessButtons(action)
+			if InputText == "SHOWBG" then		msg_post(BG, ENABLE) ; msg_post(Meshes, ENABLE)
+			elseif InputText == "HIDEBG" then	msg_post(BG, DISABLE); msg_post(Meshes, DISABLE)
+			end									InputMode = go_set(ButtonPanels[1], TINTW, 0.73)
+		end										ProcessButtons(action)
 	end
 }
 
@@ -460,7 +460,7 @@ local ActionFns = {
 		if FumenLoaded and (not AudioPlaying) and (action.value == 1) then
 			local t = (CtrlPressed or AltPressed) and (CanvasMs + 370) or (CanvasMs + 37)
 			CanvasMs, Scrolling = t > AudioLen  and  AudioLen - 10  or  t,  1
-			label_set_text( MessageLabel,
+			label_set_text( Info,
 				string_format(UPDATE_FMT, CanvasMs, AudioLen, ObjectCount)
 			)
 		end
@@ -470,7 +470,7 @@ local ActionFns = {
 		if FumenLoaded and (not AudioPlaying) and (action.value == 1) then
 			local t = (CtrlPressed or AltPressed) and (CanvasMs - 370) or (CanvasMs - 37)
 			CanvasMs, Scrolling = t < 0  and  0  or  t,  1
-			label_set_text( MessageLabel,
+			label_set_text( Info,
 				string_format(UPDATE_FMT, CanvasMs, AudioLen, ObjectCount)
 			)
 		end
@@ -480,7 +480,7 @@ local ActionFns = {
 		if FumenLoaded and (not AudioPlaying) and (action.pressed or action.repeated) then
 			local t = (CtrlPressed or AltPressed) and (CanvasMs + 370) or (CanvasMs + 37)
 			CanvasMs = t > AudioLen  and  AudioLen - 10  or  t
-			label_set_text( MessageLabel,
+			label_set_text( Info,
 				string_format(UPDATE_FMT, CanvasMs, AudioLen, ObjectCount)
 			)
 		end
@@ -490,7 +490,7 @@ local ActionFns = {
 		if FumenLoaded and (not AudioPlaying) and (action.pressed or action.repeated) then
 			local t = (CtrlPressed or AltPressed) and (CanvasMs - 370) or (CanvasMs - 37)
 			CanvasMs = t < 0  and  0  or  t
-			label_set_text( MessageLabel,
+			label_set_text( Info,
 				string_format(UPDATE_FMT, CanvasMs, AudioLen, ObjectCount)
 			)
 		end
@@ -567,7 +567,7 @@ function update()
 	if FumenLoaded then
 		if CheckPlaying(Audio) then
 			AudioPlaying, CanvasMs = true, GetTime(Audio)
-			label_set_text( MessageLabel, string_format(UPDATE_FMT, CanvasMs, AudioLen, ObjectCount) )
+			label_set_text( Info, string_format(UPDATE_FMT, CanvasMs, AudioLen, ObjectCount) )
 			UpdateCanvas(true)
 		else
 			AudioPlaying = UpdateCanvas()
@@ -595,8 +595,8 @@ function fixed_update()
 
 	if FumenLoaded then
 		local updated, er = FumenLoaded()
-		if updated then		label_set_text( MessageLabel, string_format(UPDATE_FMT, CanvasMs, AudioLen, ObjectCount) )
-		elseif er then		label_set_text( MessageLabel, er )
+		if updated then		label_set_text( Info, string_format(UPDATE_FMT, CanvasMs, AudioLen, ObjectCount) )
+		elseif er then		label_set_text( Info, er )
 		end
 	end
 end

@@ -55,7 +55,7 @@ Delta {
     {0},        1,           -- Bar 0, Ratio: 1
     {2, 1/32},  -1,          -- Bar 2, then 1/32 Tone, Ratio: -1
     {2, 1},     0.9,         -- Bar 2, then 1/16 Tone, Ratio: 0.9
-    15,         1,           -- Bar 2(Cached), then 15/16 Tone, Ratio: 1
+    -15,        1,           -- Bar 2(Cached), then 15/16 Tone, Ratio: 1
     ···
 }
 ```

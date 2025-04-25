@@ -59,7 +59,7 @@ embedded_instances {
   "\"\n"
   "}\n"
   "embedded_components {\n"
-  "  id: \"[Message]\"\n"
+  "  id: \"[Info]\"\n"
   "  type: \"label\"\n"
   "  data: \"size {\\n"
   "  x: 3452.0\\n"

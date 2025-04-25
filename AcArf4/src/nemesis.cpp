@@ -76,9 +76,9 @@ static double barToTone(const double bar) noexcept {   // With User Input
 	return thiz.toneBase + fmax(bar - thiz.bar, 0) * thiz.a / thiz.b;   // tone >= 0 guaranteed
 }
 
-static double toneToBar(const double tone) noexcept {   // Internal, tone >= 0 required
+static double toneToBeat(const double tone) noexcept {   // Internal, tone >= 0 required
 	if( const auto lastTempo = N.tempoList.back();  tone >= lastTempo.toneBase )
-		return lastTempo.bar + (tone - lastTempo.toneBase) * lastTempo.b / lastTempo.a;
+		return lastTempo.beatBase + (tone - lastTempo.toneBase) * lastTempo.b;
 
 	const auto initIt = N.tempoList.begin(), lastIt = N.tempoList.end() - 1;
 		  auto it = initIt + N.tIdx;
@@ -89,23 +89,7 @@ static double toneToBar(const double tone) noexcept {   // Internal, tone >= 0 r
 	N.tIdx = it - initIt;
 
 	const auto thiz = *it;
-	return thiz.bar + (tone - thiz.toneBase) * thiz.b / thiz.a;
-}
-
-static double barToBeat(const double bar) noexcept {   // Internal, bar >= 0 required
-	if( const auto lastTempo = N.tempoList.back();  bar >= lastTempo.bar )
-		return lastTempo.beatBase + (bar - lastTempo.bar) * lastTempo.a;
-
-	const auto initIt = N.tempoList.begin(), lastIt = N.tempoList.end() - 1;
-		  auto it = initIt + N.tIdx;
-	while( it != initIt  &&  bar < it->bar ) { --it; }
-	/**/auto nextIt = it + 1;
-	while( it != lastIt  &&  bar >= nextIt->bar )
-		++it, ++nextIt;
-	N.tIdx = it - initIt;
-
-	const auto thiz = *it;
-	return thiz.beatBase + (bar - thiz.bar) * thiz.a;
+	return thiz.beatBase + (tone - thiz.toneBase) * thiz.b;
 }
 
 static double beatToMs(const double beat) noexcept {   // Internal, beat >= 0 required
@@ -162,11 +146,11 @@ static void wishCacheT(N4::Wish& w, const double beat) noexcept {
 			while( ++next,  beat >= next->beat );
 			thiz = next - 1;
 		}
-		const double ratio = Ar::Eased( (beat - thiz->beat) / (next->beat - thiz->beat), thiz->ease );
-		w.wNx = thiz->x + (next->x - thiz->x) * ratio;
-		w.wNy = thiz->y + (next->y - thiz->y) * ratio;
-		w.wRadius = thiz->radius + (next->radius - thiz->radius) * ratio;
-		w.wDegree = thiz->degree + (next->degree - thiz->degree) * ratio;
+		double ratio = thiz->beat;  ratio = Ar::Eased( (beat - ratio) / (next->beat - ratio), thiz->ease );
+		w.wNx = thiz->x * (1-ratio) + next->x * ratio;   // This makes less derefs
+		w.wNy = thiz->y * (1-ratio) + next->y * ratio;
+		w.wRadius = thiz->radius * (1-ratio) + next->radius * ratio;
+		w.wDegree = thiz->degree * (1-ratio) + next->degree * ratio;
 	}
 	const auto cosSin = Ar::CosSin({ .a = (float)w.wDegree });
 	w.wX = w.wNx + w.wRadius * cosSin.a;
@@ -178,10 +162,10 @@ static double checkTime(lua_State* L, const int where, const bool local = false)
 		return (local ? S : N.sinceTone) = barToTone(( lua_rawgeti(L, where, 1), lua_tonumber(L, -1)
 			   )),																			lua_pop(L, 1),
 			   T = ( lua_rawgeti(L, where, 2), lua_tonumber(L, -1) ),						lua_pop(L, 1),
-			   barToBeat(toneToBar(  (local ? S : N.sinceTone) + ( T<0 ? -T/16 : T )  ));
+			   toneToBeat( (local ? S : N.sinceTone) + (T<0 ? -T/16 : T) );
 	else [[likely]]
 		return T = lua_tonumber(L, where),
-			   barToBeat(toneToBar(  N.sinceTone + ( T<0 ? -T/16 : T )  ));
+			   toneToBeat( N.sinceTone + (T<0 ? -T/16 : T) );
 }   // Stack balanced; Won't pop
 
 static N4::Point checkPointArg(lua_State* L, const int where) noexcept {   // Stack balanced; Won't pop
@@ -189,11 +173,9 @@ static N4::Point checkPointArg(lua_State* L, const int where) noexcept {   // St
 		const auto r = ( lua_rawgeti(L, where, 1), lua_tonumber(L, -1) );					lua_pop(L, 1);
 		const auto d = ( lua_rawgeti(L, where, 2), lua_tonumber(L, -1) );					lua_pop(L, 1);
 		const auto e = ( lua_rawgeti(L, where, 3), lua_tointeger(L, -1) );					lua_pop(L, 1);
-		return {
-			.radius = r < 0 ? 0  :  r > 15.75 ? 15.75  :  r,
-			.degree = d < -1024 ? -1024  :  d > 1023 ? 1023  :  d,
-			.ease = (uint8_t)(e > Arf4::OUTSINE  ?  Arf4::LINEAR : e)
-		};
+		return { .radius = r < 0 ? 0  :  r > 15.75 ? 15.75  :  r,
+				 .degree = d < -1024 ? -1024  :  d > 1023 ? 1023  :  d,
+				 .ease = (uint8_t)(e > Arf4::OUTSINE ? Arf4::LINEAR : e) };
 	}
 	const auto e = lua_tonumber(L, where);
 	return {.ease = (uint8_t)(e > Arf4::OUTSINE  ?  Arf4::LINEAR : e)};
@@ -276,15 +258,14 @@ int Ar::NewBuild(lua_State* L) noexcept {
 	bpmMap.clear();
 	if( const size_t bpmInputLen = lua_objlen(L, 1);  tempoMap.empty() ) [[likely]]
 		for( size_t i = 1;  i < bpmInputLen;  i += 2 ) {
-			const double beat = barToBeat(( lua_rawgeti(L, 1, i), lua_tonumber(L, -1) )),   // >=0 Clamped
+			const double beat = toneToBeat(barToTone(( lua_rawgeti(L, 1, i), lua_tonumber(L,-1) ))),
 						  bpm = ( lua_rawgeti(L, 1, i+1), lua_tonumber(L, -1) );
-			bpmMap[beat] = { .init = beat,  .value = 60000 / (bpm<0 ? 170.0 : bpm) };
+			bpmMap[beat] = { .init = beat /* >=0 Clamped */,  .value = 60000 / (bpm>0 ? bpm : 170.0) };
 			lua_pop(L, 2);
 		}
 	else {
 		const size_t tempoCount = tempoMap.size();
-		N.tempoList.reserve(tempoCount);
-		N.tempoList.clear();
+		N.tempoList.clear(), N.tempoList.reserve(tempoCount);
 
 		for( const auto& [_, tempo] : tempoMap )
 			N.tempoList.push_back(tempo);
@@ -299,10 +280,10 @@ int Ar::NewBuild(lua_State* L) noexcept {
 		}
 		for( size_t i = 1;  i < bpmInputLen;  i += 3 ) {
 			const double bpm  = ( lua_rawgeti(L, 1, i+2), lua_tonumber(L, -1) );
-				  double beat = barToBeat(( lua_rawgeti(L, 1, i), lua_tonumber(L, -1) ))
+				  double beat = toneToBeat(barToTone(( lua_rawgeti(L, 1, i), lua_tonumber(L,-1) )))
 							  + ( lua_rawgeti(L, 1, i+1), lua_tonumber(L, -1) );
 						 beat = beat < 0  ?  0 : beat;
-			bpmMap[beat] = { .init = beat,  .value = 60000 / (bpm<0 ? 170.0 : bpm) };
+			bpmMap[beat] = { .init = beat,  .value = 60000 / (bpm>0 ? bpm : 170.0) };
 			lua_pop(L, 3);
 		}
 	}
@@ -346,7 +327,7 @@ int Ar::SetDelta(lua_State* L) noexcept {
 	 *     {0},			1,			-- Bar 0, Ratio: 1
 	 *     {2, 1/32},	-1,			-- Bar 2, then 1/32 Tone, Ratio: -1
 	 *     {2, 1},		0.9,		-- Bar 2, then 1/16 Tone, Ratio: 0.9
-	 *     15,			1,			-- Bar 2(Cached), then 15/16 Tone, Ratio: 1
+	 *     -15,			1,			-- Bar 2(Cached), then 15/16 Tone, Ratio: 1
 	 *     ···
 	 * }
 	 */
@@ -355,11 +336,10 @@ int Ar::SetDelta(lua_State* L) noexcept {
 	deltaMap.clear();
 
 	const size_t inputLen = lua_objlen(L, 1);
-	for( size_t i = 1;  i < inputLen;  i += 2 ) {
+	for( size_t i = 1;  i < inputLen;  i += 2 )
 		deltaMap[ beatToMs(( lua_rawgeti(L, 1, i), checkTime(L, -1) )) ]
-			  = ( lua_rawgeti(L, 1, i+1), lua_tonumber(L, -1) );
+			  = ( lua_rawgeti(L, 1, i+1), lua_tonumber(L, -1) ),
 		lua_pop(L, 2);
-	}
 
 	switch( auto SZ = deltaMap.size();  SZ ) {
 		[[unlikely]] case 0:
@@ -429,7 +409,7 @@ int Ar::NewWish(lua_State* L) noexcept {
 		nodeMap[( nodeMap.contains(beat) ? nextDouble(beat) : beat )] = point;
 		lua_pop(L, 4);
 	}
-	if( nodeMap.empty()  ||  nodeMap.crbegin()->second.beat <= nextDouble( nodeMap.cbegin()->second.beat ) )
+	if( nodeMap.empty()  ||  nodeMap.crbegin()->first <= nextDouble( nodeMap.cbegin()->first ) )
 		return lua_pushnil(L), lua_pushstring(L, NOT_SUF), 2;
 
 	W.nodes.reserve( nodeMap.size() );
@@ -662,7 +642,8 @@ int Ar::BarToMs(lua_State* L) noexcept {
 	/* Usage:
 	 * local ms = BarToMs(absolute_bar_value)
 	 */
-	return lua_pushnumber(L, beatToMs(barToBeat( lua_tonumber(L,1) ))), 1;
+	lua_Number T = lua_tonumber(L, 1);
+	return T = barToTone(T), T = toneToBeat(T), T = beatToMs(T), lua_pushnumber(L,T), 1;
 }
 
 
@@ -902,7 +883,8 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 			if( groupWgoUsed > 1023 )   /* Arf4.h */
 				return lua_pushboolean(L, false),
 					   lua_pushfstring(L, NEMESIS_SLE, "Wishes within 2048ms", LI 1023), 2;
-			F.wgoRequired = groupWgoUsed > F.wgoRequired  ?  groupWgoUsed : F.wgoRequired;
+			if( groupWgoUsed > F.wgoRequired )
+				F.wgoRequired = groupWgoUsed;
 		}
 
 	return  Arf = { .val = F.val, .isAuto = true },
