@@ -39,7 +39,7 @@ static AuInfo renderWish(lua_State* L, AuInfo info, Duo Pos, const Duo zw) {
 	return info;
 }
 
-static AuInfo renderAnim(lua_State* L, AuInfo info, const Duo Pos, const int16_t msPast) {
+static AuInfo renderAnim(lua_State* L, AuInfo info, const Duo Pos, const uint16_t msPast) {
 	if( msPast > 370 )	return info;
 	const auto tint = ( lua_rawgeti(L, ATINT, ++info.aUsed), dmScript::CheckVector4(L, -1) );
 	const auto lAgo = ( lua_rawgeti(L, AL, info.aUsed), dmScript::CheckGOInstance(L, -1) ),
