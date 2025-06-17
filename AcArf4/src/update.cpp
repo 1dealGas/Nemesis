@@ -138,10 +138,10 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 
 		const float tint = (Arf.msTime - nodes[0].ms) / 151.0,
 					ratio = Eased( (double)(Arf.msTime - thiz.ms) / (next.ms - thiz.ms), thiz.ease ),
-					radius = (thiz.radius + (next.radius - thiz.radius) * ratio) * 2; /* 1/4 -> 1/8 */
+					radius = thiz.radius + (next.radius - thiz.radius) * ratio;
 		Duo nodePos   = CosSin({ thiz.deg + (next.deg - thiz.deg) * ratio });
-			nodePos.a = thiz.cdx + (next.cdx - thiz.cdx) * ratio + radius * nodePos.a /* cos(deg) */ ;
-			nodePos.b = thiz.cdy + (next.cdy - thiz.cdy) * ratio + radius * nodePos.b /* sin(deg) */ ;
+			nodePos.a = thiz.cdx + (next.cdx - thiz.cdx) * ratio + radius * nodePos.a * 4;  // cos, x4 → x16
+			nodePos.b = thiz.cdy + (next.cdy - thiz.cdy) * ratio + radius * nodePos.b * 2;  // sin, x4 → x8
 		info = renderWish(L, info, nodePos, { .a = 0.01f, .b = (float)fmin(tint, 1.0f) });
 
 		/* WishChild */
@@ -165,7 +165,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 							cQuo = Eased(cQuo, INSINE);
 						Duo cPos = CosSin({ 360 * (float)(c.initLoop / 64.0 + c.deltaLoop / 8.0 * cQuo) });
 						/**/cQuo = (1-cQuo) * (c.radius << 1);   /* 1/4 -> 1/8 */
-						cPos.a = nodePos.a + cQuo * cPos.a;
+						cPos.a = nodePos.a + cQuo * cPos.a * 2;
 						cPos.b = nodePos.b + cQuo * cPos.b;
 						info = renderWish(L, info, cPos, cZw);
 					}
@@ -217,7 +217,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 			else
 				x8d = (1-R) * (e.radius << 1),   /* 1/4 -> 1/8 */
 				ePos.a = 360 * (e.initLoop / 64.0 + e.deltaLoop / 8.0 * R),  ePos = CosSin(ePos),
-				ePos.a = mPos.a + x8d * ePos.a * Arf.xScale,
+				ePos.a = mPos.a + x8d * ePos.a * Arf.xScale * 2,
 				ePos.b = mPos.b + x8d * ePos.b * Arf.yScale,
 				R /= 0.237;
 			R = fmin( R,1 );
@@ -333,7 +333,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 			else
 				x8d = (1-R) * (e.radius << 1),   /* 1/4 -> 1/8 */
 				ePos.a = 360 * (e.initLoop / 64.0 + e.deltaLoop / 8.0 * R),  ePos = CosSin(ePos),
-				ePos.a = mPos.a + x8d * ePos.a * Arf.xScale,
+				ePos.a = mPos.a + x8d * ePos.a * Arf.xScale * 2,
 				ePos.b = mPos.b + x8d * ePos.b * Arf.yScale,
 				R /= 0.237;
 			R = fmin( R,1 );

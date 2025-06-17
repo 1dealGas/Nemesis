@@ -14,8 +14,8 @@ namespace Arf4 {
 
 /* Wish */
 	struct Point {
-		Ar64(																// cdx: [-32,32) 1/8
-			i64  cdx:9, cdy:8;				u64  ease:2, ms:20;				// cdy: [-16,16) 1/8
+		Ar64(																// cdx: [-32,32) 1/16
+			i64  cdx:10, cdy:7;				u64  ease:2, ms:20;				// cdy: [-8,8) 1/8
 			u64  radius:6;					i64  deg:11;					// rad  [0,16) 1/4
 		)																	// deg  [-1024,1023) 1/1
 	};
@@ -35,13 +35,13 @@ namespace Arf4 {
 /* Object */
 	struct Hint {
 		Ar64(
-			i64  cdx:9, cdy:8;				u64  ms:20, status:4;			// Limits for Objects:
+			i64  cdx:10, cdy:7;				u64  ms:20, status:4;			// Limits for Objects:
 			i64  deltaMs:8;													// [X] 511  [T] 32767
 		)
 	};
 	struct Echo {
 		Ar64(																// radius	 [0,8)  1/4
-			i64  cdx:9, cdy:8;				u64  ms:20, status:3;			// initLoop  [0,1)  1/64
+			i64  cdx:10, cdy:7;				u64  ms:20, status:3;			// initLoop  [0,1)  1/64
 			u64  radius:5, initLoop:6;		i64  deltaLoop:5, deltaMs:8;	// deltaLoop (-2,2) 1/8
 		)
 	};
@@ -81,7 +81,7 @@ namespace Arf4 {
 		uint64_t				sHit:6, hHit:15, eHit:15, early:15, late:15, lost:16;
 		uint64_t				isAuto:1, isAnyX:1, isAnyY:1;
 		/*------------------------*/
-		float					xScale = 112.5/8, yScale = xScale;
+		float					xScale = 112.5 / 16, yScale = 112.5 / 8;
 		float					xDelta, cSpeed = 1;							// cS ∈ [0,1.25]  pS ∈ [0.5,10]
 	};
 }

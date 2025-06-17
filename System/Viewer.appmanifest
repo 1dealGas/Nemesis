@@ -2,7 +2,7 @@ platforms:
   armv7-ios:
     context:
       excludeLibs: [Box2D, physics, LinearMath, BulletDynamics, BulletCollision, box2d, box2d_defold, script_box2d, script_box2d_defold, gamesys_model, gamesys_rig, rig, record, vpx, profilerext, sound, tremolo, decoder_wav, decoder_ogg, liveupdate, image]
-      excludeSymbols: [ScriptBox2DExt, ScriptModelExt, ProfilerExt, DefaultSoundDevice, AudioDecoderWav, AudioDecoderStbVorbis, AudioDecoderTremolo, ResourceTypeWav, ResourceTypeOgg, ScriptImageExt, ScriptTypesExt]
+      excludeSymbols: [ScriptBox2DExt, ScriptModelExt, ProfilerExt, DefaultSoundDevice, AudioDecoderWav, ResourceTypeWav, AudioDecoderStbVorbis, AudioDecoderTremolo, ResourceTypeOgg, ScriptImageExt, ScriptTypesExt]
       symbols: []
       libs: [physics_null, gamesys_rig_null, gamesys_model_null, rig_null, record_null, profilerext_null, sound_null, liveupdate_null, image_null]
       frameworks: []
@@ -11,7 +11,7 @@ platforms:
   arm64-ios:
     context:
       excludeLibs: [Box2D, physics, LinearMath, BulletDynamics, BulletCollision, box2d, box2d_defold, script_box2d, script_box2d_defold, gamesys_model, gamesys_rig, rig, record, vpx, profilerext, sound, tremolo, decoder_wav, decoder_ogg, liveupdate, image]
-      excludeSymbols: [ScriptBox2DExt, ScriptModelExt, ProfilerExt, DefaultSoundDevice, AudioDecoderWav, AudioDecoderStbVorbis, AudioDecoderTremolo, ResourceTypeWav, ResourceTypeOgg, ScriptImageExt, ScriptTypesExt]
+      excludeSymbols: [ScriptBox2DExt, ScriptModelExt, ProfilerExt, DefaultSoundDevice, AudioDecoderWav, ResourceTypeWav, AudioDecoderStbVorbis, AudioDecoderTremolo, ResourceTypeOgg, ScriptImageExt, ScriptTypesExt]
       symbols: []
       libs: [physics_null, gamesys_rig_null, gamesys_model_null, rig_null, record_null, profilerext_null, sound_null, liveupdate_null, image_null]
       frameworks: []
@@ -20,7 +20,7 @@ platforms:
   x86_64-ios:
     context:
       excludeLibs: [Box2D, physics, LinearMath, BulletDynamics, BulletCollision, box2d, box2d_defold, script_box2d, script_box2d_defold, gamesys_model, gamesys_rig, rig, record, vpx, profilerext, sound, tremolo, decoder_wav, decoder_ogg, liveupdate, image]
-      excludeSymbols: [ScriptBox2DExt, ScriptModelExt, ProfilerExt, DefaultSoundDevice, AudioDecoderWav, AudioDecoderStbVorbis, AudioDecoderTremolo, ResourceTypeWav, ResourceTypeOgg, ScriptImageExt, ScriptTypesExt]
+      excludeSymbols: [ScriptBox2DExt, ScriptModelExt, ProfilerExt, DefaultSoundDevice, AudioDecoderWav, ResourceTypeWav, AudioDecoderStbVorbis, AudioDecoderTremolo, ResourceTypeOgg, ScriptImageExt, ScriptTypesExt]
       symbols: []
       libs: [physics_null, gamesys_rig_null, gamesys_model_null, rig_null, record_null, profilerext_null, sound_null, liveupdate_null, image_null]
       frameworks: []
@@ -30,7 +30,7 @@ platforms:
     context:
       excludeLibs: [Box2D, physics, LinearMath, BulletDynamics, BulletCollision, box2d, box2d_defold, script_box2d, script_box2d_defold, gamesys_model, gamesys_rig, rig, record, vpx, profilerext, sound, tremolo, decoder_wav, decoder_ogg, liveupdate, image]
       excludeJars: []
-      excludeSymbols: [ScriptBox2DExt, ScriptModelExt, ProfilerExt, DefaultSoundDevice, AudioDecoderWav, AudioDecoderStbVorbis, AudioDecoderTremolo, ResourceTypeWav, ResourceTypeOgg, ScriptImageExt, ScriptTypesExt]
+      excludeSymbols: [ScriptBox2DExt, ScriptModelExt, ProfilerExt, DefaultSoundDevice, AudioDecoderWav, ResourceTypeWav, AudioDecoderStbVorbis, AudioDecoderTremolo, ResourceTypeOgg, ScriptImageExt, ScriptTypesExt]
       symbols: []
       libs: [physics_null, gamesys_rig_null, gamesys_model_null, rig_null, record_null, profilerext_null, sound_null, liveupdate_null, image_null]
       flags: [-Ofast, -fno-fast-math, -ffunction-sections, -fdata-sections, -flto]
@@ -40,7 +40,7 @@ platforms:
     context:
       excludeLibs: [Box2D, physics, LinearMath, BulletDynamics, BulletCollision, box2d, box2d_defold, script_box2d, script_box2d_defold, gamesys_model, gamesys_rig, rig, record, vpx, profilerext, sound, tremolo, decoder_wav, decoder_ogg, liveupdate, image]
       excludeJars: []
-      excludeSymbols: [ScriptBox2DExt, ScriptModelExt, ProfilerExt, DefaultSoundDevice, AudioDecoderWav, AudioDecoderStbVorbis, AudioDecoderTremolo, ResourceTypeWav, ResourceTypeOgg, ScriptImageExt, ScriptTypesExt]
+      excludeSymbols: [ScriptBox2DExt, ScriptModelExt, ProfilerExt, DefaultSoundDevice, AudioDecoderWav, ResourceTypeWav, AudioDecoderStbVorbis, AudioDecoderTremolo, ResourceTypeOgg, ScriptImageExt, ScriptTypesExt]
       symbols: []
       libs: [physics_null, gamesys_rig_null, gamesys_model_null, rig_null, record_null, profilerext_null, sound_null, liveupdate_null, image_null]
       flags: [-Ofast, -fno-fast-math, -ffunction-sections, -fdata-sections, -flto]
@@ -48,26 +48,26 @@ platforms:
       jetifier: true
   arm64-osx:
     context:
-      excludeLibs: [Box2D, physics, LinearMath, BulletDynamics, BulletCollision, box2d, box2d_defold, script_box2d, script_box2d_defold, gamesys_model, gamesys_rig, rig, record, vpx, profilerext, sound, tremolo, decoder_wav, decoder_ogg, liveupdate, image]
-      excludeSymbols: [ScriptBox2DExt, ScriptModelExt, ProfilerExt, DefaultSoundDevice, AudioDecoderWav, AudioDecoderStbVorbis, AudioDecoderTremolo, ResourceTypeWav, ResourceTypeOgg, ScriptImageExt, ScriptTypesExt]
-      symbols: []
-      libs: [physics_null, gamesys_rig_null, gamesys_model_null, rig_null, record_null, profilerext_null, sound_null, liveupdate_null, image_null]
-      frameworks: []
+      excludeLibs: [Box2D, physics, LinearMath, BulletDynamics, BulletCollision, box2d, box2d_defold, script_box2d, script_box2d_defold, gamesys_model, gamesys_rig, rig, record, vpx, profilerext, sound, tremolo, decoder_wav, decoder_ogg, liveupdate, image, graphics_vulkan, platform_vulkan, MoltenVK]
+      excludeSymbols: [ScriptBox2DExt, ScriptModelExt, ProfilerExt, DefaultSoundDevice, AudioDecoderWav, ResourceTypeWav, AudioDecoderStbVorbis, AudioDecoderTremolo, ResourceTypeOgg, ScriptImageExt, ScriptTypesExt, GraphicsAdapterVulkan]
+      symbols: [GraphicsAdapterOpenGL]
+      libs: [physics_null, gamesys_rig_null, gamesys_model_null, rig_null, record_null, profilerext_null, sound_null, liveupdate_null, image_null, graphics, platform]
+      frameworks: [OpenGL]
       flags: [-Ofast, -fno-fast-math, -ffunction-sections, -fdata-sections, -flto]
       linkFlags: [-flto]
   x86_64-osx:
     context:
-      excludeLibs: [Box2D, physics, LinearMath, BulletDynamics, BulletCollision, box2d, box2d_defold, script_box2d, script_box2d_defold, gamesys_model, gamesys_rig, rig, record, vpx, profilerext, sound, tremolo, decoder_wav, decoder_ogg, liveupdate, image]
-      excludeSymbols: [ScriptBox2DExt, ScriptModelExt, ProfilerExt, DefaultSoundDevice, AudioDecoderWav, AudioDecoderStbVorbis, AudioDecoderTremolo, ResourceTypeWav, ResourceTypeOgg, ScriptImageExt, ScriptTypesExt]
-      symbols: []
-      libs: [physics_null, gamesys_rig_null, gamesys_model_null, rig_null, record_null, profilerext_null, sound_null, liveupdate_null, image_null]
-      frameworks: []
+      excludeLibs: [Box2D, physics, LinearMath, BulletDynamics, BulletCollision, box2d, box2d_defold, script_box2d, script_box2d_defold, gamesys_model, gamesys_rig, rig, record, vpx, profilerext, sound, tremolo, decoder_wav, decoder_ogg, liveupdate, image, graphics_vulkan, platform_vulkan, MoltenVK]
+      excludeSymbols: [ScriptBox2DExt, ScriptModelExt, ProfilerExt, DefaultSoundDevice, AudioDecoderWav, ResourceTypeWav, AudioDecoderStbVorbis, AudioDecoderTremolo, ResourceTypeOgg, ScriptImageExt, ScriptTypesExt, GraphicsAdapterVulkan]
+      symbols: [GraphicsAdapterOpenGL]
+      libs: [physics_null, gamesys_rig_null, gamesys_model_null, rig_null, record_null, profilerext_null, sound_null, liveupdate_null, image_null, graphics, platform]
+      frameworks: [OpenGL]
       flags: [-Ofast, -fno-fast-math, -ffunction-sections, -fdata-sections, -flto]
       linkFlags: [-flto]
   x86_64-linux:
     context:
       excludeLibs: [Box2D, physics, LinearMath, BulletDynamics, BulletCollision, box2d, box2d_defold, script_box2d, script_box2d_defold, gamesys_model, gamesys_rig, rig, record, vpx, profilerext, sound, tremolo, decoder_wav, decoder_ogg, liveupdate, image]
-      excludeSymbols: [ScriptBox2DExt, ScriptModelExt, ProfilerExt, DefaultSoundDevice, AudioDecoderWav, AudioDecoderStbVorbis, AudioDecoderTremolo, ResourceTypeWav, ResourceTypeOgg, ScriptImageExt, ScriptTypesExt]
+      excludeSymbols: [ScriptBox2DExt, ScriptModelExt, ProfilerExt, DefaultSoundDevice, AudioDecoderWav, ResourceTypeWav, AudioDecoderStbVorbis, AudioDecoderTremolo, ResourceTypeOgg, ScriptImageExt, ScriptTypesExt]
       symbols: []
       libs: [physics_null, gamesys_rig_null, gamesys_model_null, rig_null, record_null, profilerext_null, sound_null, liveupdate_null, image_null]
       dynamicLibs: []
@@ -76,7 +76,7 @@ platforms:
   arm64-linux:
     context:
       excludeLibs: [Box2D, physics, LinearMath, BulletDynamics, BulletCollision, box2d, box2d_defold, script_box2d, script_box2d_defold, gamesys_model, gamesys_rig, rig, record, vpx, profilerext, sound, tremolo, decoder_wav, decoder_ogg, liveupdate, image]
-      excludeSymbols: [ScriptBox2DExt, ScriptModelExt, ProfilerExt, DefaultSoundDevice, AudioDecoderWav, AudioDecoderStbVorbis, AudioDecoderTremolo, ResourceTypeWav, ResourceTypeOgg, ScriptImageExt, ScriptTypesExt]
+      excludeSymbols: [ScriptBox2DExt, ScriptModelExt, ProfilerExt, DefaultSoundDevice, AudioDecoderWav, ResourceTypeWav, AudioDecoderStbVorbis, AudioDecoderTremolo, ResourceTypeOgg, ScriptImageExt, ScriptTypesExt]
       symbols: []
       libs: [physics_null, gamesys_rig_null, gamesys_model_null, rig_null, record_null, profilerext_null, sound_null, liveupdate_null, image_null]
       dynamicLibs: []
@@ -85,7 +85,7 @@ platforms:
   x86-win32:
     context:
       excludeLibs: [libBox2D, libphysics, libLinearMath, libBulletDynamics, libBulletCollision, libbox2d, libbox2d_defold, libscript_box2d, libscript_box2d_defold, libgamesys_model, libgamesys_rig, librig, librecord, vpx, libprofilerext, libsound, libtremolo, libdecoder_wav, libdecoder_ogg, libliveupdate, libimage]
-      excludeSymbols: [ScriptBox2DExt, ScriptModelExt, ProfilerExt, DefaultSoundDevice, AudioDecoderWav, AudioDecoderStbVorbis, AudioDecoderTremolo, ResourceTypeWav, ResourceTypeOgg, ScriptImageExt, ScriptTypesExt]
+      excludeSymbols: [ScriptBox2DExt, ScriptModelExt, ProfilerExt, DefaultSoundDevice, AudioDecoderWav, ResourceTypeWav, AudioDecoderStbVorbis, AudioDecoderTremolo, ResourceTypeOgg, ScriptImageExt, ScriptTypesExt]
       symbols: []
       libs: [libphysics_null.lib, libgamesys_rig_null.lib, libgamesys_model_null.lib, librig_null.lib, librecord_null.lib, libprofilerext_null.lib, libsound_null.lib, libliveupdate_null.lib, libimage_null.lib]
       flags: [-Ofast, -fno-fast-math, -ffunction-sections, -fdata-sections, -flto]
@@ -93,7 +93,7 @@ platforms:
   x86_64-win32:
     context:
       excludeLibs: [libBox2D, libphysics, libLinearMath, libBulletDynamics, libBulletCollision, libbox2d, libbox2d_defold, libscript_box2d, libscript_box2d_defold, libgamesys_model, libgamesys_rig, librig, librecord, vpx, libprofilerext, libsound, libtremolo, libdecoder_wav, libdecoder_ogg, libliveupdate, libimage]
-      excludeSymbols: [ScriptBox2DExt, ScriptModelExt, ProfilerExt, DefaultSoundDevice, AudioDecoderWav, AudioDecoderStbVorbis, AudioDecoderTremolo, ResourceTypeWav, ResourceTypeOgg, ScriptImageExt, ScriptTypesExt]
+      excludeSymbols: [ScriptBox2DExt, ScriptModelExt, ProfilerExt, DefaultSoundDevice, AudioDecoderWav, ResourceTypeWav, AudioDecoderStbVorbis, AudioDecoderTremolo, ResourceTypeOgg, ScriptImageExt, ScriptTypesExt]
       symbols: []
       libs: [libphysics_null.lib, libgamesys_rig_null.lib, libgamesys_model_null.lib, librig_null.lib, librecord_null.lib, libprofilerext_null.lib, libsound_null.lib, libliveupdate_null.lib, libimage_null.lib]
       flags: [-Ofast, -fno-fast-math, -ffunction-sections, -fdata-sections, -flto]
@@ -102,7 +102,7 @@ platforms:
     context:
       excludeLibs: [Box2D, physics, LinearMath, BulletDynamics, BulletCollision, box2d, box2d_defold, script_box2d, script_box2d_defold, gamesys_model, gamesys_rig, rig, record, vpx, profilerext, sound, tremolo, decoder_wav, decoder_ogg, liveupdate, image]
       excludeJsLibs: []
-      excludeSymbols: [ScriptBox2DExt, ScriptModelExt, ProfilerExt, DefaultSoundDevice, AudioDecoderWav, AudioDecoderStbVorbis, AudioDecoderTremolo, ResourceTypeWav, ResourceTypeOgg, ScriptImageExt, ScriptTypesExt]
+      excludeSymbols: [ScriptBox2DExt, ScriptModelExt, ProfilerExt, DefaultSoundDevice, AudioDecoderWav, ResourceTypeWav, AudioDecoderStbVorbis, AudioDecoderTremolo, ResourceTypeOgg, ScriptImageExt, ScriptTypesExt]
       symbols: []
       libs: [physics_null, gamesys_rig_null, gamesys_model_null, rig_null, record_null, profilerext_null, sound_null, liveupdate_null, image_null]
       flags: [-Ofast, -fno-fast-math, -ffunction-sections, -fdata-sections, -flto]
@@ -112,7 +112,16 @@ platforms:
     context:
       excludeLibs: [Box2D, physics, LinearMath, BulletDynamics, BulletCollision, box2d, box2d_defold, script_box2d, script_box2d_defold, gamesys_model, gamesys_rig, rig, record, vpx, profilerext, sound, tremolo, decoder_wav, decoder_ogg, liveupdate, image]
       excludeJsLibs: []
-      excludeSymbols: [ScriptBox2DExt, ScriptModelExt, ProfilerExt, DefaultSoundDevice, AudioDecoderWav, AudioDecoderStbVorbis, AudioDecoderTremolo, ResourceTypeWav, ResourceTypeOgg, ScriptImageExt, ScriptTypesExt]
+      excludeSymbols: [ScriptBox2DExt, ScriptModelExt, ProfilerExt, DefaultSoundDevice, AudioDecoderWav, ResourceTypeWav, AudioDecoderStbVorbis, AudioDecoderTremolo, ResourceTypeOgg, ScriptImageExt, ScriptTypesExt]
+      symbols: []
+      libs: [physics_null, gamesys_rig_null, gamesys_model_null, rig_null, record_null, profilerext_null, sound_null, liveupdate_null, image_null]
+      flags: [-Ofast, -fno-fast-math, -ffunction-sections, -fdata-sections, -flto]
+      linkFlags: [-flto]
+      emscriptenLinkFlags: []
+  wasm_pthread-web:
+    context:
+      excludeLibs: [physics, LinearMath, BulletDynamics, BulletCollision, box2d, box2d_defold, script_box2d, script_box2d_defold, gamesys_model, gamesys_rig, rig, record, vpx, profilerext, sound, tremolo, decoder_wav, decoder_ogg, liveupdate, image]
+      excludeSymbols: [ScriptBox2DExt, ScriptModelExt, ProfilerExt, DefaultSoundDevice, AudioDecoderWav, ResourceTypeWav, AudioDecoderStbVorbis, AudioDecoderTremolo, ResourceTypeOgg, ScriptImageExt, ScriptTypesExt]
       symbols: []
       libs: [physics_null, gamesys_rig_null, gamesys_model_null, rig_null, record_null, profilerext_null, sound_null, liveupdate_null, image_null]
       flags: [-Ofast, -fno-fast-math, -ffunction-sections, -fdata-sections, -flto]

@@ -33,8 +33,8 @@ static bool hasTouchNear(const int16_t cdx, const int16_t cdy, const Duo validTo
 			return false;
 		}
 		[[likely]] default: {
-			const float l = (900.0f - HALF_SIZE) + cdx * Arf.xScale + Arf.xDelta, r = l + OBJECT_SIZE;
-			const float d = (540.0f - HALF_SIZE) + cdy * Arf.yScale, u = d + OBJECT_SIZE;
+			const float l = (900.0f - HALF_SIZE) + cdx * Arf.xScale + Arf.xDelta,	r = l + OBJECT_SIZE;
+			const float d = (540.0f - HALF_SIZE) + cdy * Arf.yScale,				u = d + OBJECT_SIZE;
 			while(~ validTouches[whichTouch].val )
 				if( const Duo touch = validTouches[whichTouch];			  whichTouch++,
 					touch.a >= l  &&  touch.a <= r  &&  touch.b >= d  &&  touch.b <= u )

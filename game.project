@@ -11,7 +11,7 @@ height = 1080
 
 [project]
 title = Nemesis
-version = 0.1.2
+version = 0.1.3
 publisher = 1dealGas
 developer = 1dealGas
 custom_resources = Viewer.wav, Viewer.license

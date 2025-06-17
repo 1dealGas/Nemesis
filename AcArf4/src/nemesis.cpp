@@ -206,7 +206,7 @@ static int freeHelper(lua_State* L) noexcept {
 constexpr auto
 	NOT_SUF = "Count of Node(s) is not sufficient to create a Wish / Helper.",
 	NEMESIS_TIME_OOR = R"(Nemesis Compiler: Time(ms) of %s out of range)",
-	NEMESIS_SLE = R"(Nemesis Compiler: Count limit of %s(%L) exceeded)",
+	NEMESIS_SLE = R"(Nemesis Compiler: Count limit of %s(%td) exceeded)",
 	NOT_A_TABLE = R"(API "%s" requires a Lua Table for the Arg 1.)",
 	TIME_OUT_OF_RANGE = R"(API "%s": Time out of range in Args)",
 	NO_WISH = R"(API "%s": No valid Wish to add "%s"(s) to)";
@@ -403,8 +403,8 @@ int Ar::NewWish(lua_State* L) noexcept {
 					 x = ( lua_rawgeti(L, 1, i+1), lua_tonumber(L, -1) ),
 					 y = ( lua_rawgeti(L, 1, i+2), lua_tonumber(L, -1) );
 		auto point = ( lua_rawgeti(L, 1, i+3), checkPointArg(L, -1) );
-			 point.x = x < -23.875 ? -23.875  :  x > 39.875 ? 39.875  :  x;
-			 point.y = y < -11.875 ? -11.875  :  y > 19.875 ? 19.875  :  y;
+			 point.x = x < -23.9375 ? -23.9375  :  x > 39.9375 ? 39.9375  :  x;
+			 point.y = y <   -3.875 ?   -3.875  :  y >  11.875 ?  11.875  :  y;
 			 point.beat = beat;
 		nodeMap[( nodeMap.contains(beat) ? nextDouble(beat) : beat )] = point;
 		lua_pop(L, 4);
@@ -446,8 +446,8 @@ int Ar::NewHelper(lua_State* L) noexcept {
 					 x = ( lua_rawgeti(L, 1, i+1), lua_tonumber(L, -1) ),
 					 y = ( lua_rawgeti(L, 1, i+2), lua_tonumber(L, -1) );
 		auto point = ( lua_rawgeti(L, 1, i+3), checkPointArg(L, -1) );
-			 point.x = x < -23.875 ? -23.875  :  x > 39.875 ? 39.875  :  x;
-			 point.y = y < -11.875 ? -11.875  :  y > 19.875 ? 19.875  :  y;
+			 point.x = x < -23.9375 ? -23.9375  :  x > 39.9375 ? 39.9375  :  x;
+			 point.y = y <   -3.875 ?   -3.875  :  y >  11.875 ?  11.875  :  y;
 			 point.beat = beat;
 		nodeMap[( nodeMap.contains(beat) ? nextDouble(beat) : beat )] = point;
 		lua_pop(L, 4);
@@ -563,8 +563,8 @@ int Ar::NewEcho(lua_State* L) noexcept {
 		const double beat = ( lua_rawgeti(L, 1, i), checkTime(L, -1) ),
 					 x = ( lua_rawgeti(L, 1, i+1), lua_tonumber(L, -1) ),
 					 y = ( lua_rawgeti(L, 1, i+2), lua_tonumber(L, -1) );
-		N.echoes.push_back({ .x = x < -23.875 ? -23.875  :  x > 39.875 ? 39.875  :  x,
-							 .y = y < -11.875 ? -11.875  :  y > 19.875 ? 19.875  :  y,
+		N.echoes.push_back({ .x = x < -23.9375 ? -23.9375  :  x > 39.9375 ? 39.9375  :  x,
+							 .y = y <   -3.875 ?   -3.875  :  y >  11.875 ?  11.875  :  y,
 							 beat, radius, initLoop, deltaLoop, isSpecial });
 	}
 	return lua_pushboolean(L, true), 1;
@@ -654,7 +654,7 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 	/* Usage:
 	 * local before_or_false, objcnt, wgo_required, hgo_required, ego_required = Arf4.OrganizeArf()
 	 */
-	#define FIX(x, y)  ( (x)<(y) ? -0.5 : 0.5 )
+	#define FIX(a,b)  ( (a)<(b) ? -0.5 : 0.5 )
 	Fumen F = { .val = 0 };
 
 	// Organize Deltas
@@ -674,7 +674,7 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 	for( const auto [x, y, beat, radius, initLoop, deltaLoop, isSpecial] : N.echoes )
 		if( const uint64_t ms = beatToMs(beat);  ms < 637  ||  ms > 1048575 - 470 )   /* Arf4.h */
 			return lua_pushboolean(L, false), lua_pushfstring(L, NEMESIS_TIME_OOR, "Echo"), 2;
-		else if( const Echo baseEcho = { .cdx = (int64_t)( FIX(x,8) + (x-8) * 8 ),		.ms = ms,
+		else if( const Echo baseEcho = { .cdx = (int64_t)( FIX(x,8) + (x-8) * 16 ),		.ms = ms,
 										 .cdy = (int64_t)( FIX(y,4) + (y-4) * 8 ),		.status = 0,
 										 .radius = (uint64_t)( 0.5 + radius * 4 ),		.deltaMs = 0,
 										 .initLoop = (uint64_t)( 0.5 + initLoop * 64 ),
@@ -703,7 +703,7 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 		for( auto& c : w.wishChilds )   // Use valueMap to deduplicate & sort childs later
 			if( (c.beat = beatToMs( c.beat )) <= w.nodes.back().beat  &&  c.beat >= 510 ) {
 				wishCacheT(w, c.beat);
-				if( const Hint baseHint = { .cdx = (int64_t)( FIX(w.wX,8) + (w.wX-8) * 8 ),   .status = 0,
+				if( const Hint baseHint = { .cdx = (int64_t)( FIX(w.wX,8) + (w.wX-8) * 16 ),   .status = 0,
 											.cdy = (int64_t)( FIX(w.wY,4) + (w.wY-4) * 8 ),   .deltaMs = 0,
 											.ms = (uint64_t)c.beat };
 				valueMap[baseHint.val] == false )
@@ -715,7 +715,7 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 		for( auto [beat, isSpecial] : w.manualHints )
 			if( beat = beatToMs(beat), beat >= 510 ) {
 				wishCacheT(w, beat);
-				if( const Hint baseHint = { .cdx = (int64_t)( FIX(w.wX,8) + (w.wX-8) * 8 ),   .status = 0,
+				if( const Hint baseHint = { .cdx = (int64_t)( FIX(w.wX,8) + (w.wX-8) * 16 ),   .status = 0,
 											.cdy = (int64_t)( FIX(w.wY,4) + (w.wY-4) * 8 ),   .deltaMs = 0,
 											.ms = (uint64_t)beat };
 				valueMap[baseHint.val] == false )
@@ -809,7 +809,7 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 		if( wView.nSince + wView.nCount > 32767 )   /* inout.cpp 6/9 */
 			return lua_pushboolean(L, false), lua_pushfstring(L, NEMESIS_SLE, "Wish Nodes", LI 32767), 2;
 		for( const auto [x, y, beat, radius, degree, ease] : w.nodes )
-			F.nodes.push_back({ .cdx = (int64_t)( FIX(x,8) + (x-8) * 8 ),   .ms = (uint64_t)beat,
+			F.nodes.push_back({ .cdx = (int64_t)( FIX(x,8) + (x-8) * 16 ),   .ms = (uint64_t)beat,
 								.cdy = (int64_t)( FIX(y,4) + (y-4) * 8 ),   .ease = ease,
 								.radius = (uint64_t)( 0.5 + radius * 4 ),
 								.deg = (int64_t)( FIX(degree, 0) + degree) });

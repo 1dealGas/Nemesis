@@ -59,7 +59,7 @@ int Ar::SetCam(lua_State* L) noexcept {
 	/* Usage:										 -- xScale / yScale: Mainly for Runtime Mirroring
 	 * Arf4.SetCam(xscale, yscale, xdelta, camspd)   --			 xDelta: Mainly for Options Panel
 	 */
-	Arf.xScale = lua_tonumber(L, 1) * 14.0625;
+	Arf.xScale = lua_tonumber(L, 1) * 7.03125;
 	Arf.yScale = lua_tonumber(L, 2) * 14.0625;
 	Arf.xDelta = lua_tonumber(L, 3);
 
