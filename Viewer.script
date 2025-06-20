@@ -53,7 +53,7 @@ local WishTints, WishSpecial, HintTints, EchoTints, HelperTints, AnimTints = {},
 local LastWgoUsed, LastHgoUsed, LastEgoUsed, LastEhgoUsed, LastAgoUsed = 0, 0, 0, 0, 0
 
 local UPDATE_FMT = "·][·  %u of %u ms  ·  %u Object(s)"
-local SPRITE, WISHSP, WISH, DOT, NM = hash "Sprite", hash "WishSP", hash "Wish", hash "Echodot", hash "Nm"
+local SPRITE, WISHSP, WISH, ECHO, NM = hash "Sprite", hash "WishSP", hash "Wish", hash "Echo", hash "Nm"
 local ENABLE, DISABLE, TINTW, TINT = hash "enable", hash "disable", hash "tint.w", hash "tint"
 
 local UpdateArf, SetCam = Arf4.UpdateArf, Arf4.SetCam
@@ -62,8 +62,8 @@ local label_set_text, string_format = label.set_text, string.format
 
 local function AllocCanvas(wgoReq, hgoReq, egoReq)
 	local factory_create, vmath_vector4, go_delete, msg_url = factory.create, vmath.vector4, go.delete, msg.url
-	local Wishc, Hintc, Animc = msg_url("Nm:/Viewer#Wishc"), msg_url("Nm:/Viewer#Hintc"), msg_url("Nm:/Viewer#Animc")
-	local Echoc, Helperc = msg_url("Nm:/Viewer#Echoc"), msg_url("Nm:/Viewer#Helperc")
+	local Wishc, Helperc = msg_url("Nm:/Viewer#Wishc"), msg_url("Nm:/Viewer#Helperc")
+	local Hintc, Animc = msg_url("Nm:/Viewer#Hintc"), msg_url("Nm:/Viewer#Animc")
 	local agoReq = hgoReq + egoReq
 
 	if wgoReq > WgoCnt then for i = WgoCnt+1, wgoReq do
@@ -82,9 +82,9 @@ local function AllocCanvas(wgoReq, hgoReq, egoReq)
 	end
 
 	if egoReq > EgoCnt then for i = EgoCnt+1, egoReq do
-		local E = factory_create(Echoc)
-		EGOs[i], EchoSprites[i], EchoTints[i] = E, msg_url(NM, E, SPRITE), vmath_vector4()
-		go_set( msg_url(NM, E, DOT), TINTW, 0.637 )
+		local ES = msg_url( NM, factory_create(Wishc), SPRITE )
+		EGOs[i], EchoSprites[i], EchoTints[i] = ES.path, ES, vmath_vector4()
+		sprite_play_flipbook(ES, ECHO)
 
 		local EH = factory_create(Helperc)
 		EHGOs[i], HelperSprites[i], HelperTints[i] = EH, msg_url(NM, EH, SPRITE), 0					end
@@ -123,7 +123,7 @@ end
 
 local function UpdateCanvas(playHs)   -- Should be delegated to update() except LoadFumen*
 	SetCam(XScale, YScale, XDelta, CamSpeed)
-	local wu, hu, eu, xu, au, hp, ep = UpdateArf(CanvasMs,
+	local wu, hu, eu, xu, au, hp, ep = UpdateArf(CanvasMs, nil,
 		WGOs, HGOs, EGOs, EHGOs, AlGOs, ArGOs, WishTints, HintTints, EchoTints, HelperTints, AnimTints
 	)
 

@@ -2,7 +2,6 @@
 #include <Arf4.h>
 
 Arf4::Fumen		Arf;
-uint64_t		UsysTime;
 int8_t			InputDelta;
 float			PlayerSpeed = 6;
 
@@ -45,4 +44,5 @@ static dmExtension::Result Arf4OK(dmExtension::Params*) {
 static dmExtension::Result Arf4APPOK(dmExtension::AppParams*) {
 	return dmExtension::RESULT_OK;
 }
+
 DM_DECLARE_EXTENSION(AcArf4, "AcArf4", Arf4APPOK, Arf4APPOK, Arf4Init, nullptr, nullptr, Arf4OK)

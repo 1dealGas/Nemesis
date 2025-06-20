@@ -33,7 +33,7 @@ http_thread_count = 0
 app_manifest = /System/Viewer.appmanifest
 
 [resource]
-max_resources = 72
+max_resources = 69
 
 [graphics]
 verify_graphics_calls = 0

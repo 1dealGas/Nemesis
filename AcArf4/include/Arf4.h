@@ -7,11 +7,10 @@ namespace Arf4 {
 	#define	Ar32(...)  using i32 = int32_t; using u32 = uint32_t;  union{ struct{__VA_ARGS__;}; u32 val; };
 	#define Ar64(...)  using i64 = int64_t; using u64 = uint64_t;  union{ struct{__VA_ARGS__;}; u64 val; };
 
-	enum  TableIndex : uint8_t  {	   WGO = 2, HGO, EGO, EH, AL, AR, WTINT, HTINT, ETINT, EHTINT, ATINT  };
+	enum  TableIndex : uint8_t  {	   WGO = 3, HGO, EGO, EH, AL, AR, WTINT, HTINT, ETINT, EHTINT, ATINT  };
 	enum  EaseType   : uint8_t  {   STATIC = 0, LINEAR, INSINE, OUTSINE									  };
-	enum  Status     : uint8_t  {  NJUDGED = 0, SPECIAL, NJUDGED_LIT, SPECIAL_LIT, HIT, HIT_LIT, LOST,
-								  SPECIAL_LOST, EARLY, EARLY_LIT, LATE, LATE_LIT						  };
-
+	enum  Status     : uint8_t  {  NJUDGED = 0, SPECIAL, NJUDGED_LIT, SPECIAL_LIT, HIT, HIT_ES, HIT_LIT,
+									HIT_LIT_ES, EARLY, LATE, EARLY_LIT, LATE_LIT, LOST					  };
 /* Wish */
 	struct Point {
 		Ar64(																// cdx: [-32,32) 1/16
@@ -70,11 +69,8 @@ namespace Arf4 {
 		std::vector<Wish>		wishes;
 		std::vector<Echo>		echoes;
 		std::vector<Hint>		hints;
-		/*------------------------*/
-		Ar64(
-			uint64_t			before:20, objectCount:16;
-			uint64_t			wgoRequired:10, hgoRequired:9, egoRequired:9;
-		)
+		Ar64(	uint64_t		before:20, objectCount:16;
+				uint64_t		wgoRequired:10, hgoRequired:9, egoRequired:9;	)
 		//------------------------//
 		int64_t					minDt:8, maxDt:8;
 		uint64_t				msTime:20, judgeRange:7 = 37;
@@ -87,7 +83,6 @@ namespace Arf4 {
 }
 extern  float					PlayerSpeed;								// Finally  (pS*cS + 11) / 1500
 extern  int8_t					InputDelta;
-extern  uint64_t				UsysTime;
 extern  Arf4::Fumen				Arf;
 
 namespace Ar {

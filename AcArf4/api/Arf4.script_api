@@ -1,5 +1,6 @@
 - name: Arf4
   type: table
+  desc: Aerials Chart[Fumen] Format v4
   members:
 
   - name: LoadArf
@@ -94,10 +95,13 @@
     - name: result
       type: number
 
+
   - name: UpdateArf
     type: function
     parameters:
     - name: ms
+      type: number
+    - name: delay
       type: number
     - name: wish_gos
       type: table
@@ -157,10 +161,10 @@
     - name: args
       type: table
     returns:
-      - name: ok
-        type: boolean
-      - name: err
-        type: [string, nil]
+    - name: ok
+      type: boolean
+    - name: err
+      type: [string, nil]
 
   - name: SetDelta
     type: function
@@ -169,10 +173,10 @@
     - name: args
       type: table
     returns:
-      - name: ok
-        type: boolean
-      - name: err
-        type: [string, nil]
+    - name: ok
+      type: boolean
+    - name: err
+      type: [string, nil]
 
   - name: NewVerse
     type: function
@@ -188,10 +192,10 @@
     - name: args
       type: table
     returns:
-      - name: wish
-        type: [table, nil]
-      - name: err
-        type: [string, nil]
+    - name: wish
+      type: [table, nil]
+    - name: err
+      type: [string, nil]
 
   - name: NewHint
     type: function
@@ -200,10 +204,10 @@
     - name: args
       type: table
     returns:
-      - name: ok
-        type: boolean
-      - name: err
-        type: [string, nil]
+    - name: ok
+      type: boolean
+    - name: err
+      type: [string, nil]
 
   - name: NewEcho
     type: function
@@ -212,10 +216,10 @@
     - name: args
       type: table
     returns:
-      - name: ok
-        type: boolean
-      - name: err
-        type: [string, nil]
+    - name: ok
+      type: boolean
+    - name: err
+      type: [string, nil]
 
   - name: NewChild
     type: function
@@ -224,10 +228,10 @@
     - name: args
       type: table
     returns:
-      - name: ok
-        type: boolean
-      - name: err
-        type: [string, nil]
+    - name: ok
+      type: boolean
+    - name: err
+      type: [string, nil]
 
   - name: NewHelper
     type: function
@@ -236,10 +240,10 @@
     - name: args
       type: table
     returns:
-      - name: helper
-        type: [table, boolean, nil]
-      - name: err
-        type: [string, nil]
+    - name: helper
+      type: [table, boolean, nil]
+    - name: err
+      type: [string, nil]
 
   - name: Mirror
     type: function
@@ -254,16 +258,16 @@
     type: function
     desc: Viewer Only
     returns:
-      - name: before
-        type: [number, boolean]
-      - name: object_count
-        type: number
-      - name: wgo_required
-        type: number
-      - name: hgo_required
-        type: number
-      - name: ego_required
-        type: number
+    - name: before
+      type: [number, boolean]
+    - name: object_count
+      type: number
+    - name: wgo_required
+      type: number
+    - name: hgo_required
+      type: number
+    - name: ego_required
+      type: number
 
   - name: ExportArf
     type: function
