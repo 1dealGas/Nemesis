@@ -7,10 +7,10 @@ namespace Arf4 {
 	#define	Ar32(...)  using i32 = int32_t; using u32 = uint32_t;  union{ struct{__VA_ARGS__;}; u32 val; };
 	#define Ar64(...)  using i64 = int64_t; using u64 = uint64_t;  union{ struct{__VA_ARGS__;}; u64 val; };
 
-	enum  TableIndex : uint8_t  {	   WGO = 3, HGO, EGO, EH, AL, AR, WTINT, HTINT, ETINT, EHTINT, ATINT  };
-	enum  EaseType   : uint8_t  {   STATIC = 0, LINEAR, INSINE, OUTSINE									  };
-	enum  Status     : uint8_t  {  NJUDGED = 0, SPECIAL, NJUDGED_LIT, SPECIAL_LIT, HIT, HIT_ES, HIT_LIT,
-									HIT_LIT_ES, EARLY, LATE, EARLY_LIT, LATE_LIT, LOST					  };
+	enum  /* TableIndex */ {	  WGO = 3, HGO, EGO, EH, AL, AR, WTINT, HTINT, ETINT, EHTINT, ATINT  };
+	enum  /*  EaseType  */ {   STATIC = 0, LINEAR, INSINE, OUTSINE									 };
+	enum  /*   Status   */ {  NJUDGED = 0, SPECIAL, NJUDGED_LIT, SPECIAL_LIT, HIT, HIT_ES, HIT_LIT,
+							   HIT_LIT_ES, EARLY, LATE, EARLY_LIT, LATE_LIT, LOST					 };
 /* Wish */
 	struct Point {
 		Ar64(																// cdx: [-32,32) 1/16

@@ -6,6 +6,11 @@ platforms:
             flags: ["-std=c++14", "-Ofast", "-ffunction-sections", "-fdata-sections", "-flto"]
             linkFlags: ["-flto"]
 
+    x86_64-linux:
+        context:
+            flags: ["-std=c++11", "-Ofast", "-ffunction-sections", "-fdata-sections", "-flto"]
+            linkFlags: ["-flto"]
+
     x86_64-osx:
         context:
             flags: ["-std=c++11", "-Ofast", "-ffunction-sections", "-fdata-sections", "-flto"]

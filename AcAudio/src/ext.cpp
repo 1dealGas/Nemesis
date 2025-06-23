@@ -99,7 +99,7 @@ static int AcAudioCreateSource(lua_State* L) {
 	}
 
 	// Register Buffer
-	char vfsPath[128];			(void)sprintf( vfsPath, "%llu", dmTime::GetTime() );
+	char vfsPath[128];			(void)sprintf( vfsPath, "%lu", (unsigned long)dmTime::GetTime() );
 	ma_resource_manager_register_encoded_data( &AcAudioManager, vfsPath, lSource->pBuf, bufSize );
 
 	// Init Resource
