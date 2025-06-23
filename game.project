@@ -33,7 +33,7 @@ http_thread_count = 0
 app_manifest = /System/Viewer.appmanifest
 
 [resource]
-max_resources = 69
+max_resources = 65
 
 [graphics]
 verify_graphics_calls = 0
@@ -64,21 +64,11 @@ max_count = 4614
 max_count = 0
 max_tile_count = 0
 
-[sound]
-max_sound_data = 0
-max_sound_buffers = 0
-max_sound_sources = 0
-max_sound_instances = 0
-max_component_count = 0
-
 [particle_fx]
 max_count = 0
 max_emitter_count = 0
 max_particle_count = 0
 max_particle_buffer_count = 0
-
-[model]
-max_count = 0
 
 [mesh]
 max_count = 0
@@ -93,7 +83,7 @@ max_animation_count = 0
 max_particle_count = 0
 
 [factory]
-max_count = 5
+max_count = 3
 
 [engine]
 fixed_update_frequency = 5

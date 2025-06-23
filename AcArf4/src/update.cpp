@@ -6,7 +6,7 @@ static const dmVMath::Vector3
 	AnimTint[]{ {1, 1, 1}, {0.3125, 0.5625, 0.63671875}, {0.63671875, 0.38671875, 0.3125} },
 	HintEarly	{0.37675, 0.67815, 0.767628125},
 	HintLate	{0.767628125, 0.466228125, 0.37675},
-	HintHit		{0.88, 0.88, 0.88};
+	HintHit		{0.837, 0.837, 0.837};
 
 typedef dmGameObject::HInstance GO;				using namespace Ar;
 typedef dmVMath::Vector3 v3i, *v3;				typedef dmVMath::Point3 P3;
@@ -48,9 +48,9 @@ static AuInfo renderAnim(lua_State* L, AuInfo info, const Duo Pos, const uint16_
 	// Tint
 	tint -> setXYZ( AnimTint[info.sType] );
 	if( double w;  msPast < 73 )
-		w = (msPast + 27) * 0.01,		tint -> setW( 0.637 * w * (2-w) );
+		w = (msPast + 27) * 0.01,		tint -> setW( w * (2-w) );
 	else
-		w = (370-msPast) / 297.0,		tint -> setW( 0.637 * w * w );
+		w = (370-msPast) / 297.0,		tint -> setW( w * w );
 
 	// Transform
 	const float PosZ = msPast * 0.0001;
@@ -180,7 +180,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 
 			if( float V;  lifeMs < -370 )
 				V = lifeMs * 0.0001 - 0.037,			SetPosition( hintGo, P3(hintPos.a, hintPos.b, V) ),
-				V = 0.3 + (lifeMs + 510) * 0.0005,		hintTint -> setX(V).setY(V).setZ(V);
+				V = 0.23 + (lifeMs + 510) * 0.001,		hintTint -> setX(V).setY(V).setZ(V);
 			else if( lifeMs < 0 )
 				SetPosition( hintGo, P3(hintPos.a, hintPos.b, -0.0573) ),
 				hintTint -> setX(0.37).setY(0.37).setZ(0.37);
@@ -222,9 +222,9 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 
 				if( lifeMs < 0 )
 					if( SetScale( echoGo, 0.937 - 0.37 * R * (2-R) ),  lifeMs < -510 )
-						echoTint -> setX(0.3).setY(0.3).setZ(0.3).setW(R);
+						echoTint -> setX(0.23).setY(0.23).setZ(0.23).setW(R);
 					else if( float C;  lifeMs < -370 )
-						C = 0.0005 * (lifeMs + 370) + 0.37,
+						C = 0.001 * (lifeMs + 370) + 0.37,
 						echoTint -> setX(C).setY(C).setZ(C).setW(R);
 					else
 						echoTint -> setX(0.37).setY(0.37).setZ(0.37).setW(R);
@@ -262,7 +262,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 
 			if( float V;  lifeMs < -370 )
 				V = lifeMs * 0.0001 - 0.037,			SetPosition( hintGo, P3(hintPos.a, hintPos.b, V) ),
-				V = 0.3 + (lifeMs + 510) * 0.0005,		hintTint -> setX(V).setY(V).setZ(V),  ++info.hUsed;
+				V = 0.23 + (lifeMs + 510) * 0.001,		hintTint -> setX(V).setY(V).setZ(V),  ++info.hUsed;
 			else if( lifeMs < 370 ) switch( h.status ) {
 	[[likely]]	case NJUDGED:		case SPECIAL:
 					hintTint -> setX(0.37).setY(0.37).setZ(0.37);
@@ -332,11 +332,11 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 				lua_pop(L, 2);
 
 				if( lifeMs < -510 ) {
-					echoTint -> setX(0.3).setY(0.3).setZ(0.3).setW(R);
+					echoTint -> setX(0.23).setY(0.23).setZ(0.23).setW(R);
 					goto E_NSET_TSF;
 				}
 				if( lifeMs < -370 ) {
-					const float C = 0.0005 * (lifeMs + 370) + 0.37;
+					const float C = 0.001 * (lifeMs + 370) + 0.37;
 					echoTint -> setX(C).setY(C).setZ(C).setW(R);
 					goto E_NSET_TSF;
 				}

@@ -23,8 +23,4 @@ embedded_components {
     z: 0.38268343
     w: 0.9238795
   }
-  scale {
-    x: 1.237
-    y: 1.237
-  }
 }

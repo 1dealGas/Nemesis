@@ -16,6 +16,7 @@ local function Toneof(t)
 end;
 ]], function() end
 
+
 -- Env & Audio
 --
 local Title, WorksCmd = "Nemesis", nil
@@ -53,54 +54,53 @@ local WishTints, WishSpecial, HintTints, EchoTints, HelperTints, AnimTints = {},
 local LastWgoUsed, LastHgoUsed, LastEgoUsed, LastEhgoUsed, LastAgoUsed = 0, 0, 0, 0, 0
 
 local UPDATE_FMT = "·][·  %u of %u ms  ·  %u Object(s)"
-local SPRITE, WISHSP, WISH, ECHO, NM = hash "Sprite", hash "WishSP", hash "Wish", hash "Echo", hash "Nm"
-local ENABLE, DISABLE, TINTW, TINT = hash "enable", hash "disable", hash "tint.w", hash "tint"
+local SPRITE, WISHSP, WISH, ECHO, ANIM = hash "Sprite", hash "WishSP", hash "Wish", hash "Echo", hash "Anim"
+local ENABLE, DISABLE, TINTW, TINT, NM = hash "enable", hash "disable", hash "tint.w", hash "tint", hash "Nm"
 
 local UpdateArf, SetCam = Arf4.UpdateArf, Arf4.SetCam
 local go_set, msg_post, sprite_play_flipbook = go.set, msg.post, sprite.play_flipbook
 local label_set_text, string_format = label.set_text, string.format
 
 local function AllocCanvas(wgoReq, hgoReq, egoReq)
-	local factory_create, vmath_vector4, go_delete, msg_url = factory.create, vmath.vector4, go.delete, msg.url
-	local Wishc, Helperc = msg_url("Nm:/Viewer#Wishc"), msg_url("Nm:/Viewer#Helperc")
-	local Hintc, Animc = msg_url("Nm:/Viewer#Hintc"), msg_url("Nm:/Viewer#Animc")
-	local agoReq = hgoReq + egoReq
+	local factory_create, vmath_vector4 = factory.create, vmath.vector4
+	local go_set_scale, go_delete, msg_url = go.set_scale, go.delete, msg.url
+	local Wishc, Helc = msg_url("Nm:/Viewer#Wishc"), msg_url("Nm:/Viewer#Helc")
+	local Hintc, agoReq = msg_url("Nm:/Viewer#Hintc"), hgoReq + egoReq
 
 	if wgoReq > WgoCnt then for i = WgoCnt+1, wgoReq do
 		local W = factory_create(Wishc)
-		WGOs[i], WishSprites[i], WishTints[i] = W, msg_url(NM, W, SPRITE), 0						end
+		WGOs[i], WishSprites[i], WishTints[i] = W, msg_url(NM, W, SPRITE), 0					end
 	elseif wgoReq < WgoCnt then for i = wgoReq+1, WgoCnt do
-		go_delete(WGOs[i])																			end
+		go_delete(WGOs[i])																		end
 	end
 
 	if hgoReq > HgoCnt then for i = HgoCnt+1, hgoReq do
 		local H = factory_create(Hintc)
 		HGOs[i], HintSprites[i] = H, msg_url(NM, H, SPRITE)
-		HintTints[i] = vmath_vector4(0,0,0,1)														end
+		HintTints[i] = vmath_vector4(1)  ;  go_set_scale(1.237, H)								end
 	elseif hgoReq < HgoCnt then for i = hgoReq+1, HgoCnt do
-		go_delete(HGOs[i])																			end
+		go_delete(HGOs[i])																		end
 	end
 
 	if egoReq > EgoCnt then for i = EgoCnt+1, egoReq do
-		local ES = msg_url( NM, factory_create(Wishc), SPRITE )
+		local EH, ES = factory_create(Helc), msg_url( NM, factory_create(Wishc), SPRITE )
+		EHGOs[i], HelperSprites[i], HelperTints[i] = EH, msg_url(NM, EH, SPRITE), 0
 		EGOs[i], EchoSprites[i], EchoTints[i] = ES.path, ES, vmath_vector4()
-		sprite_play_flipbook(ES, ECHO)
-
-		local EH = factory_create(Helperc)
-		EHGOs[i], HelperSprites[i], HelperTints[i] = EH, msg_url(NM, EH, SPRITE), 0					end
+		sprite_play_flipbook(ES, ECHO)															end
 	elseif egoReq < EgoCnt then for i = egoReq+1, EgoCnt do
 		go_delete(EGOs[i])
-		go_delete(EHGOs[i])																			end
+		go_delete(EHGOs[i])																		end
 	end
 
 	if agoReq > AgoCnt then for i = AgoCnt+1, agoReq do
-		local AL, AR = factory_create(Animc), factory_create(Animc)
-		AlGOs[i], AlSprites[i] = AL, msg_url(NM, AL, SPRITE)
-		ArGOs[i], ArSprites[i] = AR, msg_url(NM, AR, SPRITE)
-		AnimTints[i] = vmath_vector4()																end
+		local ALS = msg_url(NM, factory_create(Hintc), SPRITE)
+		local ARS = msg_url(NM, factory_create(Hintc), SPRITE)
+		AlGOs[i], AlSprites[i] = ALS.path, ALS  ;  sprite_play_flipbook(ALS, ANIM)
+		ArGOs[i], ArSprites[i] = ARS.path, ARS  ;  sprite_play_flipbook(ARS, ANIM)
+		AnimTints[i] = vmath_vector4()															end
 	elseif agoReq < AgoCnt then for i = agoReq+1, AgoCnt do
 		go_delete(AlGOs[i])
-		go_delete(ArGOs[i])																			end
+		go_delete(ArGOs[i])																		end
 	end
 
 	WgoCnt, HgoCnt, EgoCnt, AgoCnt = wgoReq, hgoReq, egoReq, agoReq
