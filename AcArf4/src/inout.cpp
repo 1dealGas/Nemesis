@@ -11,17 +11,16 @@
 			  s.enableBitPacking( [&its](typename S::BPEnabledType& inout) { DETAILS ; } ); }
 namespace bitsery {
 	static constexpr auto CV = ext::CompactValueAsObject{};
-	Inout( Info,  inout.ext(its.val, CV); )			Inout( Wish,  inout.ext(its.val, CV); )
-	Inout( Hint,  inout.ext(its.val, CV); )			Inout( Echo,  inout.ext(its.val, CV); )
-	Inout( Point, inout.ext(its.val, CV); )			Inout( Child, inout.ext(its.val, CV); )
-	Inout( Delta, inout.ext(its.val, CV); )
+	Inout( Index, inout.ext(its.val, CV); )		Inout( Point, inout.ext(its.val, CV); )
+	Inout( Child, inout.ext(its.val, CV); )		Inout( Delta, inout.ext(its.val, CV); )
+	Inout( Wish,  inout.ext(its.val, CV); )		Inout( Hint,  inout.ext(its.val, CV); )
+	Inout( Echo,  inout.ext(its.val, CV); )
 
 	Inout( Fumen,
-		inout.container(its.deltas, 8191);			inout.container(its.nodes, 32767);   // Consider "Equal"
-		inout.container(its.echoes, 131071);		inout.container(its.wishes, 65535);  // Wishes
-		inout.container(its.hints, 32767);			inout.container(its.wishChilds, 32767);
-		inout.container(its.hIdx, 1024);			inout.container(its.wIdx, 512);
-		inout.container(its.eIdx, 1024);			inout.value8b(its.val);
+		inout.container(its.deltas, 131071);	inout.container(its.nodes, 32767);		// Consider "Equal"
+		inout.container(its.echoes, 131071);	inout.container(its.wishes, 131070);	// Wishes
+		inout.container(its.hints, 32767);		inout.container(its.wishChilds, 32767);
+		inout.container(its.idx, 1024);			inout.value8b(its.val);
 	)
 
 	struct A4CONF {
@@ -37,19 +36,15 @@ int Ar::LoadArf(lua_State* L) {
 	/* Usage:
 	 * local before, objcnt, wgo_req, hgo_req, ego_req = Arf4.LoadArf(path, is_auto, [proof])
 	 */
-	struct PseudoContext {
-		dmConfigFile::HConfig  pConfig;
-		dmResource::HFactory   pFactory;
-	};
-	lua_pushnumber(L, 2744634527);									// Args -> hash"__script_context"
-	lua_rawget(L, LUA_GLOBALSINDEX);								// Args -> context
+	struct PseudoContext { dmResource::HFactory _, pF; };			// LUA_GLOBALSINDEX == -10002
+	lua_pushnumber(L, 2744634527),  lua_rawget(L, -10002);			// Args -> hash"__script_context" | ctx
 	const auto pContext = (PseudoContext*)lua_touserdata(L, -1);	lua_pop(L, 1);
 	const auto path = luaL_checkstring(L, 1);
 
 	// Acquire Buffer
 	uint8_t* pBuf;													// free() this.
 	uint32_t bufSize;
-	if( const auto loadResult = dmResource::GetRaw(pContext->pFactory, path, (void**)&pBuf, &bufSize);
+	if( const auto loadResult = dmResource::GetRaw(pContext->pF, path, (void**)&pBuf, &bufSize);
 		loadResult != dmResource::RESULT_OK
 	) {
 		FILE* pFile = fopen(path, "rb");							// Open
@@ -114,7 +109,6 @@ int Ar::LoadArf(lua_State* L) {
 				Encrypt(dmCrypt::ALGORITHM_XTEA, &buf[0], bufSize, proofSha256+16, 16);
 			}
 			return lua_pushlstring(L, (char*)&buf[0], bufSize), 1;
-		}
-		return 0;
+		}	return 0;
 	}
 #endif

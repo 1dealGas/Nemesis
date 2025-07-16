@@ -83,7 +83,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 	else if( lastMs = Arf.msTime - lastMs,  lastMs > 0 )
 		info.frameDt = lastMs > 33 ? 34 : lastMs;
 	const double eSpeed = (PlayerSpeed * Arf.cSpeed + 11) / 375;	  double zDt[2] = {Arf.msTime * 1024.0};
-	const double dSpeed = eSpeed / 1024 /* 1024x -> 4x */;				auto zTimer = (Arf.msTime >> 2);
+	const double dSpeed = eSpeed / 1024 /* 1024x -> 4x */;			uint32_t zTimer = (Arf.msTime >> 2);
 
 	/* Delta
 	 * zDt = Scale * 1024, Dt = Scale * xSpeed
@@ -104,16 +104,16 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 			zDt[1] = thiz.base - (Arf.msTime - thiz.t * 4.0) * thiz.absV;
 		Arf.deltas[0].val = it - initIt;
 	}
-	zTimer >>= 8;   // zTimer == Arf.msTime >> 10 since here
+	const Index I = Arf.idx[ zTimer >> 8 ];
 
 	/* Wish */
-	for(const Info wi = Arf.wIdx[zTimer >> 1];  Wish& wish : std::span(Arf.wishes).subspan(wi.f, wi.c)) {
+	for(auto i = Arf.idx[ zTimer >> 9 ];  Wish& wish : std::span(Arf.wishes).subspan(i.wSince)) {
 		Wish w = wish;
 
 		/* Nodes */
 		const auto nodes = std::span(Arf.nodes).subspan(w.nSince, w.nCount);
-		if( Arf.msTime < nodes.front().ms  ||  Arf.msTime >= nodes.back().ms )
-			continue;
+		if( Arf.msTime >= nodes.back().ms )   continue;
+		if( Arf.msTime < nodes.front().ms )   break;
 
 		Point thiz, next;
 		if( thiz = nodes[w.nIndex], Arf.msTime < thiz.ms ) {
@@ -167,7 +167,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 
 	/* Hint & Echo */
 	if( Arf.isAuto ) {   // There are much more boilerplate lines...
-		for(const Info hi = Arf.hIdx[zTimer];  const Hint h : std::span(Arf.hints).subspan(hi.f, hi.c)) {
+		for(const Hint h : std::span(Arf.hints).subspan(I.hSince)) {
 			const int16_t lifeMs = Arf.msTime - h.ms;
 			if( lifeMs > +370 )		continue;   // +470 if not Auto
 			if( lifeMs < -510 )		break;
@@ -191,7 +191,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 					:--info.hUsed,   // Hint Go acquired, but not used
 				info.playH |= lifeMs < info.frameDt;
 		}
-		for(const Info ei = Arf.eIdx[zTimer];  const Echo e : std::span(Arf.echoes).subspan(ei.f, ei.c)) {
+		for(const Echo e : std::span(Arf.echoes).subspan(I.eSince)) {
 			const int16_t lifeMs = Arf.msTime - e.ms;
 			if( lifeMs > 370 )
 				continue;
@@ -248,8 +248,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 	}
 #ifndef AR_BUILD_VIEWER
 	else {
-		for(const Info hi = (JudgeArfSweep(), Arf.hIdx[zTimer]);
-			const Hint h : std::span(Arf.hints).subspan(hi.f, hi.c)) {
+		for(const Hint h : JudgeArfSweep(), std::span(Arf.hints).subspan(I.hSince)) {
 			const int16_t lifeMs = Arf.msTime - h.ms;
 			if( lifeMs > +470 )		continue;
 			if( lifeMs < -510 )		break;
@@ -301,7 +300,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 				default:;
 			}
 		}
-		for(const Info ei = Arf.eIdx[zTimer];  const Echo e : std::span(Arf.echoes).subspan(ei.f, ei.c)) {
+		for(const Echo e : std::span(Arf.echoes).subspan(I.eSince)) {
 			const int16_t lifeMs = Arf.msTime - e.ms;
 			if( lifeMs > 470 )
 				continue;
@@ -379,17 +378,18 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 			else EANIM: if( e.status < LOST )
 				info = renderAnim(L, info, mPos, lifeMs - e.deltaMs);
 		}
-
-		if( lua_toboolean(L, 2) ) {   // Auto HitSound
-			Arf.msTime += lua_tointeger(L, 2),  zTimer = Arf.msTime << 10;   // Delay [0,1000]
-			for(const Info hi = Arf.hIdx[zTimer];  const Hint h : std::span(Arf.hints).subspan(hi.f, hi.c))
-				info.playH |= (Arf.msTime - h.ms < info.frameDt);
-			for(const Info ei = Arf.eIdx[zTimer];  const Echo e : std::span(Arf.echoes).subspan(ei.f, ei.c))
-				info.playE |= (e.status & SPECIAL) && (Arf.msTime - e.ms < info.frameDt);
+		if( int32_t lifeMs;  lua_toboolean(L, 2) ) {   // Auto HitSound, Delay [0,1000]
+			const Index I2 = Arf.idx[( Arf.msTime += lua_tointeger(L, 2),  Arf.msTime >> 10 )];
+			for(const Hint h : std::span(Arf.hints).subspan(I2.hSince))
+				if( lifeMs = Arf.msTime - h.ms,  info.playH |= lifeMs < info.frameDt,  lifeMs < 0 )
+					break;
+			for(const Echo e : std::span(Arf.echoes).subspan(I2.eSince))
+				if( lifeMs = Arf.msTime - e.ms,
+					info.playE |= (e.status & SPECIAL) && (Arf.msTime - e.ms < info.frameDt),  lifeMs < 0 )
+					break;
 		}
 	}
 #endif
-
 	return lua_pushinteger(L, info.wUsed), lua_pushinteger(L, info.hUsed), lua_pushinteger(L, info.eUsed),
 		   lua_pushinteger(L, info.xUsed), lua_pushinteger(L, info.aUsed), lua_pushboolean(L, info.playH),
 		   lua_pushboolean(L, info.playE), 7;

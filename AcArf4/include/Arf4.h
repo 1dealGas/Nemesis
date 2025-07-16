@@ -4,9 +4,7 @@
 #include <vector>
 
 namespace Arf4 {
-	#define	Ar32(...)  using i32 = int32_t; using u32 = uint32_t;  union{ struct{__VA_ARGS__;}; u32 val; };
 	#define Ar64(...)  using i64 = int64_t; using u64 = uint64_t;  union{ struct{__VA_ARGS__;}; u64 val; };
-
 	enum  /* TableIndex */ {	  WGO = 3, HGO, EGO, EH, AL, AR, WTINT, HTINT, ETINT, EHTINT, ATINT  };
 	enum  /*  EaseType  */ {   STATIC = 0, LINEAR, INSINE, OUTSINE									 };
 	enum  /*   Status   */ {  NJUDGED = 0, SPECIAL, NJUDGED_LIT, SPECIAL_LIT, HIT, HIT_ES, HIT_LIT,
@@ -52,20 +50,25 @@ namespace Arf4 {
 			u64  base:33;													// base = t * v
 		)
 	};
+	struct Index {
+		Ar64(
+			u64  hSince:15 = 0,  eSince:17 = 0;								// [OI] 1024ms, ABCDEF···
+			u64  wSince:17 = 0;												// [WI] 2048ms, AABBCC···
+		)
+	};
 	struct Duo {
 		Ar64(
 			union				{  float a;  struct{ uint32_t am:23, ae:8, as:1; };  };
 			union				{  float b;  struct{ uint32_t bm:23, be:8, bs:1; };  };
 		)
 	};
-	struct Info { Ar32(u32 c:10, f:22) };
 
 /* Fumen */
 	struct Fumen {
+		std::vector<Index>		idx;
 		std::vector<Point>		nodes;
 		std::vector<Delta>		deltas;										// [0] Index	[Max] 1+8190
 		std::vector<Child>		wishChilds;
-		std::vector<Info>		wIdx, hIdx, eIdx;							// [WI] 2048ms  [HI/EI] 1024ms
 		std::vector<Wish>		wishes;
 		std::vector<Echo>		echoes;
 		std::vector<Hint>		hints;
