@@ -107,25 +107,28 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 	const Index I = Arf.idx[ zTimer >> 8 ];
 
 	/* Wish */
-	for(auto i = Arf.idx[ zTimer >> 9 ];  Wish& wish : std::span(Arf.wishes).subspan(i.wSince)) {
-		Wish w = wish;
+	for(uint32_t z = (Arf.before >> 11) == (zTimer >>= 9)  ?  Arf.wishes.size() : Arf.idx[zTimer+1].wSince,
+				 i = Arf.idx[zTimer].wSince;  i < z;  ++i) {
+		Wish &wish = Arf.wishes[i],  w = wish;
 
 		/* Nodes */
-		const auto nodes = std::span(Arf.nodes).subspan(w.nSince, w.nCount);
-		if( Arf.msTime >= nodes.back().ms )   continue;
-		if( Arf.msTime < nodes.front().ms )   break;
-
 		Point thiz, next;
-		if( thiz = nodes[w.nIndex], Arf.msTime < thiz.ms ) {
-			do	 --w.nIndex;
-			while( thiz = nodes[w.nIndex], Arf.msTime < thiz.ms );
-			next = nodes[w.nIndex + 1];
-		}
-		else if( uint8_t nextIdx = w.nIndex + 1;  next = nodes[nextIdx],  Arf.msTime >= next.ms ) {
-			do	 ++w.nIndex, ++nextIdx;
-			while( next = nodes[nextIdx], Arf.msTime >= next.ms );
-			thiz = nodes[w.nIndex];
-		}
+		const auto nodes = std::span(Arf.nodes).subspan(w.nSince);
+		if( thiz = nodes[0],  Arf.msTime < thiz.ms )										break;
+
+		if( w.nType )   // More than 2 Nodes
+			if( thiz = nodes[w.nIndex],  Arf.msTime < thiz.ms ) {
+				do	 --w.nIndex;
+				while( thiz = nodes[w.nIndex],  Arf.msTime < thiz.ms );
+				next = nodes[w.nIndex+1];
+			}
+			else {
+				if( next = nodes[w.nIndex+1],  next.val  &&  Arf.msTime >= next.ms )
+					do	 ++w.nIndex;
+					while( next = nodes[w.nIndex+1],  next.val  &&  Arf.msTime >= next.ms );
+				/**/if   ( thiz = nodes[w.nIndex],	 !next.val )							continue;
+			}
+		else if( next = nodes[1],  Arf.msTime >= next.ms )									continue;
 		info.sType = w.isSpecial;
 
 		const float tint = (Arf.msTime - nodes[0].ms) / 151.0,
@@ -137,30 +140,29 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 		info = renderWish(L, info, nodePos, { .a = 0.01f, .b = (float)fmin(tint, 1.0f) });
 
 		/* WishChild */
-		if( double wZdt;  w.cCount )
-			if( const auto wChilds = std::span(Arf.wishChilds).subspan(w.cSince, w.cCount); /* 8 -> 32/4 */
-				(wZdt = zDt[w.withDt]) < wChilds.back().zDt  &&  (wChilds[0].zDt - wZdt) * dSpeed < 32 ) {
+		if( double wZdt, cQuo;  w.cType )
+			if( const auto wChilds = std::span(Arf.wishChilds).subspan(w.cSince);
+				wZdt = zDt[w.withDt],  (wChilds[0].zDt - wZdt) * dSpeed < 32 /* 8*4 */ ) {
 
 				// Manage cIndex
-				if( uint16_t prevCidx = w.cIndex - 1;  w.cIndex  &&  wZdt < wChilds[prevCidx].zDt )
-					do	 --w.cIndex, --prevCidx;
-					while( w.cIndex  &&  wZdt < wChilds[prevCidx].zDt );
-				else if( const uint16_t lastCidx = w.cCount - 1;  true )
-					while(w.cIndex < lastCidx  &&  wZdt >= wChilds[w.cIndex].zDt)
-						++w.cIndex;
+				if( w.cIndex  &&  wZdt < wChilds[w.cIndex-1].zDt )
+					do	 --w.cIndex;
+					while( w.cIndex  &&  wZdt < wChilds[w.cIndex-1].zDt );
+				else while( wChilds[w.cIndex].val  &&  wZdt >= wChilds[w.cIndex].zDt )
+					++w.cIndex;
+				Child c;
 
 				// Traverse Subspan
-				for( const auto c : wChilds.subspan(w.cIndex) )		/* 6 -> 24/4 */
-					if( double cQuo = 1 + (wZdt-c.zDt) * dSpeed / (c.radius>24 ? c.radius:24);  cQuo > 0 ) {
-						const Duo cZw = { .a = 0.03f, .b = (float)fmin(cQuo / 0.237, 1) };
-						if( w.isSpecial && !w.withDt )
-							cQuo = Eased(cQuo, INSINE);
-						Duo cPos = CosSin({ 360 * (float)(c.initLoop / 64.0 + c.deltaLoop / 8.0 * cQuo) });
-						/**/cQuo = (1-cQuo) * (c.radius << 1);   /* 1/4 -> 1/8 */
-						cPos.a = nodePos.a + cQuo * cPos.a * 2;
-						cPos.b = nodePos.b + cQuo * cPos.b;
+				for( uint32_t ci = w.cIndex;  c = wChilds[ci],  c.val;  ci++ )
+					if( (cQuo = 1 + (wZdt-c.zDt) * dSpeed / (c.radius>24 ? c.radius : 24 /* 6*4 */ )) <= 0 )
+						break;
+					else if( Duo cPos, cZw = { .a = 0.03f, .b = (float)fmin(cQuo / 0.237, 1) };  true )
+						cQuo = w.isSpecial && !w.withDt  ?  Eased(cQuo, INSINE) : cQuo,
+						cPos = CosSin({ 360 * (float)(c.initLoop / 64.0 + c.deltaLoop / 8.0 * cQuo) }),
+						cQuo = (1-cQuo) * (c.radius << 1),   /* 1/4 -> 1/8 */
+						cPos.a = nodePos.a + cQuo * cPos.a * 2,
+						cPos.b = nodePos.b + cQuo * cPos.b,
 						info = renderWish(L, info, cPos, cZw);
-					}
 			}
 		wish = w;   // `w` is a value, while `wish` is a ref
 	}
@@ -339,9 +341,9 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 					echoTint -> setX(C).setY(C).setZ(C).setW(R);
 					goto E_NSET_TSF;
 				}
-				if( lifeMs > 100  &&  e.status < HIT )  [[unlikely]]   // NJ -> Lost, NJLIT -> Special Lost
-					R = 0.573 - lifeMs * 0.00037,	echoTint -> setX(R).setW(1),
-					R*= e.status ? 0.51 : 1,		echoTint -> setY(R).setZ(R),
+				if( lifeMs > 100  &&  e.status < NJUDGED_LIT )  [[unlikely]]
+					R = 0.573 - lifeMs * 0.00037,	echoTint -> setX(R).setW(1),   // NJ: Lost
+					R*= e.status ? 0.51 : 1,		echoTint -> setY(R).setZ(R),   // SP: Special Lost
 					SetPosition( echoGo, P3(ePos.a, ePos.b, 0.02) ),
 					SetScale( echoGo, 0.567 );
 				else switch( e.status ) {

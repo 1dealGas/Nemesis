@@ -24,6 +24,15 @@
     - name: ego_required
       type: [number, nil]
 
+  - name: ExportArf
+    type: function
+    parameters:
+      - name: proof
+        type: [string, nil]
+    returns:
+      - name: result
+        type: [string, nil]
+
   - name: JudgeArf
     type: function
     desc: Player Only
@@ -34,6 +43,42 @@
       type: table
     - name: phases
       type: table
+
+  - name: GetJudgeStat
+    type: function
+    desc: Player Only
+    returns:
+      - name: hint_hit
+        type: number
+      - name: echo_hit
+        type: number
+      - name: early
+        type: number
+      - name: late
+        type: number
+      - name: lost
+        type: number
+      - name: special_hint_hit
+        type: number
+      - name: object_count
+        type: number
+
+  - name: SetJudgeStat
+    type: function
+    desc: Player Only
+    parameters:
+      - name: hint_hit
+        type: number
+      - name: echo_hit
+        type: number
+      - name: early
+        type: number
+      - name: late
+        type: number
+      - name: lost
+        type: number
+      - name: special_hint_hit
+        type: number
 
   - name: SetJudgeZone
     type: function
@@ -51,25 +96,6 @@
     desc: Player Only
     parameters:
     - name: ms
-      type: number
-
-  - name: GetJudgeStat
-    type: function
-    desc: Player Only
-    returns:
-    - name: hint_hit
-      type: number
-    - name: echo_hit
-      type: number
-    - name: early
-      type: number
-    - name: late
-      type: number
-    - name: lost
-      type: number
-    - name: special_hint_hit
-      type: number
-    - name: object_count
       type: number
 
   - name: SetSpeed
@@ -268,16 +294,6 @@
       type: number
     - name: ego_required
       type: number
-
-  - name: ExportArf
-    type: function
-    desc: Viewer Only
-    parameters:
-    - name: proof
-      type: [string, nil]
-    returns:
-    - name: result
-      type: [string, nil]
 
   - name: SinceTone
     type: function

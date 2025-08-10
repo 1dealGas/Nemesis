@@ -8,11 +8,8 @@ local clear_buffers = {
 	[graphics.BUFFER_TYPE_DEPTH_BIT] = 1
 }
 
-local hint_frustum, hint_proj = {}, nil
-local screen_frustum, screen_proj = {}, nil
-local fixedfit_frustum, fixedfit_proj = {}, nil
-
 local hint_render_target
+local hint_proj, screen_proj, fixedfit_proj
 local pd_under_hint, pd_hint, pd_render_hint
 local pd_gui, pd_tile, pd_text, pd_particle
 
@@ -57,16 +54,13 @@ local function resize(w, h)
 	fixedfit_proj = vmath.matrix4_orthographic(
 		wr_left, wr_left + fixedfit_width, hr_bottom, hr_bottom + fixedfit_height, -1, 1
 	)
-	fixedfit_frustum.frustum = fixedfit_proj
-
 	screen_proj = vmath.matrix4_orthographic(0, w, 0, h, -1, 1)
-	screen_frustum.frustum = screen_proj
 end
 
 
 -- Lifecycle Funcs
 --
-function init(self)
+function init()
 	-- Load Predicates
 	--
 	local pd = render.predicate
@@ -83,10 +77,9 @@ function init(self)
 			width = 1800, height = 1080
 		}
 	})
-	hint_frustum.frustum = hint_proj
 end
 
-function update(self, dt)
+function update()
 	render_enable_state(STATE_BLEND)
 	render_set_blend_func(BLEND_FACTOR_SRC_ALPHA, BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)
 	render_set_stencil_mask(0xff)
@@ -97,7 +90,7 @@ function update(self, dt)
 	render_set_viewport(0, 0, 1800, 1080)
 	render_set_projection(hint_proj)
 	render_clear(clear_buffers)
-	render_draw(pd_hint, hint_frustum)
+	render_draw(pd_hint)
 
 	-- World Stuff
 	--
@@ -107,14 +100,14 @@ function update(self, dt)
 	render_clear(clear_buffers)
 
 	do
-		render_draw(pd_under_hint, fixedfit_frustum)
+		render_draw(pd_under_hint)
 		render_enable_texture(0, hint_render_target)
-		render_draw(pd_render_hint, fixedfit_frustum)
+		render_draw(pd_render_hint)
 		render_disable_texture(0)
 	end
 
-	render_draw(pd_tile, fixedfit_frustum)
-	render_draw(pd_particle, fixedfit_frustum)
+	render_draw(pd_tile)
+	render_draw(pd_particle)
 
 	-- Debug & GUI
 	--
@@ -122,13 +115,13 @@ function update(self, dt)
 	render_draw_debug3d()
 
 	render_enable_state(STATE_STENCIL_TEST)
-	render_draw(pd_gui, screen_frustum)
-	render_draw(pd_text, screen_frustum)
+	render_draw(pd_gui)
+	render_draw(pd_text)
 	render_disable_state(STATE_STENCIL_TEST)
 	render_disable_state(STATE_BLEND)
 end
 
-function on_message(self, message_id, message, sender)
+function on_message(self, message_id, message)
 	if message_id == CLEAR_COLOR then
 		clear_buffers[graphics.BUFFER_TYPE_COLOR0_BIT] = message.color or vmath.vector4()
 	elseif message_id == WINDOW_RESIZED then

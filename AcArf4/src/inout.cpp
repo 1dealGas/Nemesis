@@ -17,9 +17,9 @@ namespace bitsery {
 	Inout( Echo,  inout.ext(its.val, CV); )
 
 	Inout( Fumen,
-		inout.container(its.deltas, 131071);	inout.container(its.nodes, 32767);		// Consider "Equal"
-		inout.container(its.echoes, 131071);	inout.container(its.wishes, 131070);	// Wishes
-		inout.container(its.hints, 32767);		inout.container(its.wishChilds, 32767);
+		inout.container(its.deltas, 131072);	inout.container(its.nodes, 262144);		// Consider "Equal"
+		inout.container(its.echoes, 131072);	inout.container(its.wishes, 16777215);	// Wishes
+		inout.container(its.hints, 32767);		inout.container(its.wishChilds, 131072);
 		inout.container(its.idx, 1024);			inout.value8b(its.val);
 	)
 
@@ -86,29 +86,27 @@ int Ar::LoadArf(lua_State* L) {
 		   lua_pushinteger(L, Arf.egoRequired),		free(pBuf), 5;
 }
 
-#ifdef AR_BUILD_VIEWER
-	int Ar::ExportArf(lua_State* L) {
-		/* Usage:
-		 * local str_or_nil = Arf4.ExportArf([proof])
-		 */
-		for( auto& wish : Arf.wishes )
-			wish.nIndex = 0, wish.cIndex = 0;
+int Ar::ExportArf(lua_State* L) {
+	/* Usage:
+	 * local str_or_nil = Arf4.ExportArf([proof])
+	 */
+	for( auto& wish : Arf.wishes )
+		wish.nIndex = 0, wish.cIndex = 0;
 
-		std::vector<uint8_t> buf;
-		auto E = bitsery::A4Encoder(buf);
-		E.object(Arf);
+	std::vector<uint8_t> buf;
+	auto E = bitsery::A4Encoder(buf);
+	E.object(Arf);
 
-		if( const size_t bufSize = ( E.adapter().flush(), E.adapter().writtenBytesCount() ); bufSize ) {
-			if( size_t proofSize;  lua_type(L, 1) == LUA_TSTRING ) {
-				const auto proofStr = (const uint8_t*)lua_tolstring(L, 1, &proofSize);
+	if( const size_t bufSize = ( E.adapter().flush(), E.adapter().writtenBytesCount() ); bufSize ) {
+		if( size_t proofSize;  lua_type(L, 1) == LUA_TSTRING ) {
+			const auto proofStr = (const uint8_t*)lua_tolstring(L, 1, &proofSize);
 
-				uint8_t proofSha256[32];
-				dmCrypt::HashSha256( proofStr, (uint32_t)proofSize, proofSha256 );
-				Encrypt(dmCrypt::ALGORITHM_XTEA, &buf[0], bufSize, proofSha256, 16);
-				Encrypt(dmCrypt::ALGORITHM_XTEA, &buf[0], bufSize, proofSha256+8, 16);
-				Encrypt(dmCrypt::ALGORITHM_XTEA, &buf[0], bufSize, proofSha256+16, 16);
-			}
-			return lua_pushlstring(L, (char*)&buf[0], bufSize), 1;
-		}	return 0;
-	}
-#endif
+			uint8_t proofSha256[32];
+			dmCrypt::HashSha256( proofStr, (uint32_t)proofSize, proofSha256 );
+			Encrypt(dmCrypt::ALGORITHM_XTEA, &buf[0], bufSize, proofSha256, 16);
+			Encrypt(dmCrypt::ALGORITHM_XTEA, &buf[0], bufSize, proofSha256+8, 16);
+			Encrypt(dmCrypt::ALGORITHM_XTEA, &buf[0], bufSize, proofSha256+16, 16);
+		}
+		return lua_pushlstring(L, (char*)&buf[0], bufSize), 1;
+	}	return 0;
+}

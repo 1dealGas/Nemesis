@@ -17,18 +17,19 @@ static constexpr luaL_Reg Arf4Lib[] = {
 		{"NewHelper", Ar::NewHelper},
 		{"SinceTone", Ar::SinceTone},
 		{"OrganizeArf", Ar::OrganizeArf},
-		{"ExportArf", Ar::ExportArf},
 		{"BarToMs", Ar::BarToMs},
 		{"Mirror", Ar::Mirror},
 	#else
 		{"JudgeArf", Ar::JudgeArf},
+		{"GetJudgeStat", Ar::GetJudgeStat},
+		{"SetJudgeStat", Ar::SetJudgeStat},
 		{"SetJudgeZone", Ar::SetJudgeZone},
 		{"SetInputDelta", Ar::SetInputDelta},
-		{"GetJudgeStat", Ar::GetJudgeStat},
 		{"SetSpeed", Ar::SetSpeed},
 		{"Ease", Ar::Ease},
 	#endif
 		{"LoadArf", Ar::LoadArf},
+		{"ExportArf", Ar::ExportArf},
 		{"UpdateArf", Ar::UpdateArf},
 		{"SetCam", Ar::SetCam},
 		{nullptr, nullptr}
@@ -44,5 +45,4 @@ static dmExtension::Result Arf4OK(dmExtension::Params*) {
 static dmExtension::Result Arf4APPOK(dmExtension::AppParams*) {
 	return dmExtension::RESULT_OK;
 }
-
 DM_DECLARE_EXTENSION(AcArf4, "AcArf4", Arf4APPOK, Arf4APPOK, Arf4Init, nullptr, nullptr, Arf4OK)

@@ -36,7 +36,7 @@ Time {                       -- For 4/4-only tracks
     ···
 }
 Time {                       -- For tracks with Tempo Variations
-    Offset = 0,              -- Offset must be positive
+    Offset = 1,              -- Offset must be positive
     Tempo = {
         0, 4, 4,             -- Bar, Beat Count of a Bar, Tone Divisor
         1, 3, 4,

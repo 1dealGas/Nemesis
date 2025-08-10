@@ -24,9 +24,9 @@ namespace Arf4 {
 	};
 	struct Wish {
 		Ar64(																// Limits:
-			u64  withDt:1 , isSpecial:1;	u64  nCount:6, nSince:15;		// Node	  [1] 63	[T] 32767
-			u64  cCount:10, cSince:15;		u64  nIndex:6, cIndex:10;		// Child  [1] 1023	[T] 32767
-		)																	// Wish   [X] 1023	[T] 65535
+			u64  nType:1, isSpecial:1;		u64  cType:1, withDt:1;			// Node	  [1] 4096	[T] (262144)
+			u64  nSince:18, cSince:17;		u64  nIndex:12, cIndex:13;		// Child  [1] 8192	[T] (131072)
+		)																	// Wish   [X] 1023	[T] 16777215
 	};
 
 /* Object */
@@ -53,7 +53,7 @@ namespace Arf4 {
 	struct Index {
 		Ar64(
 			u64  hSince:15 = 0,  eSince:17 = 0;								// [OI] 1024ms, ABCDEF···
-			u64  wSince:17 = 0;												// [WI] 2048ms, AABBCC···
+			u64  wSince:24 = 0;												// [WI] 2048ms, AABBCC···
 		)
 	};
 	struct Duo {
@@ -79,7 +79,6 @@ namespace Arf4 {
 		uint64_t				msTime:20, judgeRange:7 = 37;
 		uint64_t				sHit:6, hHit:15, eHit:15, early:15, late:15, lost:16;
 		uint64_t				isAuto:1, isAnyX:1, isAnyY:1;
-		/*------------------------*/
 		float					xScale = 112.5 / 16, yScale = 112.5 / 8;
 		float					xDelta, cSpeed = 1;							// cS ∈ [0,1.25]  pS ∈ [0.5,10]
 	};
@@ -120,7 +119,8 @@ namespace Ar {
 	int  Ease(lua_State*) noexcept;
 	int  SetCam(lua_State*) noexcept;
 	int  SetSpeed(lua_State*) noexcept;
-	int  SetJudgeZone(lua_State*) noexcept;
 	int  GetJudgeStat(lua_State*) noexcept;
+	int  SetJudgeStat(lua_State*) noexcept;
+	int  SetJudgeZone(lua_State*) noexcept;
 	int  SetInputDelta(lua_State*) noexcept;
 }

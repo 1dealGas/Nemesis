@@ -67,41 +67,37 @@ local function AllocCanvas(wgoReq, hgoReq, egoReq)
 	local Wishc, Helc = msg_url("Nm:/Viewer#Wishc"), msg_url("Nm:/Viewer#Helc")
 	local Hintc, agoReq = msg_url("Nm:/Viewer#Hintc"), hgoReq + egoReq
 
-	if wgoReq > WgoCnt then for i = WgoCnt+1, wgoReq do
+	for i = WgoCnt+1, wgoReq do
 		local W = factory_create(Wishc)
 		WGOs[i], WishSprites[i], WishTints[i] = W, msg_url(NM, W, SPRITE), 0					end
-	elseif wgoReq < WgoCnt then for i = wgoReq+1, WgoCnt do
+	for i = wgoReq+1, WgoCnt do
 		go_delete(WGOs[i])																		end
-	end
 
-	if hgoReq > HgoCnt then for i = HgoCnt+1, hgoReq do
+	for i = HgoCnt+1, hgoReq do
 		local H = factory_create(Hintc)
 		HGOs[i], HintSprites[i] = H, msg_url(NM, H, SPRITE)
 		HintTints[i] = vmath_vector4(1)  ;  go_set_scale(1.237, H)								end
-	elseif hgoReq < HgoCnt then for i = hgoReq+1, HgoCnt do
+	for i = hgoReq+1, HgoCnt do
 		go_delete(HGOs[i])																		end
-	end
 
-	if egoReq > EgoCnt then for i = EgoCnt+1, egoReq do
+	for i = EgoCnt+1, egoReq do
 		local EH, ES = factory_create(Helc), msg_url( NM, factory_create(Wishc), SPRITE )
 		EHGOs[i], HelperSprites[i], HelperTints[i] = EH, msg_url(NM, EH, SPRITE), 0
 		EGOs[i], EchoSprites[i], EchoTints[i] = ES.path, ES, vmath_vector4()
 		sprite_play_flipbook(ES, ECHO)															end
-	elseif egoReq < EgoCnt then for i = egoReq+1, EgoCnt do
+	for i = egoReq+1, EgoCnt do
 		go_delete(EGOs[i])
 		go_delete(EHGOs[i])																		end
-	end
 
-	if agoReq > AgoCnt then for i = AgoCnt+1, agoReq do
+	for i = AgoCnt+1, agoReq do
 		local ALS = msg_url(NM, factory_create(Hintc), SPRITE)
 		local ARS = msg_url(NM, factory_create(Hintc), SPRITE)
 		AlGOs[i], AlSprites[i] = ALS.path, ALS  ;  sprite_play_flipbook(ALS, ANIM)
 		ArGOs[i], ArSprites[i] = ARS.path, ARS  ;  sprite_play_flipbook(ARS, ANIM)
 		AnimTints[i] = vmath_vector4()															end
-	elseif agoReq < AgoCnt then for i = agoReq+1, AgoCnt do
+	for i = agoReq+1, AgoCnt do
 		go_delete(AlGOs[i])
 		go_delete(ArGOs[i])																		end
-	end
 
 	WgoCnt, HgoCnt, EgoCnt, AgoCnt = wgoReq, hgoReq, egoReq, agoReq
 	for i = 1, WgoCnt do	msg_post(WishSprites[i], DISABLE)	end
@@ -152,37 +148,22 @@ local function UpdateCanvas(playHs)   -- Should be delegated to update() except 
 
 	-- Enable / Disable & HitSound
 	--
-	if wu > LastWgoUsed then
-		for i = LastWgoUsed+1, wu do	msg_post(WishSprites[i], ENABLE)	end
-	elseif LastWgoUsed > wu then
-		for i = wu+1, LastWgoUsed do	msg_post(WishSprites[i], DISABLE)	end
-	end
+	for i = LastWgoUsed+1, wu do	msg_post(WishSprites[i], ENABLE)		end
+	for i = wu+1, LastWgoUsed do	msg_post(WishSprites[i], DISABLE)		end
 
-	if hu > LastHgoUsed then
-		for i = LastHgoUsed+1, hu do	msg_post(HintSprites[i], ENABLE)	end
-	elseif LastHgoUsed > hu then
-		for i = hu+1, LastHgoUsed do	msg_post(HintSprites[i], DISABLE)	end
-	end
+	for i = LastHgoUsed+1, hu do	msg_post(HintSprites[i], ENABLE)		end
+	for i = hu+1, LastHgoUsed do	msg_post(HintSprites[i], DISABLE)		end
 
-	if eu > LastEgoUsed then
-		for i = LastEgoUsed+1, eu do	msg_post(EchoSprites[i], ENABLE)	end
-	elseif LastEgoUsed > eu then
-		for i = eu+1, LastEgoUsed do	msg_post(EchoSprites[i], DISABLE)	end
-	end
+	for i = LastEgoUsed+1, eu do	msg_post(EchoSprites[i], ENABLE)		end
+	for i = eu+1, LastEgoUsed do	msg_post(EchoSprites[i], DISABLE)		end
 
-	if xu > LastEhgoUsed then
-		for i = LastEhgoUsed+1, xu do	msg_post(HelperSprites[i], ENABLE)	end
-	elseif LastEhgoUsed > xu then
-		for i = xu+1, LastEhgoUsed do	msg_post(HelperSprites[i], DISABLE)	end
-	end
+	for i = LastEhgoUsed+1, xu do	msg_post(HelperSprites[i], ENABLE)		end
+	for i = xu+1, LastEhgoUsed do	msg_post(HelperSprites[i], DISABLE)		end
 
-	if au > LastAgoUsed then
-		for i = LastAgoUsed+1, au do	msg_post(AlSprites[i], ENABLE)
-										msg_post(ArSprites[i], ENABLE)		end
-	elseif LastAgoUsed > au then
-		for i = au+1, LastAgoUsed do	msg_post(AlSprites[i], DISABLE)
-										msg_post(ArSprites[i], DISABLE)		end
-	end
+	for i = LastAgoUsed+1, au do	msg_post(AlSprites[i], ENABLE)
+									msg_post(ArSprites[i], ENABLE)			end
+	for i = au+1, LastAgoUsed do	msg_post(AlSprites[i], DISABLE)
+									msg_post(ArSprites[i], DISABLE)			end
 
 	LastWgoUsed, LastHgoUsed, LastEgoUsed, LastEhgoUsed, LastAgoUsed = wu, hu, eu, xu, au
 	if playHs and (hp or ep) then
@@ -207,7 +188,7 @@ local function LoadFumenAr(PATH, isInitialLoad)
 		local lastModification = lfs.attributes(PATH, "modification")
 		return function()
 			local modification = lfs.attributes(PATH, "modification")
-			if not modification then   -- *.lua deleted
+			if not modification then   -- *.ar deleted
 				FumenLoaded = NIL
 				return false, "·][· File Listening Aborted"
 			elseif modification ~= lastModification then
@@ -524,9 +505,8 @@ function init()
 		url "Nm:/Panels#1-Input",		url "Nm:/Panels#2-Load",		url "Nm:/Panels#3-Bar",		url "Nm:/Panels#4-Ms",
 		url "Nm:/Panels#5-Xs",			url "Nm:/Panels#6-Ys",			url "Nm:/Panels#7-Xd",		url "Nm:/Panels#8-Cs",
 		url "Nm:/Panels#A-Export",		url "Nm:/Panels#B-Works",		url "Nm:/Panels#C-Play"
-	}
+	}	;			  go_set(InputLabel, COLOR, GREY)
 	for i = 1, 11 do  go_set(ButtonPanels[i], TINTW, 0.73)	end
-					  go_set(InputLabel, COLOR, GREY)
 	go_set("Nm:/Viewer#[RenderHint]", TINTW, 0.637)
 
 	-- Init Functions
@@ -536,9 +516,9 @@ function init()
 	end
 
 	local SN, Dir = sys.get_sys_info().system_name, sys.get_save_file("Nemesis Works", "")			-- Works Button
-	if SN == "Windows" then			WorksCmd = "explorer " .. Dir
-	elseif SN == "Darwin" then		WorksCmd = "open " .. string.gsub(Dir , "%s", "\\ ")
-	else							WorksCmd = "xdg-open " .. string.gsub(Dir , "%s", "\\ ")
+	if SN == "Windows" then			WorksCmd = string_format("start \"\" \"%s\"", Dir)
+	elseif SN == "Darwin" then		WorksCmd = "open " .. string.gsub(Dir, "%s", "\\ ")
+	else							WorksCmd = "xdg-open " .. string.gsub(Dir, "%s", "\\ ")
 	end
 
 	local AF = io.open( sys.get_save_file("Nemesis Works", "[Addon]") )								-- Addon

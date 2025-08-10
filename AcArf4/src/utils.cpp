@@ -40,20 +40,6 @@ Duo Ar::CosSin(Duo d) noexcept {   // Pass Degree into d.a
 	}
 }
 
-int Ar::Ease(lua_State* L) noexcept {
-	/* Usage:
-	 * local result = Arf4.Ease(from, type, to, ratio)
-	 */
-	const lua_Number from  = lua_tonumber(L, 1),
-					 delta = lua_tonumber(L, 3) - from;
-		  lua_Number ratio = lua_tonumber(L, 4);
-	if		(ratio < 0)		  ratio = 0;
-	else if (ratio > 1)		  ratio = 1;
-	return lua_pushnumber(L,
-		from + delta * Eased( ratio, lua_tointeger(L, 2) )
-	), 1;
-}
-
 /* Misc Utils */
 int Ar::SetCam(lua_State* L) noexcept {
 	/* Usage:										 -- xScale / yScale: Mainly for Runtime Mirroring
@@ -68,6 +54,21 @@ int Ar::SetCam(lua_State* L) noexcept {
 	return 0;
 }
 
+#ifndef AR_BUILD_VIEWER
+int Ar::Ease(lua_State* L) noexcept {
+	/* Usage:
+	 * local result = Arf4.Ease(from, type, to, ratio)
+	 */
+	const lua_Number from  = lua_tonumber(L, 1),
+					 delta = lua_tonumber(L, 3) - from;
+	lua_Number ratio = lua_tonumber(L, 4);
+	if		(ratio < 0)		  ratio = 0;
+	else if (ratio > 1)		  ratio = 1;
+	return lua_pushnumber(L,
+		from + delta * Eased( ratio, lua_tointeger(L, 2) )
+	), 1;
+}
+
 int Ar::SetSpeed(lua_State* L) noexcept {
 	/* Usage:
 	 * Arf4.SetSpeed(speed)
@@ -75,6 +76,23 @@ int Ar::SetSpeed(lua_State* L) noexcept {
 	const lua_Number  pSpeed = lua_tonumber(L, 1);
 		PlayerSpeed = pSpeed < 0.5 ? 0.5  :  pSpeed > 10 ? 10  :  pSpeed;
 	return 0;
+}
+
+int Ar::GetJudgeStat(lua_State* L) noexcept {
+	/* Usage:
+	 * local hint_hit, echo_hit, early, late, lost, special_hint_hit, object_count = Arf4.GetJudgeStat()
+	 */
+	return lua_pushinteger(L, Arf.hHit),  lua_pushinteger(L, Arf.eHit),  lua_pushinteger(L, Arf.early),
+		   lua_pushinteger(L, Arf.late),  lua_pushinteger(L, Arf.lost),  lua_pushinteger(L, Arf.sHit),
+		   lua_pushinteger(L, Arf.objectCount), 7;
+}
+
+int Ar::SetJudgeStat(lua_State* L) noexcept {
+	/* Usage:
+	 * Arf4.SetJudgeStat(hint_hit, echo_hit, early, late, lost, special_hint_hit)
+	 */
+	return Arf.hHit = lua_tointeger(L,1),  Arf.eHit = lua_tointeger(L,2),  Arf.early = lua_tointeger(L,3),
+		   Arf.sHit = lua_tointeger(L,6),  Arf.lost = lua_tointeger(L,5),  Arf.late  = lua_tointeger(L,4), 0;
 }
 
 int Ar::SetJudgeZone(lua_State* L) noexcept {
@@ -92,15 +110,6 @@ int Ar::SetJudgeZone(lua_State* L) noexcept {
 	return 0;
 }
 
-int Ar::GetJudgeStat(lua_State* L) noexcept {
-	/* Usage:
-	 * local hint_hit, echo_hit, early, late, lost, special_hint_hit, object_count = Arf4.GetJudgeStat()
-	 */
-	return lua_pushinteger(L, Arf.hHit),  lua_pushinteger(L, Arf.eHit),  lua_pushinteger(L, Arf.early),
-		   lua_pushinteger(L, Arf.late),  lua_pushinteger(L, Arf.lost),  lua_pushinteger(L, Arf.sHit),
-		   lua_pushinteger(L, Arf.objectCount), 7;
-}
-
 int Ar::SetInputDelta(lua_State* L) noexcept {
 	/* Usage:
 	 * Arf4.SetInputDelta(ms)   -- [-63,63]
@@ -112,3 +121,4 @@ int Ar::SetInputDelta(lua_State* L) noexcept {
 	Arf.maxDt = InputDelta + Arf.judgeRange;		Arf.maxDt = Arf.maxDt >  100 ?  100 : Arf.maxDt;
 	return 0;
 }
+#endif
