@@ -6,7 +6,7 @@
 
 1. Open the application, click `Works` button to open the workspace folder.
 
-2. Get the track `「Chronomica」by polysha` [here](https://masamunejp.bandcamp.com/album/polysha-soundcloud-freedl-works) (`wav` format).
+2. Get the track `「Chronomica」by polysha` [here](https://masamunejp.bandcamp.com/album/polysha-soundcloud-freedl-works) (`wav` or `mp3` format).
    
    Let's use the filename `chronomica.wav` for example.
    
@@ -43,7 +43,7 @@ Time {                       -- For tracks with Tempo Variations
         25, 4, 4
     },
     0, 0, 201,               -- Bar(to be converted to Beat), Additional Beats, BPM
-    ···
+    ···                      -- Negative BPM as Linear BPM
 }
 ```
 
@@ -54,10 +54,33 @@ Time {                       -- For tracks with Tempo Variations
 Delta {
     {0},        1,           -- Bar 0, Ratio: 1
     {2, 1/32},  -1,          -- Bar 2, then 1/32 Tone, Ratio: -1
-    {2, 1},     0.9,         -- Bar 2, then 1/16 Tone, Ratio: 0.9
+    {2, -1},    0.9,         -- Bar 2, then 1/16 Tone, Ratio: 0.9
     -15,        1,           -- Bar 2(Cached), then 15/16 Tone, Ratio: 1
     ···
 }
+```
+
+#### `Log {}`
+
+```lua
+--[ Example: ]--
+Log {                        -- Check the "*.series" file for the output.
+    Name = "Tint R",         -- tostring( os.clock ) by default
+    {0}, 1, STATIC,          -- Bar 0, Val: 1, Static Ease (Ratio === 0)
+    {60}, 0.5, LINEAR,       -- ...
+    {61}, 1
+}
+```
+
+#### `Xs {}, Ys{}, Xd{}, Cs{}`
+
+```lua
+--[ Example: ]--
+Xs {                         -- Okay to omit the "Bar 0" frame.
+    {30}, 1, LINEAR,         -- Xs: Scale Factor X
+    {31}, 0.5, LINEAR,       -- Ys: Scale Factor Y
+    {32}, 1                  -- Cs: Flow Speed Factor, Designer Side
+}                            -- Xd: Offset X by Px
 ```
 
 #### `Wish {}`
@@ -96,7 +119,7 @@ Child {
     Special = false,         -- Try to generate a special Hint if true, false by default
     InitLoop = 0.25,         -- 0.25 by default
     DeltaLoop = 1.25,        -- 0 by default
-    {1, 1}, 2, 3, 4, ···     -- Times
+    {1, -1}, 2, 3, 4, ···    -- Times
 }
 ```
 
@@ -121,7 +144,7 @@ Echo {
     InitLoop = 0.25,         -- 0.25 by default, ignored if Radius is 0
     DeltaLoop = 1.25,        -- 0 by default, ignored if Radius is 0
     {1}, 8, 0.5,             -- T1, X1, Y1
-    12, 8, 0.5,              -- T2, X2, Y2
+    -12, 8, 0.5,             -- T2, X2, Y2
     ···
 }
 ```
@@ -194,7 +217,7 @@ local RAIL_Y = 0.5
 local RAIL_RADIUS = 7
 local RAIL_INITLOOP = 0.25
 local RAIL_DELTALOOP = 0
-local RAIL_BEFORE_TONE = 1
+local RAIL_BEFORE_TONE = 0.75
 local RAIL_CHILD_SPECIAL = false
 local RAIL_WISH_SPECIAL = false
 local RAIL_WISH_WITHDT = true
@@ -217,15 +240,15 @@ local function Rail(x, ...)
                 end                                     tprv = tcur
             end
 
-            local S, unpack = SinceTone(), SinceTone(0) or unpack
+            local S = SinceTone() ; SinceTone(0)
             for i = 1, gsl do
-                local tsi = gs[i]
-                Wish {  Special = RAIL_WISH_SPECIAL, WithDt = RAIL_WISH_WITHDT,
-                        tsi[1]-RAIL_BEFORE_TONE, x, RAIL_Y, STATIC,
-                        tsi[#tsi], x, RAIL_Y  }
-                Child { Radius = RAIL_RADIUS,       Special = RAIL_CHILD_SPECIAL,
-                        InitLoop = RAIL_INITLOOP, DeltaLoop = RAIL_DELTALOOP, unpack(tsi) } end
-            SinceTone(S)
+                local tsi = gs[i] ; tsi.Radius, tsi.Special = RAIL_RADIUS, RAIL_CHILD_SPECIAL
+                                    tsi.InitLoop, tsi.DeltaLoop = RAIL_INITLOOP, RAIL_DELTALOOP
+                gs[i] = Wish {  Special = RAIL_WISH_SPECIAL, WithDt = RAIL_WISH_WITHDT,
+                                tsi[1]-RAIL_BEFORE_TONE, x, RAIL_Y, STATIC,
+                                tsi[#tsi], x, RAIL_Y  }
+                Child(tsi) end
+            return SinceTone(S) or gs
         end
     end
 end
@@ -238,25 +261,55 @@ local SLIDE_INTERVAL = 1/32
 
 local function Slide(T)
     local tlen, end_time = #T, 0
-    if tlen < 7 then
+    if tlen < 5 then
         return end
     for i = 1, tlen, 4 do
         end_time = Toneof( T[i] )
         T[i] = end_time
     end
 
-    local S, helper = SinceTone(), SinceTone(0) or Helper(T)
+    local S, helper = SinceTone(), Helper(T), SinceTone(0)
     local echo1 = { Radius = T.Radius, InitLoop = T.InitLoop, DeltaLoop = T.DeltaLoop                 }
     local echo2 = { Radius = T.Radius, InitLoop = T.InitLoop, DeltaLoop = T.DeltaLoop, Special = true }
     local k, e1, e2, cur = 1, 1, 1, T[1]+SLIDE_INTERVAL
     while cur < end_time do
         local xy = helper(cur)
         if k % SLIDE_MOD ~= 0 then echo1[e1], echo1[e1+1], echo1[e1+2], e1 = cur, xy.x, xy.y, e1+3
-        else                       echo2[e2], echo2[e2+1], echo2[e2+2], e2 = cur, xy.x, xy.y, e2+3  end
+        else                       echo2[e2], echo2[e2+1], echo2[e2+2], e2 = cur, xy.x, xy.y, e2+3 end
         k, cur = k+1, cur+SLIDE_INTERVAL
     end
     Echo(echo1) ; Echo(echo2)
     SinceTone(S)
+end
+
+
+-- Arc
+--
+local function Arc(T)
+    local tlen = #T
+    if tlen < 9 then
+        return end
+    for i = 1, tlen, 5 do
+        T[i] = Toneof( T[i] )
+    end
+
+    local S, W = SinceTone(), {}, SinceTone(0)
+    for i = 1, (tlen-1)/5 do
+        local ti, wi = i*5-4, i*8-7
+        local r, d0, d1 = 0, T[ti+3], T[ti+8]
+        local px, py, c0, s0 = T[ti+1], T[ti+2], CosSin( d0 )
+        local dx, dy, c1, s1 = T[ti+6]-px, T[ti+7]-py, CosSin( d1 )
+
+        if dx ~= 0 and c1 ~= c0 then        r = dx / (c1 - c0)
+        elseif dy ~= 0 and s1 ~= s0 then    r = dy / (s1 - s0)
+        else                                r, d0, d1 = 0, 0, 0
+        end                                 px, py = (px - r*c0), (py - r*s0)
+
+        W[wi], W[wi+1], W[wi+2], W[wi+3] = T[ti], px, py, {r, d0, T[ti+4]}
+        W[wi+4], W[wi+5], W[wi+6], W[wi+7] = T[ti+5], px, py, {r, d1, 0}
+    end SinceTone(S)
+        W.WithDt, W.Special = T.WithDt, T.Special
+    return T.Helper and Helper(W) or Wish(W)
 end
 ```
 
@@ -595,13 +648,16 @@ Rail(8,
 Rail(8.125,
     {27.75}
 )
+Rail(8.75,
+    {18}
+)
 Rail(8.875,
-    {32.25}
+    {30}, {32.25}
 )
 
 Rail(9,
-    {13}, {13.5}, {15.25}, {15.75}, {16.75}, {18}, {19.5},
-    {25.5}, {30}, {30.375}, {32.5}, -4, {33.625}, {36}
+    {13}, {13.5}, {15.25}, {15.75}, {16.75}, {19.5},
+    {25.5}, {30.375}, {32.5}, -4, {33.625}, {36}
 )
 Rail(9.125,
     {32.25}
@@ -629,8 +685,8 @@ Rail(12,
 )
 
 DUO_RADIUS = 1.75
-Duo({22.375}, 12,5, 0,180)
-Duo({23.5}, 4,5, 0,180)
+Duo({22.375}, 12,5, {60,-1/8},{240,-1/8})
+Duo({23.5}, 4,5, {120,1/8},{300,1/8})
 Duo({24.25}, 8,5, 90,225,315)
 Duo({26.25}, 6,5, 120,300)
 Duo({26.5}, 10,5, 120,300)
@@ -859,10 +915,13 @@ Rail(5,
     {68.625}, -2, {69}, -2,
     {71.75}, {79.125}, {79.75}
 )
-Rail(6,
-    {62.75}, {63.125}, {63.75,-1}, {64.25}, {64.875}, {65.375}, {66.25}, {70.75}
-) ; Child{ InitLoop = 17/64, 0 }
+Rail(5.25,
+    {63.125}
+)
 
+Rail(6,
+    {62.75}, {63.75,-1}, {64.25}, {64.875}, {65.375}, {66.25}, {70.75}
+) ; Child{ InitLoop = 17/64, 0 }
 Rail(6,
     {71.75,-1}, {75.625}, -2, {76.375}, -2, {79}
 )
@@ -871,7 +930,7 @@ Rail(6.5,
 )
 
 Rail(7,
-    {62.625}, {63.5}, {64.5},
+    {62.625}, {63.125}, {63.5}, {64.5},
     {67.375}, {67.75}, -2, {68.5}, -3, {68.875}, -3, {69.25}, -2, {69.875},
     {70.25}, {71}, 2/24, -5, -7, {75.25}, -2, {76.75}, -2, {79.75}
 )
@@ -885,18 +944,18 @@ Rail(8, {67}) ; Child{ InitLoop = 17/64, 0 }
 RAIL_INITLOOP = 0.25
 
 Rail(8,
-    {63.125}, -2, {63.625}, {64}, {64.375}, {64.75}, {65.125},
+    {63.25}, {63.625}, {64}, {64.375}, {64.75}, {65.125},
     {70}, {70.375}, -4, -8, {79}, {79.5}, {79.875}, -4
 )
 Rail(8.5,
     {76}, -2
 )
 Rail(8.875,
-    {63.75}
+    {63}, {63.75}
 )
 
 Rail(9,
-    {63}, {64.125}, {67,-3}, -6, -9, -12, -14, {68,-6}, -8, -14, {69.25}, -2,
+    {64.125}, {67,-3}, -6, -9, -12, -14, {68,-6}, -8, -14, {69.25}, -2,
     {70.125}, {70.5}, {71,1/24}, 3/24, -6,
     {75.25}, -2, {76.75}, -2, {77.125}, -2, {79.125}, -4
 )
@@ -906,9 +965,12 @@ Rail(9.125,
 Rail(9.5,
     {71.5,-3}
 )
+Rail(9.75,
+    {63.25}
+)
 
 Rail(10,
-    {62.75}, {63.25}, {63.875}, {64.625}, {65}, {65.25}, {66.25},
+    {62.75}, {63.875}, {64.625}, {65}, {65.25}, {66.25},
     {70.25}, {70.75}, {72,-1}, {74.875}, -2,
     {80.125}
 )
@@ -977,15 +1039,14 @@ Duo({71.25}, 11.5,3.75, 45,315)
 DUO_RADIUS = 3.5
 Duo({80.5}, 8,5, 0,60,120,180)
 
-DUO_RADIUS = 5.25
+DUO_RADIUS = 4.25
 Duo({68.125}, 8,2.25, 85,95)
 Duo({69.625}, 8,2.25, 83,97)
 
-DUO_RADIUS, DUO_WITHDT = 5, true
+DUO_RADIUS = 5
+DUO_WITHDT = true
+Duo({71.5}, 8,1.125, 90) ; Child{ Radius = 5.5, {71.5} }
 Duo({73}, 8,4, 0,180)
-
-DUO_RADIUS = 7
-Duo({71.5}, 8,1.125, 88,92)
 
 Wish {
     Special = true,

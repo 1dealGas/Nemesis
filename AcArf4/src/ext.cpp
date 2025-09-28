@@ -1,9 +1,13 @@
 ﻿//  Arf4 Ext  //
 #include <Arf4.h>
-
 Arf4::Fumen		Arf;
 int8_t			InputDelta;
 float			PlayerSpeed = 6;
+
+static int freeSeries(lua_State* L) {
+	( (std::vector<Arf4::Duo>*)lua_touserdata(L, 1) ) -> ~vector();
+	return 0;
+}
 
 static constexpr luaL_Reg Arf4Lib[] = {
 	#ifdef AR_BUILD_VIEWER
@@ -17,32 +21,31 @@ static constexpr luaL_Reg Arf4Lib[] = {
 		{"NewHelper", Ar::NewHelper},
 		{"SinceTone", Ar::SinceTone},
 		{"OrganizeArf", Ar::OrganizeArf},
-		{"BarToMs", Ar::BarToMs},
+		{"GetFileMtime", Ar::GetFileMtime},
+		{"ConvTime", Ar::ConvTime},
 		{"Mirror", Ar::Mirror},
 	#else
 		{"JudgeArf", Ar::JudgeArf},
-		{"GetJudgeStat", Ar::GetJudgeStat},
+		{"SetOptions", Ar::SetOptions},
+		{"SetJudgeZone", Ar::SetJudgeZone},		
 		{"SetJudgeStat", Ar::SetJudgeStat},
-		{"SetJudgeZone", Ar::SetJudgeZone},
-		{"SetInputDelta", Ar::SetInputDelta},
-		{"SetSpeed", Ar::SetSpeed},
-		{"Ease", Ar::Ease},
+		{"GetJudgeStat", Ar::GetJudgeStat},
 	#endif
+		{Ar::LGC, freeSeries},
+		{"SetCam", Ar::SetCam},
 		{"LoadArf", Ar::LoadArf},
 		{"ExportArf", Ar::ExportArf},
 		{"UpdateArf", Ar::UpdateArf},
-		{"SetCam", Ar::SetCam},
-		{nullptr, nullptr}
+		{"NewSeries", Ar::NewSeries},
+		{"CosSin", Ar::GetCosSin},
+		{"Ease", Ar::Ease},
+	{0,0}
 };
 
 static dmExtension::Result Arf4Init(dmExtension::Params* p) {
-	luaL_register(p->m_L, "Arf4", Arf4Lib), lua_pop(p->m_L, 1);
-	return dmExtension::RESULT_OK;
+	return luaL_register(p->m_L, Ar::f4, Arf4Lib),  lua_pop(p->m_L, 1),  dmExtension::RESULT_OK;
 }
 static dmExtension::Result Arf4OK(dmExtension::Params*) {
 	return dmExtension::RESULT_OK;
 }
-static dmExtension::Result Arf4APPOK(dmExtension::AppParams*) {
-	return dmExtension::RESULT_OK;
-}
-DM_DECLARE_EXTENSION(AcArf4, "AcArf4", Arf4APPOK, Arf4APPOK, Arf4Init, nullptr, nullptr, Arf4OK)
+DM_DECLARE_EXTENSION(AcArf4, Ar::f4, nullptr, nullptr, Arf4Init, nullptr, nullptr, Arf4OK)

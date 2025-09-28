@@ -5,15 +5,10 @@ local HEADER, NIL = [[
 local A = Arf4
 local STATIC, LINEAR, INSINE, OUTSINE, _NA = 0,1,2,3, assert
 local function _NW(x) return function(y) return _NA(x(y)) end end
-local Wish, Child, Hint, Echo = _NW(A.NewWish), _NW(A.NewChild), _NW(A.NewHint), _NW(A.NewEcho)
 local Helper, Delta, Time = _NW(A.NewHelper), _NW(A.SetDelta), _NW(A.NewBuild)
-local Verse, Mirror, SinceTone = A.NewVerse, A.Mirror, A.SinceTone
-local _NT, A = type
-
-local function Toneof(t)
-	if _NT(t)=="table" then Helper(t); t=t[2] or 0 end
-	return SinceTone() + (t<0 and -t/16 or t)
-end;
+local Wish, Child, Hint, Echo = _NW(A.NewWish), _NW(A.NewChild), _NW(A.NewHint), _NW(A.NewEcho)
+local Verse, Mirror, Toneof, SinceTone = A.NewVerse, A.Mirror, A.ConvTime, A.SinceTone
+local Log, CosSin, A = Log, A.CosSin;
 ]], function() end
 
 
@@ -21,23 +16,18 @@ end;
 --
 local Title, WorksCmd = "Nemesis", nil
 local Proof, FumenLoaded   -- FumenLoaded: A Closure to reload the Fumen if updated. Nullable.
-local BG, Info, Meshes = msg.url("Nm:/Viewer#[BG]"), msg.url("Nm:/Viewer#[Info]"), msg.url("Nm:/Viewer#[Meshes]")
+local Info = msg.url("Nm:/Viewer#[Info]")
 
 local Audio, AudioLen, AudioPlaying
 local PlayUnit, StopUnit = AcAudio.PlayUnit, AcAudio.StopUnit
 local HitSounds, HsWhich = {}, 1
 
-local function LoadAudio(name)
-	local ok, data = AcAudio.CreateSource( sys.get_save_file("Nemesis Works", name .. ".opus") )
-	if ok then
-		return AcAudio.CreateUnit(data)
-	end
-
-	-- Try *.wav when *.opus is not available
-	--
-	ok, data = AcAudio.CreateSource( sys.get_save_file("Nemesis Works", name .. ".wav") )
-	if ok then
-		return AcAudio.CreateUnit(data)
+local function LoadAudio(basePath)
+	for _, ext in ipairs{ ".opus", ".mp3", ".wav" } do
+		local ok, data = AcAudio.CreateSource(basePath..ext)
+		if ok then
+			return AcAudio.CreateUnit(data)
+		end
 	end
 end
 
@@ -45,7 +35,7 @@ end
 -- Canvas & Fumen
 --
 local CanvasMs, ObjectCount = 0, 0
-local XScale, YScale, XDelta, CamSpeed = 1, 1, 0, 1
+local CamSeries, CamVals, LogQueue = {}, {}, {}
 
 local WgoCnt, HgoCnt, EgoCnt, AgoCnt = 0, 0, 0, 0
 local WGOs, HGOs, EGOs, EHGOs, AlGOs, ArGOs = {}, {}, {}, {}, {}, {}
@@ -54,12 +44,47 @@ local WishTints, WishSpecial, HintTints, EchoTints, HelperTints, AnimTints = {},
 local LastWgoUsed, LastHgoUsed, LastEgoUsed, LastEhgoUsed, LastAgoUsed = 0, 0, 0, 0, 0
 
 local UPDATE_FMT = "·][·  %u of %u ms  ·  %u Object(s)"
-local SPRITE, WISHSP, WISH, ECHO, ANIM = hash "Sprite", hash "WishSP", hash "Wish", hash "Echo", hash "Anim"
+local ETS, S0, S1 = { [0] = "STATIC", "LINEAR", "INSINE", "OUTSINE" }, Arf4.NewSeries{0,0}, Arf4.NewSeries{0,1}
 local ENABLE, DISABLE, TINTW, TINT, NM = hash "enable", hash "disable", hash "tint.w", hash "tint", hash "Nm"
+local SPRITE, WISHSP, WISH, ECHO, ANIM = hash "Sprite", hash "WishSP", hash "Wish", hash "Echo", hash "Anim"
 
-local UpdateArf, SetCam = Arf4.UpdateArf, Arf4.SetCam
+local ConvTime, UpdateArf, SetCam, Ease = Arf4.ConvTime, Arf4.UpdateArf, Arf4.SetCam, Arf4.Ease
 local go_set, msg_post, sprite_play_flipbook = go.set, msg.post, sprite.play_flipbook
 local label_set_text, string_format = label.set_text, string.format
+
+local function EnqueueLog(t, name)
+	if t[2] then
+		LogQueue[ t.Name or name or os.clock() ] = t
+			for i = 1, #t, 3 do
+				t[i] = ConvTime(  ConvTime( t[i] ),  2  )   -- [0] toTone  [1] barToMs  [2] toneToMs
+			end
+		return true
+	end
+end
+
+local function Xs(t)
+	if EnqueueLog(t, "Xs") then
+		CamSeries[1] = Arf4.NewSeries(t)
+	end
+end
+
+local function Ys(t)
+	if EnqueueLog(t, "Ys") then
+		CamSeries[2] = Arf4.NewSeries(t)
+	end
+end
+
+local function Xd(t)
+	if EnqueueLog(t, "Xd") then
+		CamSeries[3] = Arf4.NewSeries(t)
+	end
+end
+
+local function Cs(t)
+	if EnqueueLog(t, "Cs") then
+		CamSeries[4] = Arf4.NewSeries(t)
+	end
+end
 
 local function AllocCanvas(wgoReq, hgoReq, egoReq)
 	local factory_create, vmath_vector4 = factory.create, vmath.vector4
@@ -109,17 +134,10 @@ local function AllocCanvas(wgoReq, hgoReq, egoReq)
 	LastWgoUsed, LastHgoUsed, LastEgoUsed, LastAgoUsed = 0, 0, 0, 0
 end
 
-local function CreateNlenv()
-	local G = {}
-	G.Arf4, G.assert, G.pairs, G.ipairs, G.next, G.pprint = Arf4, assert, pairs, ipairs, next, pprint
-	G.print, G.select, G.tonumber, G.tostring, G.type, G.unpack = print, select, tonumber, tostring, type, unpack
-	G.bit, G.math, G.string, G.table = bit, math, string, table
-	return G
-end
-
 local function UpdateCanvas(playHs)   -- Should be delegated to update() except LoadFumen*
-	SetCam(XScale, YScale, XDelta, CamSpeed)
-	local wu, hu, eu, xu, au, hp, ep = UpdateArf(CanvasMs, nil,
+	Ease(CanvasMs, CamSeries, CamVals)
+	SetCam(CamVals[1], CamVals[2], CamVals[3], CamVals[4])
+	local wu, hu, eu, xu, au, hp, ep = UpdateArf(CanvasMs - 30, 30,
 		WGOs, HGOs, EGOs, EHGOs, AlGOs, ArGOs, WishTints, HintTints, EchoTints, HelperTints, AnimTints
 	)
 
@@ -173,45 +191,52 @@ local function UpdateCanvas(playHs)   -- Should be delegated to update() except 
 	end
 end
 
-local function LoadFumenAr(PATH, isInitialLoad)
+local function CreateNlenv()
+	local G = {}
+	G.Arf4, G.bit, G.math, G.string, G.table = Arf4, bit, math, string, table
+	G.assert, G.pairs, G.ipairs, G.next, G.pprint = assert, pairs, ipairs, next, pprint
+	G.print, G.select, G.tonumber, G.tostring, G.type, G.unpack = print, select, tonumber, tostring, type, unpack
+	G.Log, G.Xs, G.Ys, G.Xd, G.Cs = EnqueueLog, Xs, Ys, Xd, Cs
+	CamSeries, LogQueue = {S1, S1, S0, S1}, {}
+	return G
+end
+
+local function CreateReload(PATH, LoadFn, lastModification)
+	CanvasMs, lastModification = 0, Arf4.GetFileMtime(PATH)
+--------
+	return function()
+		local modification = Arf4.GetFileMtime(PATH)
+		if not modification then   -- *.ar deleted
+			FumenLoaded = NIL
+			return false, "·][· File Listening Aborted"
+		elseif modification ~= lastModification then
+			lastModification = modification
+			return LoadFn(PATH, false)
+		end
+	end
+end
+
+local function LoadFumenAr(PATH, isBoot)
 	local b, o, w, h, e = Arf4.LoadArf(PATH, true, Proof)
 	if not b then
 		return false, "·][· Arf4: Failed to Load the Fumen"
 	end
 
-	ObjectCount, CanvasMs = o, isInitialLoad and 0 or CanvasMs
 	AllocCanvas(w, h, e)
-
-	-- Make the Fumen Loaded
-	--
-	if isInitialLoad then
-		local lastModification = lfs.attributes(PATH, "modification")
-		return function()
-			local modification = lfs.attributes(PATH, "modification")
-			if not modification then   -- *.ar deleted
-				FumenLoaded = NIL
-				return false, "·][· File Listening Aborted"
-			elseif modification ~= lastModification then
-				lastModification = modification
-				return LoadFumenAr(PATH, false)
-			end
-		end
-	end return true
+	ObjectCount, CamSeries = o, {S1, S1, S0, S1}
+	return isBoot and CreateReload(PATH, LoadFumenAr) or true
 end
 
-local function LoadFumenNm(PATH, isInitialLoad)
+local function LoadFumenNm(PATH, isBoot)
 	local scriptFile = io.open(PATH)
-	local scriptStr = HEADER .. scriptFile:read("*a")
-	scriptFile:close()
-
-	local scriptCompiled, scriptErr = loadstring(scriptStr)
+	local scriptCompiled, scriptErr = loadstring( scriptFile and HEADER .. scriptFile:read("*a") or PATH )
 	if not scriptCompiled then
-		return false, "·][· Lua: " .. scriptErr
+		return false, "·][· Lua " .. scriptErr
 	end
 
 	local callOk, callErr = pcall(setfenv( scriptCompiled, CreateNlenv() ))
 	if not callOk then
-		return false, "·][· Lua: " .. callErr
+		return false, "·][· Lua " .. callErr
 	end
 
 	local b, o, w, h, e = Arf4.OrganizeArf()
@@ -219,24 +244,8 @@ local function LoadFumenNm(PATH, isInitialLoad)
 		return false, "·][· " .. o
 	end
 
-	ObjectCount, CanvasMs = o, isInitialLoad and 0 or CanvasMs
-	AllocCanvas(w, h, e)
-
-	-- Make the Fumen Loaded
-	--
-	if isInitialLoad then
-		local lastModification = lfs.attributes(PATH, "modification")
-		return function()
-			local modification = lfs.attributes(PATH, "modification")
-			if not modification then   -- *.lua deleted
-				FumenLoaded = NIL
-				return false, "·][· File Listening Aborted"
-			elseif modification ~= lastModification then
-				lastModification = modification
-				return LoadFumenNm(PATH, false)
-			end
-		end
-	end return true
+	ObjectCount = o;  AllocCanvas(w, h, e)
+	return isBoot and CreateReload(PATH, LoadFumenNm) or true
 end
 
 
@@ -244,66 +253,50 @@ end
 --
 local ProjectName = ""
 local COLOR, BLACK, GREY = hash "color", vmath.vector4(0, 0, 0, 1), vmath.vector4(0.37, 0.37, 0.37, 1)
-local InputLabel, InputText, InputMode = msg.url("Nm:/Labels#1-Input"), "", false
+local InputLabel, InputText, InputMode = msg.url("Nm:/Buttons#L1-Input"), "", false
 
 local WindowCenterX, WindowCenterY, WindowRatio = 900, 540, 1
-local Scrolling, CtrlPressed, AltPressed, ButtonPressed = false, false, false, nil
-local ButtonPanels, ButtonXs = nil, {   -- Y range [20,70]
+local CtrlPressed, AltPressed, ButtonPressed = false, false, nil
+local Panels, Bdy, ButtonXs = nil, 20, {   -- Y range [20,70] or [-70,-20]
 	24, 224,			248, 348,			372, 459.5,			483.5, 558.5,
-	582.5, 657.5,		681.5, 756.5,		780.5, 855.5,		879.5, 954.5,
 	1278, 1428,			1452, 1602,			1626, 1776
 }
 
 local ButtonFns = {
 	[1] = function()   -- Args Input
 		InputMode, InputText = true, ""
-		go_set(ButtonPanels[1], TINTW, 0.88) ; go_set(InputLabel, COLOR, GREY)
+		go_set(Panels[1], TINTW, 0.88) ; go_set(InputLabel, COLOR, GREY)
 		label_set_text(InputLabel, "Args Input")
 	end,
 
 	[2] = function()   -- Load
 		if AudioPlaying then return end
-	--------
-		local A1, A2 = LoadAudio(InputText)
-		if not A1 then
-			label_set_text(Info, "·][· Audio (*.opus/*.wav) Not Loaded")
-		return end
-
 		local pBase = sys.get_save_file("Nemesis Works", InputText)
-		if lfs.attributes( pBase .. ".lua" ) then
-			local L1, L2 = LoadFumenNm(pBase .. ".lua", true)
-			if L1 then
-				Audio, AudioLen = A1, A2
-				label_set_text( Info, string_format(UPDATE_FMT, CanvasMs, AudioLen, ObjectCount) )
-				ProjectName, FumenLoaded = InputText, L1
-				window.set_title(
-					string_format( "%s -- %s.lua", Title, ProjectName )
-				)
-			else
-				label_set_text(Info, L2)
-			end
-		return end
-
-		if lfs.attributes( pBase .. ".ar" ) then
-			local F1, F2 = LoadFumenAr(pBase .. ".ar", true)
-			if F1 then
-				Audio, AudioLen = A1, A2
-				label_set_text( Info, string_format(UPDATE_FMT, CanvasMs, AudioLen, ObjectCount) )
-				ProjectName, FumenLoaded = InputText, F1
-				window.set_title(
-					string_format( "%s -- %s.ar", Title, ProjectName )
-				)
-			else
-				label_set_text(Info, F2)
-			end
-		return end
+	--------
+		local A1, A2 = LoadAudio(pBase)
+			if not A1 then
+				label_set_text(Info, "·][· Audio (*.opus/*.mp3/*.wav) Not Loaded")
+			return end
+		for Ext, loadFn in pairs{  [".lua"] = LoadFumenNm,  [".ar"] = LoadFumenAr  } do
+			if Arf4.GetFileMtime( pBase .. Ext ) then
+				local L1, L2 = loadFn(pBase .. Ext, true)
+				if L1 then
+					Audio, AudioLen = A1, A2
+					ProjectName, FumenLoaded = InputText, L1
+					label_set_text( Info, string_format(UPDATE_FMT, CanvasMs, AudioLen, ObjectCount) )
+					window.set_title( string_format("%s -- %s%s", Title, ProjectName, Ext) )
+				else
+					label_set_text(Info, L2)
+				end
+			return end
+		end
 	--------
 		label_set_text(Info, "·][· Script File Not Found")
 	end,
 
 	[3] = function()   -- Bar
 		if FumenLoaded and (not AudioPlaying) then
-			local t = Arf4.BarToMs( tonumber(InputText) or 0 )
+			local t = ConvTime( tonumber(InputText) or 0, 1 )
 			CanvasMs = t < 0  and  0  or  t > AudioLen  and  AudioLen - 10  or  t
 			label_set_text( Info,
 				string_format(UPDATE_FMT, CanvasMs, AudioLen, ObjectCount)
@@ -321,39 +314,31 @@ local ButtonFns = {
 		end
 	end,
 
-	[5] = function()   -- Xs
-		XScale = tonumber(InputText) or XScale
-	end,
-
-	[6] = function()   -- Ys
-		YScale = tonumber(InputText) or YScale
-	end,
-
-	[7] = function()   -- Xd
-		XDelta = tonumber(InputText) or XDelta
-	end,
-
-	[8] = function()   -- Cs
-		CamSpeed = tonumber(InputText) or CamSpeed
-		CamSpeed = (CamSpeed>=0 and CamSpeed<=1.25) and CamSpeed or 1
-	end,
-
-	[9] = function()   -- Export
+	[5] = function()   -- Export
 		if FumenLoaded then
-			local fileName = string.format("%s - %s.ar", ProjectName, os.date"%g%m%d")
-			local file, fmOut = io.open( sys.get_save_file("Nemesis Works", fileName) , "wb" ), Arf4.ExportArf(Proof)
-			if file and fmOut then
-				file:write(fmOut)		file:close()
-				os.execute(WorksCmd)
-			end
+			local basePath = sys.get_save_file("Nemesis Works", string.format( "%s - %s",  ProjectName,  os.date"%g%m%d" ))
+			io.open(basePath..".ar", "wb") : write(  Arf4.ExportArf(Proof)  ) ; io.close()
+				if next(LogQueue) then   -- Export Series Log
+					local LF = io.open(basePath..".series", "w")
+					if LF then
+						for name, kf in pairs(LogQueue) do
+							LF:write( name .. " {" )
+								for i = 1, #kf, 3 do
+									LF:write(string_format( "\n	%u, %s, %s,", kf[i], kf[i+1], ETS[ kf[i+2] ] or "UNKNOWN" ))
+								end
+							LF:write( "\n}\n" )
+						end
+					LF:close() end
+				end
+			os.execute(WorksCmd)
 		end
 	end,
 
-	[10] = function()  -- Works
+	[6] = function()  -- Works
 		os.execute(WorksCmd)
 	end,
 
-	[11] = function()  -- Play & Pause
+	[7] = function()  -- Play & Pause
 		if FumenLoaded then
 			if AudioPlaying then
 				StopUnit(Audio, false)
@@ -366,8 +351,8 @@ local ButtonFns = {
 }
 
 local function ButtonOnWhich(x, y)
-	if y >= 20 and y <= 70 then
-		for i = 1, 11 do
+	if (y >= Bdy) and (y <= Bdy + 50) then
+		for i = 1, 7 do
 			if x <= ButtonXs[i*2] and x >= ButtonXs[i*2-1] then
 				return i
 			end
@@ -382,10 +367,10 @@ local function ProcessButtons(action)
 			540 + (action.screen_y - WindowCenterY) * WindowRatio
 		)
 		if ButtonPressed then
-			go_set(ButtonPanels[ButtonPressed], TINTW, 1)
+			go_set(Panels[ButtonPressed], TINTW, 1)
 		end
 	elseif action.released and ButtonPressed then
-		go_set(ButtonPanels[ButtonPressed], TINTW, 0.73)
+		go_set(Panels[ButtonPressed], TINTW, 0.73)
 		ButtonPressed = ButtonPressed == ButtonOnWhich(
 			900 + (action.screen_x - WindowCenterX) * WindowRatio,
 			540 + (action.screen_y - WindowCenterY) * WindowRatio
@@ -416,41 +401,22 @@ local InputModeFns = {
 
 	[hash"touch"] = function(action)
 		if action.released then
-			if InputText == "SHOWBG" then		msg_post(BG, ENABLE) ; msg_post(Meshes, ENABLE)
-			elseif InputText == "HIDEBG" then	msg_post(BG, DISABLE); msg_post(Meshes, DISABLE)
-			end									InputMode = go_set(ButtonPanels[1], TINTW, 0.73)
+			if InputText == "SHOWBG" then		msg_post("Nm:/Viewer", ENABLE);   Bdy = 20
+			elseif InputText == "HIDEBG" then	msg_post("Nm:/Viewer", DISABLE);  Bdy = -70
+			end									InputMode = go_set(Panels[1], TINTW, 0.73);  go_set("Nm:/Buttons", "position.y", Bdy-20)
 		end										ProcessButtons(action)
 	end
 }
 
 local ActionFns = {
-	[hash"alt"] = function(action)
-		if action.pressed then				AltPressed = true
-		elseif action.released then			AltPressed = false
-		end
-	end,
-
-	[hash"ctrl"] = function(action)
-		if action.pressed then				CtrlPressed = true
-		elseif action.released then			CtrlPressed = false
-		end
-	end,
-
 	[hash"touch"] = ProcessButtons,
-	[hash"wheel_down"] = function(action)
-		if FumenLoaded and (not AudioPlaying) and (action.value == 1) then
-			local t = (CtrlPressed or AltPressed) and (CanvasMs + 370) or (CanvasMs + 37)
-			CanvasMs, Scrolling = t > AudioLen  and  AudioLen - 10  or  t,  1
-			label_set_text( Info,
-				string_format(UPDATE_FMT, CanvasMs, AudioLen, ObjectCount)
-			)
-		end
-	end,
+	[hash"ctrl"] = function(action)		CtrlPressed = not action.released		end,
+	[hash"alt"] = function(action)		AltPressed = not action.released		end,
 
-	[hash"wheel_up"] = function(action)
-		if FumenLoaded and (not AudioPlaying) and (action.value == 1) then
+	[hash"up"] = function(action)
+		if FumenLoaded and (not AudioPlaying) and (action.pressed or action.repeated) then
 			local t = (CtrlPressed or AltPressed) and (CanvasMs - 370) or (CanvasMs - 37)
-			CanvasMs, Scrolling = t < 0  and  0  or  t,  1
+			CanvasMs = t < 0  and  0  or  t
 			label_set_text( Info,
 				string_format(UPDATE_FMT, CanvasMs, AudioLen, ObjectCount)
 			)
@@ -467,10 +433,20 @@ local ActionFns = {
 		end
 	end,
 
-	[hash"up"] = function(action)
-		if FumenLoaded and (not AudioPlaying) and (action.pressed or action.repeated) then
+	[hash"wheel_up"] = function(action)
+		if FumenLoaded and (not AudioPlaying) and (action.value == 1) then
 			local t = (CtrlPressed or AltPressed) and (CanvasMs - 370) or (CanvasMs - 37)
 			CanvasMs = t < 0  and  0  or  t
+			label_set_text( Info,
+				string_format(UPDATE_FMT, CanvasMs, AudioLen, ObjectCount)
+			)
+		end
+	end,
+
+	[hash"wheel_down"] = function(action)
+		if FumenLoaded and (not AudioPlaying) and (action.value == 1) then
+			local t = (CtrlPressed or AltPressed) and (CanvasMs + 370) or (CanvasMs + 37)
+			CanvasMs = t > AudioLen  and  AudioLen - 10  or  t
 			label_set_text( Info,
 				string_format(UPDATE_FMT, CanvasMs, AudioLen, ObjectCount)
 			)
@@ -481,39 +457,45 @@ local ActionFns = {
 
 -- Lifecycle
 --
-local LastPlaying = false
+local LastPlaying = nil
 local CheckPlaying, GetTime = AcAudio.CheckPlaying, AcAudio.GetTime
 function init()
 	-- Init Window & UI
 	--
-	sys.set_update_frequency(15)
-	msg_post(".", "acquire_input_focus")
+	msg_post("#", "acquire_input_focus")
 	window.set_listener( function(_, event, data)
-		if event == 2 then
+		if event == 2 then   -- Input Adjusting
 			WindowCenterX, WindowCenterY = data.width / 2, data.height / 2
 			WindowRatio = 1 / math.min( WindowCenterX / 900, WindowCenterY / 540 )
+		elseif event == 1 and FumenLoaded then   -- File Listening
+			local updated, er = FumenLoaded()
+			if updated then		label_set_text( Info, string_format(UPDATE_FMT, CanvasMs, AudioLen, ObjectCount) )
+			elseif er then		label_set_text( Info, er )
+			end
 		end
 	end )
 
 	local m, n = window.get_size()
 	window.set_position( m/2 - 900, n/2 - 540 )
-	WindowCenterX, WindowCenterY, WindowRatio = 900, 540, 1
 	window.set_size(1800, 1080)
 
 	local url = msg.url
-	ButtonPanels = {
-		url "Nm:/Panels#1-Input",		url "Nm:/Panels#2-Load",		url "Nm:/Panels#3-Bar",		url "Nm:/Panels#4-Ms",
-		url "Nm:/Panels#5-Xs",			url "Nm:/Panels#6-Ys",			url "Nm:/Panels#7-Xd",		url "Nm:/Panels#8-Cs",
-		url "Nm:/Panels#A-Export",		url "Nm:/Panels#B-Works",		url "Nm:/Panels#C-Play"
-	}	;			  go_set(InputLabel, COLOR, GREY)
-	for i = 1, 11 do  go_set(ButtonPanels[i], TINTW, 0.73)	end
-	go_set("Nm:/Viewer#[RenderHint]", TINTW, 0.637)
+	Panels = {
+		url "Nm:/Buttons#P1-Input",		url "Nm:/Buttons#P2-Load",		url "Nm:/Buttons#P3-Bar",		url "Nm:/Buttons#P4-Ms",
+		url "Nm:/Buttons#P5-Export",	url "Nm:/Buttons#P6-Works",		url "Nm:/Buttons#P7-Play"
+	}	;			 go_set(InputLabel, COLOR, GREY)
+	for i = 1, 7 do  go_set(Panels[i], TINTW, 0.73)	 end
+	go_set("Nm:/RenderHint#Quad", TINTW, 0.637)
 
 	-- Init Functions
 	--
-	local CreateUnit, _, HS = AcAudio.CreateUnit, AcAudio.CreateSource("/Viewer.wav")				-- HitSound
-	for i = 1, 32 do				HitSounds[i] = CreateUnit(HS)
-	end
+	timer.delay( 0.2, true, function()																-- Play(Pause) Button
+		if AudioPlaying ~= LastPlaying then
+			sys.set_engine_throttle(not AudioPlaying, 0.25)
+			label_set_text("Nm:/Buttons#L7-Play", AudioPlaying and "Pause" or "Play")
+			LastPlaying = AudioPlaying
+		end
+	end )
 
 	local SN, Dir = sys.get_sys_info().system_name, sys.get_save_file("Nemesis Works", "")			-- Works Button
 	if SN == "Windows" then			WorksCmd = string_format("start \"\" \"%s\"", Dir)
@@ -521,63 +503,35 @@ function init()
 	else							WorksCmd = "xdg-open " .. string.gsub(Dir, "%s", "\\ ")
 	end
 
+	local CreateUnit, _, HS = AcAudio.CreateUnit, AcAudio.CreateSource("/Viewer.wav")				-- HitSound
+	for i = 1, 32 do				HitSounds[i] = CreateUnit(HS)
+	end
+
+	local L = io.open( sys.get_save_file("Nemesis Works", "[Nemesis License]"), "w" )				-- License
+	if L then L:write( sys.load_resource("/Viewer.license") )		L:close()
+	end
+
 	local AF = io.open( sys.get_save_file("Nemesis Works", "[Addon]") )								-- Addon
 	if AF then
 		local newHeader = table.concat{ HEADER, AF:read("*a"), "\n" }
 		if pcall(loadstring(newHeader)) then
 			HEADER, Title = newHeader, "Nemesis with Addon"
-			window.set_title(Title)								end
-		AF:close()
+			window.set_title(Title)
+		end
 	end
 
 	local PF = io.open( sys.get_save_file("Nemesis Works", "[Proof]") )								-- Proof
-	if PF then
-		Proof = PF:read("*a")
-		PF:close()
-	end
-
-	local LF = io.open( sys.get_save_file("Nemesis Works", "[Nemesis License]"), "w" )				-- License
-	if LF then
-		LF:write( sys.load_resource("/Viewer.license") )
-		LF:close()
-	end
+	Proof = PF and PF:read("*a")
 end
 
 function update()
 	if FumenLoaded then
-		if CheckPlaying(Audio) then
-			AudioPlaying, CanvasMs = true, GetTime(Audio)
-			label_set_text( Info, string_format(UPDATE_FMT, CanvasMs, AudioLen, ObjectCount) )
-			UpdateCanvas(true)
-		else
-			AudioPlaying = UpdateCanvas()
-		end
-	end
-end
-
-function fixed_update()
-	if AudioPlaying ~= LastPlaying then
-		LastPlaying = AudioPlaying
-		if AudioPlaying then
-			label_set_text("Nm:/Labels#C-Play", "Pause")
-			sys.set_update_frequency(0)
-		else
-			label_set_text("Nm:/Labels#C-Play", "Play")
-			sys.set_update_frequency(Scrolling and 0 or 15)
-		end
-	end
-
-	if not AudioPlaying then
-		if Scrolling == 1 then			Scrolling = sys.set_update_frequency(0) or 2
-		elseif Scrolling == 2 then		Scrolling = sys.set_update_frequency(15)
-		end
-	end
-
-	if FumenLoaded then
-		local updated, er = FumenLoaded()
-		if updated then		label_set_text( Info, string_format(UPDATE_FMT, CanvasMs, AudioLen, ObjectCount) )
-		elseif er then		label_set_text( Info, er )
-		end
+		AudioPlaying = CheckPlaying(Audio)
+			if AudioPlaying then
+				CanvasMs = GetTime(Audio)
+				label_set_text( Info, string_format(UPDATE_FMT, CanvasMs, AudioLen, ObjectCount) )
+			end
+		UpdateCanvas(AudioPlaying)
 	end
 end
 

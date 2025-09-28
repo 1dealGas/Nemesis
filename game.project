@@ -11,13 +11,10 @@ height = 1080
 
 [project]
 title = Nemesis
-version = 0.1.5
+version = 0.2
 publisher = 1dealGas
 developer = 1dealGas
 custom_resources = Viewer.wav, Viewer.license
-
-[liveupdate]
-mount_on_start = 0
 
 [input]
 use_accelerometer = 0
@@ -33,7 +30,7 @@ http_thread_count = 0
 app_manifest = /System/Viewer.appmanifest
 
 [resource]
-max_resources = 65
+max_resources = 61
 
 [graphics]
 verify_graphics_calls = 0
@@ -47,6 +44,7 @@ max_input_stack_entries = 1
 bundle_identifier = ideal.nemesis
 app_icon = /System/Viewer.icns
 bundle_name = Nemesis
+bundle_version = 0.2
 
 [windows]
 app_icon = /System/Viewer.ico
@@ -58,7 +56,7 @@ max_count = 0
 max_count = 0
 
 [sprite]
-max_count = 4614
+max_count = 4610
 
 [tilemap]
 max_count = 0
@@ -84,7 +82,4 @@ max_particle_count = 0
 
 [factory]
 max_count = 3
-
-[engine]
-fixed_update_frequency = 5
 

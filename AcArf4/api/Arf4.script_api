@@ -9,7 +9,7 @@
     - name: path
       type: string
     - name: is_auto
-      type: string
+      type: boolean
     - name: proof
       type: [string, nil]
     returns:
@@ -27,100 +27,11 @@
   - name: ExportArf
     type: function
     parameters:
-      - name: proof
-        type: [string, nil]
-    returns:
-      - name: result
-        type: [string, nil]
-
-  - name: JudgeArf
-    type: function
-    desc: Player Only
-    parameters:
-    - name: xs
-      type: table
-    - name: ys
-      type: table
-    - name: phases
-      type: table
-
-  - name: GetJudgeStat
-    type: function
-    desc: Player Only
-    returns:
-      - name: hint_hit
-        type: number
-      - name: echo_hit
-        type: number
-      - name: early
-        type: number
-      - name: late
-        type: number
-      - name: lost
-        type: number
-      - name: special_hint_hit
-        type: number
-      - name: object_count
-        type: number
-
-  - name: SetJudgeStat
-    type: function
-    desc: Player Only
-    parameters:
-      - name: hint_hit
-        type: number
-      - name: echo_hit
-        type: number
-      - name: early
-        type: number
-      - name: late
-        type: number
-      - name: lost
-        type: number
-      - name: special_hint_hit
-        type: number
-
-  - name: SetJudgeZone
-    type: function
-    desc: Player Only
-    parameters:
-    - name: ms
-      type: number
-    - name: is_any_x
-      type: boolean
-    - name: is_any_y
-      type: boolean
-
-  - name: SetInputDelta
-    type: function
-    desc: Player Only
-    parameters:
-    - name: ms
-      type: number
-
-  - name: SetSpeed
-    type: function
-    desc: Player Only
-    parameters:
-    - name: speed
-      type: number
-
-  - name: Ease
-    type: function
-    desc: Player Only
-    parameters:
-    - name: from
-      type: number
-    - name: type
-      type: number
-    - name: to
-      type: number
-    - name: ratio
-      type: number
+    - name: proof
+      type: [string, nil]
     returns:
     - name: result
-      type: number
-
+      type: [string, nil]
 
   - name: UpdateArf
     type: function
@@ -128,7 +39,7 @@
     - name: ms
       type: number
     - name: delay
-      type: number
+      type: [number, boolean]
     - name: wish_gos
       type: table
     - name: hint_gos
@@ -167,6 +78,15 @@
     - name: echo_play_hitsound
       type: boolean
 
+  - name: NewSeries
+    type: function
+    parameters:
+    - name: keyframes
+      type: table
+    returns:
+    - name: series
+      type: [table, nil]
+
   - name: SetCam
     type: function
     parameters:
@@ -177,6 +97,93 @@
     - name: x_delta
       type: number
     - name: camera_speed
+      type: number
+
+  - name: CosSin
+    type: function
+    parameters:
+    - name: degree
+      type: number
+    returns:
+    - name: cos
+      type: number
+    - name: sin
+      type: number
+
+  - name: Ease
+    type: function
+    parameters:
+    - name: ms
+      type: number
+    - name: all_series
+      type: table
+    - name: results
+      type: table
+
+
+  - name: JudgeArf
+    type: function
+    desc: Player Only
+    parameters:
+    - name: xs
+      type: table
+    - name: ys
+      type: table
+    - name: phases
+      type: table
+
+  - name: SetOptions
+    type: function
+    desc: Player Only
+    parameters:
+    - name: input_delta_ms
+      type: number
+    - name: player_speed
+      type: number
+
+  - name: SetJudgeZone
+    type: function
+    desc: Player Only
+    parameters:
+    - name: ms
+      type: number
+    - name: is_any_x
+      type: boolean
+    - name: is_any_y
+      type: boolean
+
+  - name: SetJudgeStat
+    type: function
+    desc: Player Only
+    parameters:
+    - name: hint_hit
+      type: number
+    - name: echo_hit
+      type: number
+    - name: early
+      type: number
+    - name: late
+      type: number
+    - name: lost
+      type: number
+    - name: special_hint_hit
+      type: number
+
+  - name: GetJudgeStat
+    type: function
+    desc: Player Only
+    returns:
+    - name: hint_hit
+      type: number
+    - name: echo_hit
+      type: number
+    - name: early
+      type: number
+    - name: late
+      type: number
+    - name: lost
+      type: number
+    - name: special_hint_hit
       type: number
 
 
@@ -208,8 +215,8 @@
     type: function
     desc: Viewer Only
     parameters:
-    - name: since_tone
-      type: [number, table]
+    - name: since_time
+      type: [number, table, nil]
 
   - name: NewWish
     type: function
@@ -267,33 +274,9 @@
       type: table
     returns:
     - name: helper
-      type: [table, boolean, nil]
+      type: [table, nil]
     - name: err
       type: [string, nil]
-
-  - name: Mirror
-    type: function
-    desc: Viewer Only
-    parameters:
-    - name: mirror_lr
-      type: boolean
-    - name: mirror_ud
-      type: boolean
-
-  - name: OrganizeArf
-    type: function
-    desc: Viewer Only
-    returns:
-    - name: before
-      type: [number, boolean]
-    - name: object_count
-      type: number
-    - name: wgo_required
-      type: number
-    - name: hgo_required
-      type: number
-    - name: ego_required
-      type: number
 
   - name: SinceTone
     type: function
@@ -305,12 +288,49 @@
     - name: since_tone
       type: [number, nil]
 
-  - name: BarToMs
+  - name: OrganizeArf
+    type: function
+    desc: Viewer Only
+    returns:
+    - name: before
+      type: [number, boolean]
+    - name: objcnt_or_err
+      type: [number, string]
+    - name: wgo_required
+      type: [number, nil]
+    - name: hgo_required
+      type: [number, nil]
+    - name: ego_required
+      type: [number, nil]
+
+  - name: GetFileMtime
     type: function
     desc: Viewer Only
     parameters:
-    - name: bar
-      type: number
+    - name: path
+      type: string
     returns:
-    - name: ms
+    - name: modification_time
+      type: [number, nil]
+
+  - name: ConvTime
+    type: function
+    desc: Viewer Only
+    parameters:
+    - name: from
+      type: [number, table]
+    - name: mode
+      type: [number, nil]
+      desc: (0) toTone  (1) barToMs  (2) toneToMs
+    returns:
+    - name: result
       type: number
+
+  - name: Mirror
+    type: function
+    desc: Viewer Only
+    parameters:
+    - name: mirror_lr
+      type: boolean
+    - name: mirror_ud
+      type: boolean

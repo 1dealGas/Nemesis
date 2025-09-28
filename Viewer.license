@@ -26,9 +26,6 @@ Copyright 2023 David Reid
 [BSD 3-Clause License] ogg
 Copyright (c) 2002, Xiph.org Foundation
 
-[BSD 3-Clause License] vorbis
-Copyright (c) 2002-2020 Xiph.org Foundation
-
 [BSD 3-Clause License] opus
 Copyright 2001-2023 Xiph.Org, Skype Limited, Octasic,
                     Jean-Marc Valin, Timothy B. Terriberry,
@@ -41,14 +38,6 @@ Broadcom Corporation: https://datatracker.ietf.org/ipr/1526/
 
 [BSD 3-Clause License] opusfile
 Copyright (c) 1994-2013 Xiph.Org Foundation and contributors
-
-
-[MIT License] defold-lfs
-Copyright (c) 2017 Björn Ritzl
-
-[MIT License] LuaFileSystem
-Copyright © 2003-2010 Kepler Project.
-Copyright © 2010-2022 The LuaFileSystem authors.
 
 
 [Defold License 1.0] Defold

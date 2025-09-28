@@ -5,10 +5,9 @@
 
 namespace Arf4 {
 	#define Ar64(...)  using i64 = int64_t; using u64 = uint64_t;  union{ struct{__VA_ARGS__;}; u64 val; };
-	enum  /* TableIndex */ {	  WGO = 3, HGO, EGO, EH, AL, AR, WTINT, HTINT, ETINT, EHTINT, ATINT  };
-	enum  /*  EaseType  */ {   STATIC = 0, LINEAR, INSINE, OUTSINE									 };
-	enum  /*   Status   */ {  NJUDGED = 0, SPECIAL, NJUDGED_LIT, SPECIAL_LIT, HIT, HIT_ES, HIT_LIT,
-							   HIT_LIT_ES, EARLY, LATE, EARLY_LIT, LATE_LIT, LOST					 };
+	enum  /* TableIndex */ {	  WGO = 3, HGO, EGO, EH, AL, AR, WTINT, HTINT, ETINT, EHTINT, ATINT		 };
+	enum  /*  EaseType  */ {   STATIC = 0, LINEAR, INSINE, OUTSINE					/* EC: Edge Cases */ };
+	enum  /*   Status   */ {  NJUDGED = 0, SPECIAL, NJUDGED_LIT, SPECIAL_LIT, HIT, HIT_EC, HLIT, HLIT_EC };
 /* Wish */
 	struct Point {
 		Ar64(																// cdx: [-32,32) 1/16
@@ -29,18 +28,12 @@ namespace Arf4 {
 		)																	// Wish   [X] 1023	[T] 16777215
 	};
 
-/* Object */
-	struct Hint {
+/* Object */																// Limits for Objects:
+	struct Body {															// [X] 511  [T] 32767
 		Ar64(
-			i64  cdx:10, cdy:7;				u64  ms:20, status:4;			// Limits for Objects:
-			i64  deltaMs:8;													// [X] 511  [T] 32767
-		)
-	};
-	struct Echo {
-		Ar64(																// radius	 [0,8)  1/4
-			i64  cdx:10, cdy:7;				u64  ms:20, status:3;			// initLoop  [0,1)  1/64
-			u64  radius:5, initLoop:6;		i64  deltaLoop:5, deltaMs:8;	// deltaLoop (-2,2) 1/8
-		)
+			i64  cdx:10, cdy:7;				u64  ms:20, status:3;			// radius	 [0,8)  1/4
+			u64  radius:5, initLoop:6;		i64  deltaLoop:5, deltaMs:8;	// initLoop  [0,1)  1/64
+		)																	// deltaLoop (-2,2) 1/8
 	};
 
 /* Misc */
@@ -58,8 +51,8 @@ namespace Arf4 {
 	};
 	struct Duo {
 		Ar64(
-			union				{  float a;  struct{ uint32_t am:23, ae:8, as:1; };  };
-			union				{  float b;  struct{ uint32_t bm:23, be:8, bs:1; };  };
+			union  {  float a;  struct{ uint32_t am:23, ae:8, as:1; };  float v;  };
+			union  {  float b;  struct{ uint32_t bm:23, be:8, bs:1; };  struct{ uint32_t es:2, ms:30; };  };
 		)
 	};
 
@@ -70,8 +63,7 @@ namespace Arf4 {
 		std::vector<Delta>		deltas;										// [0] Index	[Max] 1+8190
 		std::vector<Child>		wishChilds;
 		std::vector<Wish>		wishes;
-		std::vector<Echo>		echoes;
-		std::vector<Hint>		hints;
+		std::vector<Body>		hints, echoes;
 		Ar64(	uint64_t		before:20, objectCount:16;
 				uint64_t		wgoRequired:10, hgoRequired:9, egoRequired:9;	)
 		//------------------------//
@@ -89,6 +81,7 @@ extern  Arf4::Fumen				Arf;
 
 namespace Ar {
 	using namespace Arf4;
+   inline constexpr auto f4 = "Arf4", LGC = "__gc";
 
 	/* Build */
 	int  NewBuild(lua_State*) noexcept;
@@ -100,7 +93,7 @@ namespace Ar {
 	int  NewChild(lua_State*) noexcept;
 	int  NewHelper(lua_State*) noexcept;
 	int  SinceTone(lua_State*) noexcept;
-	int  BarToMs(lua_State*) noexcept;
+	int  ConvTime(lua_State*) noexcept;
 	int  Mirror(lua_State*) noexcept;
 
 	/* Internal */
@@ -116,11 +109,13 @@ namespace Ar {
 	int  JudgeArf(lua_State*) noexcept;
 
 	/* Runtime Utils */
-	int  Ease(lua_State*) noexcept;
 	int  SetCam(lua_State*) noexcept;
-	int  SetSpeed(lua_State*) noexcept;
-	int  GetJudgeStat(lua_State*) noexcept;
-	int  SetJudgeStat(lua_State*) noexcept;
+	int  SetOptions(lua_State*) noexcept;
 	int  SetJudgeZone(lua_State*) noexcept;
-	int  SetInputDelta(lua_State*) noexcept;
+	int  SetJudgeStat(lua_State*) noexcept;
+	int  GetJudgeStat(lua_State*) noexcept;
+	int  GetFileMtime(lua_State*) noexcept;
+	int  GetCosSin(lua_State*) noexcept;
+	int  NewSeries(lua_State*) noexcept;
+	int  Ease(lua_State*) noexcept;
 }
