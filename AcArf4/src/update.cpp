@@ -361,13 +361,13 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 		}
 	}
 #endif
-	if( uint32_t playMs = lua_tointeger(L,2), lifeMs;  playMs  &&  (playMs += Arf.msTime) < Arf.before ) {
-		const Index I2 = Arf.idx[ playMs >> 10 ];
+	if( uint32_t ft = lua_tointeger(L,2), lfms;  lua_toboolean(L,2)  &&  (ft += Arf.msTime) < Arf.before ) {
+		const Index I2 = Arf.idx[ ft >> 10 ];
 		for(const Body h : std::span(Arf.hints).subspan(I2.hSince))
-			if( lifeMs = playMs - h.ms,  info.playH |= (lifeMs < info.frameDt),  lifeMs > -1 )
+			if( lfms = ft - h.ms,  info.playH |= (lfms < info.frameDt),  lfms >> 31 )
 				break;
 		for(const Body e : std::span(Arf.echoes).subspan(I2.eSince))
-			if( lifeMs = playMs - e.ms,  info.playE |= (lifeMs < info.frameDt) & e.status,  lifeMs > -1 )
+			if( lfms = ft - e.ms,  info.playE |= (lfms < info.frameDt) & e.status,  lfms >> 31 )
 				break;
 	}   // Auto HitSound, Delay [0,1000]
 
