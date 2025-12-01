@@ -149,27 +149,13 @@ Echo {
 }
 ```
 
-#### `Verse ()`
+#### Utils
 
 ```lua
 --[ Usage: ]--
-Verse(since_tone) do
-    ...
-end
-```
-
-#### `Mirror ()`
-
-```lua
---[ Usage: ]--
-Mirror(mirror_lr, mirror_ud)
-```
-
-#### `SinceTone ()`
-
-```lua
---[ Usage: ]--
+local cos, sin = CosSin(deg)
 local since_tone_or_nil = SinceTone(set_to_or_nil)
+local tone_time = Toneof(context_time)
 ```
 
 ## Addons

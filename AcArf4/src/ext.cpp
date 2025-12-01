@@ -13,7 +13,6 @@ static constexpr luaL_Reg Arf4Lib[] = {
 	#ifdef AR_BUILD_VIEWER
 		{"NewBuild", Ar::NewBuild},
 		{"SetDelta", Ar::SetDelta},
-		{"NewVerse", Ar::NewVerse},
 		{"NewWish", Ar::NewWish},
 		{"NewHint", Ar::NewHint},
 		{"NewEcho", Ar::NewEcho},
@@ -23,7 +22,6 @@ static constexpr luaL_Reg Arf4Lib[] = {
 		{"OrganizeArf", Ar::OrganizeArf},
 		{"GetFileMtime", Ar::GetFileMtime},
 		{"ConvTime", Ar::ConvTime},
-		{"Mirror", Ar::Mirror},
 	#else
 		{"JudgeArf", Ar::JudgeArf},
 		{"SetOptions", Ar::SetOptions},
@@ -41,7 +39,6 @@ static constexpr luaL_Reg Arf4Lib[] = {
 		{"Ease", Ar::Ease},
 	{0,0}
 };
-
 static dmExtension::Result Arf4Init(dmExtension::Params* p) {
 	return luaL_register(p->m_L, Ar::f4, Arf4Lib),  lua_pop(p->m_L, 1),  dmExtension::RESULT_OK;
 }

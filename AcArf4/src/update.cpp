@@ -154,7 +154,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 						break;
 					else if( Duo cPos, cZw = { .a = 0.03f, .b = (float)(cQuo / 0.237) };  true )
 						cQuo = w.isSpecial && !w.withDt  ?  Eased(cQuo, INSINE) : cQuo,
-						cPos = CosSin({ 360 * (float)(c.initLoop / 64.0 + c.deltaLoop / 8.0 * cQuo) }),
+						cPos = CosSin({ (float)(c.initLoop * 5.625 + c.deltaLoop * 45 * cQuo) }),
 						cQuo = (1-cQuo) * (c.radius << 1),   /* 1/4 -> 1/8 */
 						cPos.a = nodePos.a + cQuo * cPos.a * 2,
 						cPos.b = nodePos.b + cQuo * cPos.b,
@@ -207,7 +207,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 				goto EHELP_AUTO;
 			else
 				x8d = (1-R) * (e.radius << 1),   /* 1/4 -> 1/8 */
-				ePos.a = 360 * (e.initLoop / 64.0 + e.deltaLoop / 8.0 * R),  ePos = CosSin(ePos),
+				ePos.a = e.initLoop * 5.625 + e.deltaLoop * 45 * R,  ePos = CosSin(ePos),
 				ePos.a = mPos.a + x8d * ePos.a * Arf.xScale * 2,
 				ePos.b = mPos.b + x8d * ePos.b * Arf.yScale,
 				R /= 0.237;
@@ -307,7 +307,7 @@ int Ar::UpdateArf(lua_State* L) noexcept {
 				goto EHELP;
 			else
 				x8d = (1-R) * (e.radius << 1),   /* 1/4 -> 1/8 */
-				ePos.a = 360 * (e.initLoop / 64.0 + e.deltaLoop / 8.0 * R),  ePos = CosSin(ePos),
+				ePos.a = e.initLoop * 5.625 + e.deltaLoop * 45 * R,  ePos = CosSin(ePos),
 				ePos.a = mPos.a + x8d * ePos.a * Arf.xScale * 2,
 				ePos.b = mPos.b + x8d * ePos.b * Arf.yScale,
 				R /= 0.237;

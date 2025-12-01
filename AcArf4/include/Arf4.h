@@ -10,8 +10,8 @@ namespace Arf4 {
 	enum  /*   Status   */ {  NJUDGED = 0, SPECIAL, NJUDGED_LIT, SPECIAL_LIT, HIT, HIT_EC, HLIT, HLIT_EC };
 /* Wish */
 	struct Point {
-		Ar64(																// cdx: [-32,32) 1/16
-			i64  cdx:10, cdy:7;				u64  ease:2, ms:20;				// cdy: [-8,8) 1/8
+		Ar64(																// cdx  [-32,32) 1/16
+			i64  cdx:10, cdy:7;				u64  ease:2, ms:20;				// cdy  [-8,8) 1/8
 			u64  radius:6;					i64  deg:11;					// rad  [0,16) 1/4
 		)																	// deg  [-1024,1023) 1/1
 	};
@@ -60,7 +60,7 @@ namespace Arf4 {
 	struct Fumen {
 		std::vector<Index>		idx;
 		std::vector<Point>		nodes;
-		std::vector<Delta>		deltas;										// [0] Index	[Max] 1+8190
+		std::vector<Delta>		deltas;										// [0] Index	[Max] 1+262143
 		std::vector<Child>		wishChilds;
 		std::vector<Wish>		wishes;
 		std::vector<Body>		hints, echoes;
@@ -71,6 +71,7 @@ namespace Arf4 {
 		uint64_t				msTime:20, judgeRange:7 = 37;
 		uint64_t				sHit:6, hHit:15, eHit:15, early:15, late:15, lost:16;
 		uint64_t				isAuto:1, isAnyX:1, isAnyY:1;
+		/*------------------------*/
 		float					xScale = 112.5 / 16, yScale = 112.5 / 8;
 		float					xDelta, cSpeed = 1;							// cS ∈ [0,1.25]  pS ∈ [0.5,10]
 	};
@@ -86,7 +87,6 @@ namespace Ar {
 	/* Build */
 	int  NewBuild(lua_State*) noexcept;
 	int  SetDelta(lua_State*) noexcept;
-	int  NewVerse(lua_State*) noexcept;
 	int  NewWish(lua_State*) noexcept;
 	int  NewHint(lua_State*) noexcept;
 	int  NewEcho(lua_State*) noexcept;
@@ -94,7 +94,6 @@ namespace Ar {
 	int  NewHelper(lua_State*) noexcept;
 	int  SinceTone(lua_State*) noexcept;
 	int  ConvTime(lua_State*) noexcept;
-	int  Mirror(lua_State*) noexcept;
 
 	/* Internal */
   float  Eased(double, uint8_t) noexcept;

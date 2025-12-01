@@ -211,13 +211,6 @@
     - name: err
       type: [string, nil]
 
-  - name: NewVerse
-    type: function
-    desc: Viewer Only
-    parameters:
-    - name: since_time
-      type: [number, table, nil]
-
   - name: NewWish
     type: function
     desc: Viewer Only
@@ -325,12 +318,3 @@
     returns:
     - name: result
       type: number
-
-  - name: Mirror
-    type: function
-    desc: Viewer Only
-    parameters:
-    - name: mirror_lr
-      type: boolean
-    - name: mirror_ud
-      type: boolean

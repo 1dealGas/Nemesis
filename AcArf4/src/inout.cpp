@@ -16,7 +16,7 @@ namespace bitsery {
 	Inout( Wish,  inout.ext(its.val, CV); )		Inout( Body,  inout.ext(its.val, CV); )
 
 	Inout( Fumen,
-		inout.container(its.deltas, 131072);	inout.container(its.nodes, 262144);		// Consider "Equal"
+		inout.container(its.deltas, 262144);	inout.container(its.nodes, 262144);		// Consider "Equal"
 		inout.container(its.echoes, 131072);	inout.container(its.wishes, 16777215);	// Wishes
 		inout.container(its.hints, 32767);		inout.container(its.wishChilds, 131072);
 		inout.container(its.idx, 1024);			inout.value8b(its.val);

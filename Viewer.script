@@ -7,8 +7,8 @@ local STATIC, LINEAR, INSINE, OUTSINE, _NA = 0,1,2,3, assert
 local function _NW(x) return function(y) return _NA(x(y)) end end
 local Helper, Delta, Time = _NW(A.NewHelper), _NW(A.SetDelta), _NW(A.NewBuild)
 local Wish, Child, Hint, Echo = _NW(A.NewWish), _NW(A.NewChild), _NW(A.NewHint), _NW(A.NewEcho)
-local Verse, Mirror, Toneof, SinceTone = A.NewVerse, A.Mirror, A.ConvTime, A.SinceTone
-local Log, CosSin, A = Log, A.CosSin;
+local CosSin, Toneof, SinceTone = A.CosSin, A.ConvTime, A.SinceTone
+local Log, A = Log;
 ]], function() end
 
 
