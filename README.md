@@ -56,7 +56,7 @@ Delta {
     {2, 1/32},  -1,          -- Bar 2, then 1/32 Tone, Ratio: -1
     {2, -1},    0.9,         -- Bar 2, then 1/16 Tone, Ratio: 0.9
     -15,        1,           -- Bar 2(Cached), then 15/16 Tone, Ratio: 1
-    ···
+    ···                      -- The last Ratio must be 1
 }
 ```
 
@@ -116,7 +116,6 @@ local helper = Helper {      -- When failed, a nil will be returned.
 Child {
     Wish = nil,              -- The last Wish of the Fumen by default
     Radius = 7.0,            -- 7.0 by Default
-    Special = false,         -- Try to generate a special Hint if true, false by default
     InitLoop = 0.25,         -- 0.25 by default
     DeltaLoop = 1.25,        -- 0 by default
     {1, -1}, 2, 3, 4, ···    -- Times
@@ -489,7 +488,8 @@ Delta {
     {80.001}, 6,
     {80.005}, 0.74,
     {80.125}, 1,
-    {80.251}, 0.73
+    {80.251}, 0.73,
+    {83.376}, 1
 }
 
 -- Since {0}
@@ -552,9 +552,7 @@ Wish {   -- B1
     {10}, 7.5, 0.5, INSINE,
     {11.5}, 6, 0.5, STATIC,
     {11.5}, 6, 2.5, {2, -90, LINEAR},
-    {12.25}, 6, 2.5, {2, 0, STATIC},
-    {12.25}, 8, 2.5, OUTSINE,
-    {13}, 8, 9
+    {12.25}, 6, 2.5, {2, 0}
 }
 Wish {   -- B2
     {7}, 9.5, 0.5, OUTSINE,
@@ -564,8 +562,8 @@ Wish {   -- B2
     {11.5}, 10, 0.5, STATIC,
     {11.5}, 10, 2.5, {2, 270, LINEAR},
     {12.25}, 10, 2.5, {2, 180, STATIC},
-    {12.25}, 8, 2.5, OUTSINE,
-    {13}, 8, 9
+    {12.25}, 8, 2.5, {0, 90, OUTSINE},
+    {13}, 8, 9, {6.5, 90}
 }
 Wish {
     Special = true,

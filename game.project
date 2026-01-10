@@ -11,7 +11,7 @@ height = 1080
 
 [project]
 title = Nemesis
-version = 0.2.2
+version = 0.2.3
 publisher = 1dealGas
 developer = 1dealGas
 custom_resources = Viewer.wav, Viewer.license
@@ -44,7 +44,7 @@ max_input_stack_entries = 1
 bundle_identifier = ideal.nemesis
 app_icon = /System/Viewer.icns
 bundle_name = Nemesis
-bundle_version = 0.2.2
+bundle_version = 0.2.3
 
 [windows]
 app_icon = /System/Viewer.ico

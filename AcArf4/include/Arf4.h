@@ -5,15 +5,14 @@
 
 namespace Arf4 {
 	#define Ar64(...)  using i64 = int64_t; using u64 = uint64_t;  union{ struct{__VA_ARGS__;}; u64 val; };
-	enum  /* TableIndex */ {	  WGO = 3, HGO, EGO, EH, AL, AR, WTINT, HTINT, ETINT, EHTINT, ATINT		 };
-	enum  /*  EaseType  */ {   STATIC = 0, LINEAR, INSINE, OUTSINE					/* EC: Edge Cases */ };
 	enum  /*   Status   */ {  NJUDGED = 0, SPECIAL, NJUDGED_LIT, SPECIAL_LIT, HIT, HIT_EC, HLIT, HLIT_EC };
+	enum  /*  EaseType  */ {   STATIC = 0, LINEAR, INSINE, OUTSINE					/* EC: Edge Cases */ };
 /* Wish */
 	struct Point {
-		Ar64(																// cdx  [-32,32) 1/16
-			i64  cdx:10, cdy:7;				u64  ease:2, ms:20;				// cdy  [-8,8) 1/8
+		Ar64(																// cdx  (-32,32) 1/16
+			i64  cdx:10, cdy:7;				u64  ease:2, ms:20;				// cdy  (-4,4) 1/16
 			u64  radius:6;					i64  deg:11;					// rad  [0,16) 1/4
-		)																	// deg  [-1024,1023) 1/1
+		)																	// deg  [-1024,1024) 1/1
 	};
 	struct Child {
 		Ar64(
@@ -39,14 +38,14 @@ namespace Arf4 {
 /* Misc */
 	struct Delta {
 		Ar64(																// v [-8,8)      1/1024
-			u64  t:18;						u64  absV:13;					// t [0,1048576) 4/1ms
-			u64  base:33;													// base = t * v
+			u64  t:20;														// t [0,1048576) 1/1ms
+			u64  dt:33;														// dt = t * v
 		)
 	};
 	struct Index {
 		Ar64(
 			u64  hSince:15 = 0,  eSince:17 = 0;								// [OI] 1024ms, ABCDEF···
-			u64  wSince:24 = 0;												// [WI] 2048ms, AABBCC···
+			u64  wSince:24 = 0;												// [WI] 2048ms, ABC000···
 		)
 	};
 	struct Duo {
@@ -59,11 +58,11 @@ namespace Arf4 {
 /* Fumen */
 	struct Fumen {
 		std::vector<Index>		idx;
-		std::vector<Point>		nodes;
-		std::vector<Delta>		deltas;										// [0] Index	[Max] 1+262143
-		std::vector<Child>		wishChilds;
+		std::vector<Point>		nodes;										// [Dif] 19+ (val > 0)
+		std::vector<Delta>		deltas;										// [Dif] dt  [Max] Idx~262143
+		std::vector<Child>		wishChilds;									// [Dif] zDt (val > 0)
 		std::vector<Wish>		wishes;
-		std::vector<Body>		hints, echoes;
+		std::vector<Body>		hints, echoes;								// [Dif] ms, echo.40+
 		Ar64(	uint64_t		before:20, objectCount:16;
 				uint64_t		wgoRequired:10, hgoRequired:9, egoRequired:9;	)
 		//------------------------//
@@ -72,7 +71,7 @@ namespace Arf4 {
 		uint64_t				sHit:6, hHit:15, eHit:15, early:15, late:15, lost:16;
 		uint64_t				isAuto:1, isAnyX:1, isAnyY:1;
 		/*------------------------*/
-		float					xScale = 112.5 / 16, yScale = 112.5 / 8;
+		float					xScale = 112.5 / 16, yScale = 7.03125;
 		float					xDelta, cSpeed = 1;							// cS ∈ [0,1.25]  pS ∈ [0.5,10]
 	};
 }
@@ -108,6 +107,7 @@ namespace Ar {
 	int  JudgeArf(lua_State*) noexcept;
 
 	/* Runtime Utils */
+	int  Bind(lua_State*) noexcept;
 	int  SetCam(lua_State*) noexcept;
 	int  SetOptions(lua_State*) noexcept;
 	int  SetJudgeZone(lua_State*) noexcept;

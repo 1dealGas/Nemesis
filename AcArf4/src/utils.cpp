@@ -57,12 +57,12 @@ int Ar::NewSeries(lua_State* L) noexcept {
 	 *     100, 2, LINEAR, ...  }
 	 */
 	for( uint32_t ms, inputLen = lua_objlen(L,1),  i = 1;  i < inputLen;  i += 3 )
-		ms = ( lua_rawgeti(L, 1, i), lua_tointeger(L, -1) ),
-		SM[ms] = { .v = (float)   ( lua_rawgeti(L, 1, i+1), lua_tonumber(L, -1) ),	 .ms = ms,
-				  .es = (uint32_t)( lua_rawgeti(L, 1, i+2), lua_tonumber(L, -1) ) },  lua_pop(L, 3);
-	if( const auto SZ = SM.size();  lua_pop(L,1),  SZ )
+		ms = ( lua_rawgeti(L, 1, i), lua_tointeger(L, 2) ),
+		SM[ms] = { .v = (float)   ( lua_rawgeti(L, 1, i+1), lua_tonumber(L,3) ),	.ms = ms,
+				  .es = (uint32_t)( lua_rawgeti(L, 1, i+2), lua_tonumber(L,4) ) },  lua_settop(L,1);
+	if( const auto SZ = SM.size();  lua_settop(L,0),  SZ )
 		for( auto& S = *new(lua_newuserdata(L, sizeof(std::vector<Duo>))) std::vector<Duo> {{.val = 1}};
-			 auto  [_,K] : lua_getglobal(L, Ar::f4), lua_setmetatable(L,-2), S.reserve(SZ), SM )
+			 auto  [_,K] : lua_getglobal(L, Ar::f4), lua_setmetatable(L,1), S.reserve(SZ), SM )
 			S.push_back(K);
 	return SM.clear(), 1;
 }
@@ -71,8 +71,8 @@ int Ar::Ease(lua_State* L) noexcept {
 	/* Usage:
 	 * Arf4.Ease(t, series, results)
 	 */
-	for( size_t T = lua_tointeger(L,1), i = lua_objlen(L,2);  i;  lua_rawseti(L,3,i--), lua_pop(L,1) )
-		if( auto& S = *(std::vector<Duo>*)(lua_rawgeti(L,2,i), lua_touserdata(L,-1));  T < S[1].ms )
+	for( size_t T = lua_tointeger(L,1), i = lua_objlen(L,2);  i;  lua_rawseti(L,3,i--), lua_settop(L,3) )
+		if( auto& S = *(std::vector<Duo>*)(lua_rawgeti(L,2,i), lua_touserdata(L,4));  T < S[1].ms )
 			lua_pushnumber(L, S[1].v);
 		else if( Duo l, r = S.back();  T >= r.ms )
 			lua_pushnumber(L, r.v);
@@ -93,7 +93,7 @@ int Ar::SetCam(lua_State* L) noexcept {
 	 * Arf4.SetCam(xscale, yscale, xdelta, camspd)   --			 xDelta: Mainly for Options Panel
 	 */
 	Arf.xScale = lua_tonumber(L, 1) * 7.03125;
-	Arf.yScale = lua_tonumber(L, 2) * 14.0625;
+	Arf.yScale = lua_tonumber(L, 2) * 7.03125;
 	Arf.xDelta = lua_tonumber(L, 3);
 
 	const lua_Number cSpeed = lua_tonumber(L, 4);

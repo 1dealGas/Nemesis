@@ -15,8 +15,7 @@ static constexpr auto
 	NEMESIS_TIME_OOR = R"(Nemesis Compiler: Time(ms) of %s out of range)",
 	NEMESIS_SLE = R"(Nemesis Compiler: Count limit of %s(%td) exceeded)",
 	NOT_A_TABLE = R"(API "%s" requires a Lua Table for the Arg 1.)",
-	TIME_OUT_OF_RANGE = R"(API "%s": Time out of range in Args)",
-	NO_WISH = R"(API "%s": No valid Wish to add "%s"(s) to)";
+	TIME_OUT_OF_RANGE = R"(API "%s": Time out of range in Args)";
 #define LI (lua_Integer)
 
 /* Internal Typedefs & Fns */
@@ -38,7 +37,6 @@ namespace N4 {
 	struct Child {
 		double		beat;
 		double		radius, initLoop, deltaLoop;
-		bool		hintSpecial;
 	};
 
 	/* Object */
@@ -67,7 +65,7 @@ namespace N4 {
 		std::vector<Delta>	bpmList = {{ 0, 170 }},  deltas = {{ 0,1 }};
 		std::vector<Wish>	wishes;
 		std::vector<Echo>	echoes;
-		uint64_t			dIdx:18, tIdx:23, bIdx:23;
+		uint32_t			bIdx, tIdx;
 		double				sinceTone;
 	};
 }
@@ -104,16 +102,6 @@ static double beatToMs(const double beat) noexcept {   // Internal, beat >= 0 re
 		return slope = ( fabs(it[1].value) + it[0].value ) / ( it[1].init - it[0].init ),
 			   it->base + 60000 / slope * log( 1 + (beat - it->init) * slope / -it->value );
 	return it->base + (beat - it->init) * 60000 / it->value;
-}
-
-static double msToDt(const double ms) noexcept {   // Internal, ms >= 0 required
-	if( const auto lastDelta = N.deltas.back();  ms >= lastDelta.init )
-		return lastDelta.base + (ms - lastDelta.init) * lastDelta.value;
-	auto it = N.deltas.begin() + N.dIdx;
-		while( ms <  it[0].init )  { --it; }
-		while( ms >= it[1].init )  { ++it; }
-	return N.dIdx = it - N.deltas.begin(),
-		   it->base + (ms - it->init) * it->value;
 }
 
 static double nextFval(const double d) noexcept {   // Little Endian Only
@@ -174,7 +162,7 @@ static bool fillnEmpty(lua_State* L, const uint8_t where) noexcept {   // `where
 						y = ( lua_rawgeti(L, where, i+2), lua_tonumber(L, -1) );
 		auto point = ( lua_rawgeti(L, where, i+3), checkPointArg(L, -1) );
 			 point.x = x < -23.9375 ? -23.9375  :  x > 39.9375 ? 39.9375  :  x;
-			 point.y = y <   -3.875 ?   -3.875  :  y >  11.875 ?  11.875  :  y;
+			 point.y = y <   0.0625 ?   0.0625  :  y >  7.9375 ?  7.9375  :  y;
 			 point.beat = beat;
 		nodeMap[( nodeMap.contains(beat) ? nextFval(beat) : beat )] = point;
 		lua_pop(L, 4);
@@ -340,7 +328,7 @@ int Ar::SetDelta(lua_State* L) noexcept {
 	 *     {2, 1/32},	-1,			-- Bar 2, then 1/32 Tone, Ratio: -1
 	 *     {2, -1},		0.9,		-- Bar 2, then 1/16 Tone, Ratio: 0.9
 	 *     -15,			1,			-- Bar 2(Cached), then 15/16 Tone, Ratio: 1
-	 *     ···
+	 *     ···						-- The last Ratio must be 1
 	 * }
 	 */
 	if(! lua_istable(L, 1) )
@@ -349,41 +337,29 @@ int Ar::SetDelta(lua_State* L) noexcept {
 
 	for( size_t len = lua_objlen(L, 1),  i = 1;  i < len;  i += 2 )
 		doubleMap[ beatToMs(( lua_rawgeti(L, 1, i), checkTime(L, -1) )) ]
-			  = ( lua_rawgeti(L, 1, i+1), lua_tonumber(L, -1) ),
-		lua_pop(L, 2);
+			   = ( lua_rawgeti(L, 1, i+1), lua_tonumber(L, -1) ),
+		lua_settop(L, 1);
 
-	switch( auto SZ = doubleMap.size();  SZ ) {
-		[[unlikely]] case 0:
-			return lua_pushboolean(L, true), 1;
-		[[unlikely]] case 1:
-			N.deltas[0].value = fmax(0, doubleMap.cbegin()->second);
-			return lua_pushboolean(L, true), 1;
-		[[likely]] default:
-			N.deltas.clear();
-			N.deltas.reserve(SZ);
-			for( const auto [ms, ratio] : doubleMap )
-				if( N.deltas.empty()  ||  ratio != N.deltas.back().value )
-					N.deltas.push_back({ (uint64_t)(ms/4) * 4.0, ratio });
+	if( auto SZ = doubleMap.size();  SZ > 1 ) {
+		N.deltas.clear();
+		N.deltas.reserve(SZ);
+		for( const auto [ms, ratio] : doubleMap )
+			if( N.deltas.empty()  ||  ratio != N.deltas.back().value )
+				N.deltas.push_back({ ms, ratio });
 
-			if( N.deltas.front().value < 0 )
-				N.deltas.front().value = 1;
-			if( N.deltas.back().value < 0 )
-				N.deltas.back().value = 1;
-			N.deltas[0].init = 0;
+		if( N.deltas.front().value < 0 )
+			N.deltas.front().value = 1;
+		/**/N.deltas.back().value = 1;
+		N.deltas[0].init = 0;
 
-			if( SZ = N.deltas.size(),  SZ > 262143 ) [[unlikely]]
-				N.deltas = {{ 0, 1 }};
-			else for( size_t i = 1;  i < SZ;  ++i ) {
-				const auto  lastNode = N.deltas[i-1];
-					  auto& thisNode = N.deltas[i];
-				thisNode.base = lastNode.base + (thisNode.init - lastNode.init) * lastNode.value;
-
-				if( thisNode.base < 0  ||  thisNode.base > 1048575 * (8 - 1.0/1024) ) [[unlikely]]
-					return N.deltas.clear(),  N.deltas.push_back({ 0, 1 }),
-						   lua_pushboolean(L, false),  lua_pushfstring(L, TIME_OUT_OF_RANGE, DELTA), 2;
-			}
-			return lua_pushboolean(L, true), 1;
-	}
+		if( SZ = N.deltas.size(),  SZ > 262143 ) [[unlikely]]
+			N.deltas = {{ 0, 1 }};
+		for( size_t i = 1;  i < SZ;  ++i )
+			if( auto last = N.deltas[i-1], &thiz = N.deltas[i];
+				thiz.base = last.base + (thiz.init - last.init) * last.value,
+			/**/thiz.base < 0  ||  thiz.base > 1048575 * (8 - 1.0/1024) ) [[unlikely]]
+				return lua_pushboolean(L, false), lua_pushfstring(L, TIME_OUT_OF_RANGE, DELTA), 2;
+	}	return lua_pushboolean(L, true), 1;
 }
 
 int Ar::NewWish(lua_State* L) noexcept {
@@ -400,20 +376,19 @@ int Ar::NewWish(lua_State* L) noexcept {
 	 */
 	if(! lua_istable(L, 1) )
 		return lua_pushnil(L), lua_pushfstring(L, NOT_A_TABLE, WISH), 2;
-	N4::Wish W = {
+	N4::Wish& W = N.wishes.emplace_back( N4::Wish {
 		.isSpecial = (uint8_t)( lua_getfield(L, 1, N_SPECIAL), lua_toboolean(L,-1) ),
 		.withDt = (uint8_t)( lua_getfield(L, 1, "WithDt"),  lua_isnil(L,-1) ? true : lua_toboolean(L,-1) )
-	};
+	} );
 	if( fillnEmpty(L,1)  ||  nodeMap.rbegin()->first <= nextFval( nodeMap.begin()->first ) )
-		return lua_pushnil(L), lua_pushstring(L, NOT_SUF), 2;
+		return W.nodes.pop_back(), lua_pushnil(L), lua_pushstring(L, NOT_SUF), 2;
 
 	W.nodes.reserve( nodeMap.size() );
 	for( const auto& [_, node] : nodeMap )
 		W.nodes.push_back(node);
-
-	lua_pushlightuserdata(L, ( N.wishes.push_back(W), &N.wishes.back() ));
-	luaL_getmetatable(L, N_WISH);
-	lua_setmetatable(L, -2);
+	
+	lua_pushlightuserdata(L, &W);
+	luaL_getmetatable(L, N_WISH),  lua_setmetatable(L, -2);
 	return 1;
 }
 
@@ -446,45 +421,40 @@ int Ar::NewChild(lua_State* L) noexcept {
 	 * Child {
 	 *     Wish = nil,				-- The last Wish of the Fumen by default
 	 *     Radius = 7.0,			-- 7.0 by Default
-	 *     Special = false,			-- Try to generate a special Hint if true, false by default
 	 *     InitLoop = 0.25,			-- 0.25 by default
 	 *     DeltaLoop = 1.25,		-- 0 by default
 	 *     {1, -1}, 2, 3, 4, ···	-- Times
 	 * }							-- Use `Del = true` to remove WishChilds by Time
 	 */
-	if( N.wishes.empty() )
-		return lua_pushboolean(L, false), lua_pushfstring(L, NO_WISH, CHILD, "WishChild"), 2;
 	if(! lua_istable(L, 1) )
 		return lua_pushboolean(L, false), lua_pushfstring(L, NOT_A_TABLE, CHILD), 2;
+	if(! N.wishes.empty() ) {
+		auto W = &N.wishes.back();
+		if( lua_getfield(L, 1, WISH),  lua_getmetatable(L, -1),  luaL_getmetatable(L, N_WISH),
+		/**/lua_equal(L, -1, -2) )
+			W = (N4::Wish*)lua_touserdata(L, 2);
 
-	auto W = &N.wishes.back();
-	if( lua_getfield(L, 1, WISH), lua_getmetatable(L, -1), luaL_getmetatable(L, N_WISH),
-		lua_equal(L, -1, -2) )
-		W = (N4::Wish*)lua_touserdata(L, 2);
-	const bool hintSpecial = ( lua_getfield(L, 1, N_SPECIAL), lua_toboolean(L, -1) );
+		const size_t len = lua_objlen(L, 1);
+		if( lua_getfield(L, 1, N_DEL),  lua_toboolean(L, -1) ) [[unlikely]]   // isDelete
+			return std::erase_if(W->wishChilds, [=](const N4::Child& c) {
+				for( size_t i = 1;  i <= len;  ++i )
+					if( const auto T = ( lua_rawgeti(L,1,i), checkTime(L,-1) );  lua_pop(L,1), c.beat == T )
+						return true;
+				return false;
+			}), lua_pushboolean(L, true), 1;
 
-	const size_t len = lua_objlen(L, 1);
-	if( lua_getfield(L, 1, N_DEL),  lua_toboolean(L, -1) ) [[unlikely]]   // isDelete
-		return std::erase_if(W->wishChilds, [=](const N4::Child& c) {
-			for( size_t i = 1;  i <= len;  ++i )
-				if( const double beat = (lua_rawgeti(L, 1, i), checkTime(L, -1));  lua_pop(L,1),
-					c.beat == beat  &&  (!hintSpecial || c.hintSpecial) )
-					return true;
-			return false;
-		}), lua_pushboolean(L, true), 1;
+		double radius = ( lua_getfield(L, 1, RADIUS), lua_tonumber(L, -1) );
+		radius = radius ? (radius > 7.75 ? 7.75 : radius) : 7;
+		double initLoop = ( lua_getfield(L, 1, INITLOOP),  lua_isnil(L,-1) ? 0.25 : lua_tonumber(L,-1) );
+		initLoop = initLoop > 0 && initLoop < 1  ?  initLoop : 0;
+		double deltaLoop = ( lua_getfield(L, 1, DELTALOOP), lua_tonumber(L, -1) );
+		deltaLoop = deltaLoop < -1.875 ? -1.875  :  deltaLoop > 1.875 ? 1.875  :  deltaLoop;
+		W->wishChilds.reserve( len );
 
-	double radius = ( lua_getfield(L, 1, RADIUS), lua_tonumber(L, -1) );
-		   radius = radius ? (radius > 7.75 ? 7.75 : radius) : 7;
-	double initLoop = ( lua_getfield(L, 1, INITLOOP),  lua_isnil(L,-1) ? 0.25 : lua_tonumber(L,-1) );
-		   initLoop = initLoop < 0 ? 0  :  initLoop > 1 ? 1  :  initLoop;
-	double deltaLoop = ( lua_getfield(L, 1, DELTALOOP), lua_tonumber(L, -1) );
-		   deltaLoop = deltaLoop < -1.875 ? -1.875  :  deltaLoop > 1.875 ? 1.875  :  deltaLoop;
-	W->wishChilds.reserve( len );
-
-	for( size_t i = 1;  i <= len;  ++i )
-		W->wishChilds.push_back({ ( lua_rawgeti(L, 1, i), checkTime(L, -1) ),   // Beat
-								  radius, initLoop, deltaLoop, hintSpecial }),  lua_pop(L,1);
-	return lua_pushboolean(L, true), 1;
+		for( size_t i = 1;  i <= len;  ++i )
+			W->wishChilds.push_back({ /* Beat */ ( lua_rawgeti(L,1,i),  checkTime(L,-1) ),
+									   radius, initLoop, deltaLoop }),  lua_pop(L,1);
+	}	return lua_pushboolean(L, true), 1;
 }
 
 int Ar::NewHint(lua_State* L) noexcept {
@@ -495,32 +465,30 @@ int Ar::NewHint(lua_State* L) noexcept {
 	 *     {1}, 1, 2, 3, 4, ···		-- Times
 	 * }							-- Use `Del = true` to remove Hints by Time
 	 */
-	if( N.wishes.empty() )
-		return lua_pushboolean(L, false), lua_pushfstring(L, NO_WISH, HINT, HINT), 2;
 	if(! lua_istable(L, 1) )
 		return lua_pushboolean(L, false), lua_pushfstring(L, NOT_A_TABLE, HINT), 2;
+	if(! N.wishes.empty() ) {
+		auto W = &N.wishes.back();
+		if( lua_getfield(L, 1, WISH), lua_getmetatable(L, -1), luaL_getmetatable(L, N_WISH),
+			lua_equal(L, -1, -2) )
+			W = (N4::Wish*)lua_touserdata(L, 2);
+		const bool hintSpecial = ( lua_getfield(L, 1, N_SPECIAL), lua_toboolean(L, -1) );
 
-	auto W = &N.wishes.back();
-	if( lua_getfield(L, 1, WISH), lua_getmetatable(L, -1), luaL_getmetatable(L, N_WISH),
-		lua_equal(L, -1, -2) )
-		W = (N4::Wish*)lua_touserdata(L, 2);
-	const bool hintSpecial = ( lua_getfield(L, 1, N_SPECIAL), lua_toboolean(L, -1) );
+		const size_t len = lua_objlen(L, 1);
+		if( lua_getfield(L, 1, N_DEL),  lua_toboolean(L, -1) ) [[unlikely]]   // isDelete
+			return std::erase_if(W->manualHints, [=](const N4::Hint& h) {
+				for( size_t i = 1;  i <= len;  ++i )
+					if( const double beat = ( lua_rawgeti(L, 1, i), checkTime(L, -1) );  lua_pop(L, 1),
+					/**/h.beat == beat  &&  (!hintSpecial || h.isSpecial) )
+						return true;
+				return false;
+			}), lua_pushboolean(L, true), 1;
+		W->manualHints.reserve( len );
 
-	const size_t len = lua_objlen(L, 1);
-	if( lua_getfield(L, 1, N_DEL),  lua_toboolean(L, -1) ) [[unlikely]]   // isDelete
-		return std::erase_if(W->manualHints, [=](const N4::Hint& h) {
-			for( size_t i = 1;  i <= len;  ++i )
-				if( const double beat = ( lua_rawgeti(L, 1, i), checkTime(L, -1) );  lua_pop(L, 1),
-					h.beat == beat  &&  (!hintSpecial || h.isSpecial) )
-					return true;
-			return false;
-		}), lua_pushboolean(L, true), 1;
-	W->manualHints.reserve( len );
-
-	for( size_t i = 1;  i <= len;  ++i )
-		W->manualHints.push_back({ /*Beat*/ ( lua_rawgeti(L, 1, i), checkTime(L, -1) ),  hintSpecial }),
-		lua_pop(L, 1);
-	return lua_pushboolean(L, true), 1;
+		for( size_t i = 1;  i <= len;  ++i )
+			W->manualHints.push_back({ /*Beat*/ ( lua_rawgeti(L, 1, i), checkTime(L, -1) ),  hintSpecial }),
+			lua_pop(L, 1);
+	}	return lua_pushboolean(L, true), 1;
 }
 
 int Ar::NewEcho(lua_State* L) noexcept {
@@ -543,7 +511,7 @@ int Ar::NewEcho(lua_State* L) noexcept {
 				  radius = radius > 7.75 ? 7.75  :  radius < 0 ? 0  :  radius;
 	if( radius )
 		initLoop = ( lua_getfield(L, 1, INITLOOP), lua_tonumber(L, -1) ),
-		initLoop = initLoop ? (initLoop < 0 ? 0  :  initLoop > 1 ? 1  :  initLoop) : 0.25,
+		initLoop = lua_isnil(L, -1) ? 0.25  :  (initLoop > 0 && initLoop < 1) ? initLoop  :  0;
 		deltaLoop = ( lua_getfield(L, 1, DELTALOOP), lua_tonumber(L, -1) ),
 		deltaLoop = deltaLoop < -1.875 ? -1.875  :  deltaLoop > 1.875 ? 1.875  :  deltaLoop;
 
@@ -554,7 +522,7 @@ int Ar::NewEcho(lua_State* L) noexcept {
 				if( const double beat = ( lua_rawgeti(L, 1, i), checkTime(L, -1) ),
 									x = ( lua_rawgeti(L, 1, i+1), lua_tonumber(L, -1) ),
 									y = ( lua_rawgeti(L, 1, i+2), lua_tonumber(L, -1) );	 lua_pop(L,3),
-					e.beat == beat  &&  abs(e.x-x) + abs(e.y-y) <= 0.125  &&  (!isSpecial || e.isSpecial) )
+				/**/e.beat == beat  &&  abs(e.x-x) + abs(e.y-y) <= 0.125  &&  (!isSpecial || e.isSpecial) )
 					return true;
 			return false;
 		}), lua_pushboolean(L, true), 1;
@@ -565,7 +533,7 @@ int Ar::NewEcho(lua_State* L) noexcept {
 						x = ( lua_rawgeti(L, 1, i+1), lua_tonumber(L, -1) ),
 						y = ( lua_rawgeti(L, 1, i+2), lua_tonumber(L, -1) );				 lua_pop(L,3);
 		N.echoes.push_back({ .x = x < -23.9375 ? -23.9375  :  x > 39.9375 ? 39.9375  :  x,
-							 .y = y <   -3.875 ?   -3.875  :  y >  11.875 ?  11.875  :  y,
+							 .y = y <   0.0625 ?   0.0625  :  y >  7.9375 ?  7.9375  :  y,
 							 beat, radius, initLoop, deltaLoop, isSpecial });
 	}
 	return lua_pushboolean(L, true), 1;
@@ -595,75 +563,82 @@ int Ar::ConvTime(lua_State* L) noexcept {
 
 
 /* Arf Compile Fn */
-static std::map<uint64_t, Arf4::Duo> valueMap;
+static std::map<uint64_t, Arf4::Duo> valMap;
 static std::vector< std::vector<Arf4::Wish> > idxProto;
 int Ar::OrganizeArf(lua_State* L) noexcept {
 	/* Usage:
 	 * local before_or_false, objcnt, wgo_required, hgo_required, ego_required = Arf4.OrganizeArf()
 	 */
 	#define FIX(a,b)  ( (a)<(b) ? -0.5 : 0.5 )
-	Fumen F = { .val = 0 };
+	Fumen F = {};
 
 	// Organize Deltas
 	F.deltas.reserve( N.deltas.size() + 1 ), F.deltas.push_back({ .val = 1 });
 	for( const auto [init, value, base] : N.deltas )
 		if( init < 1048576 )   /* Arf4.h */
-			F.deltas.push_back({ .t = (uint64_t)init >> 2,
-								 .absV = (uint64_t)( fmin( abs(value), 8 - 1.0/1024 ) * 1024 ),
-								 .base = (uint64_t)( base * 1024 ) });
+			F.deltas.push_back({  .t = (uint64_t)(init),
+								 .dt = (uint64_t)(base * 1024)  });
 		else return lua_pushboolean(L, false), lua_pushfstring(L, NEMESIS_TIME_OOR, "DeltaNode"), 2;
 
 	// Organize Echoes
-	valueMap.clear();
+	valMap.clear();
 	for( Body EB;  const auto [x, y, beat, radius, initLoop, deltaLoop, isSpecial] : N.echoes )
 		if( const uint64_t ms = beatToMs(beat);  ms >= 637  &&  ms <= 1048106 )  [[likely]]  /* Arf4.h */
 			EB = { .cdx = (int64_t)( FIX(x,8) + (x-8) * 16 ),   .radius = (uint64_t)( 0.5 + radius * 4 ),
-				   .cdy = (int64_t)( FIX(y,4) + (y-4) * 8 ),  .initLoop = (uint64_t)( 0.5 + initLoop * 64 ),
+				   .cdy = (int64_t)( FIX(y,4) + (y-4) * 16 ), .initLoop = (uint64_t)( 0.5 + initLoop * 64 ),
 				   .deltaLoop = (int64_t)( FIX(deltaLoop,0) + deltaLoop * 8 ),  .ms = ms },
-			valueMap[EB.val].val |= isSpecial;   // 1048106: 1048576-470
+			valMap[EB.val].val |= isSpecial;   // 1048106: 1048576-470
 		else return lua_pushboolean(L, false), lua_pushfstring(L, NEMESIS_TIME_OOR, ECHO), 2;
 
-	const size_t echoSize = valueMap.size();
+	const size_t echoSize = valMap.size();
 	if( echoSize > 131072 )   /* inout.cpp 1/8 */
 		return lua_pushboolean(L, false), lua_pushfstring(L, NEMESIS_SLE, "Echoes", LI 131072), 2;
 	/**/F.echoes.reserve( echoSize );
-	for( Body e;  const auto [val, s] : valueMap )
+	for( Body e;  const auto [val, s] : valMap )
 		F.echoes.push_back(( e.val = val,  e.status = s.val,  e ));
 	std::ranges::sort( F.echoes, [](const Body a, const Body b) { return  a.val << 27  <  b.val << 27; } );
 
 	// Organize Times of Wishes, Add Hints into `F.hints`
-	valueMap.clear();
+	valMap.clear();
 	for( auto& w : N.wishes ) {
 		if( w.nodes.size() > 4096 )  [[unlikely]]  /* Arf4.h */
 			return lua_pushboolean(L, false), lua_pushfstring(L, NEMESIS_SLE, "a Wish's Nodes", LI 4096), 2;
-
 		for( auto& n : w.nodes)
 			if( n.beat = beatToMs( n.beat ),  n.beat > 1048575 )  [[unlikely]]  /* Arf4.h */
 				return lua_pushboolean(L, false), lua_pushfstring(L, NEMESIS_TIME_OOR, "Wish Node"), 2;
 		const auto N0 = w.nodes.front(), NL = w.nodes.back();
 
-		for( auto& c : w.wishChilds )   // Use valueMap to deduplicate & sort childs later
-			if( Body HB;  (c.beat = beatToMs(c.beat)) >= 510  &&  c.beat > N0.beat  &&  c.beat <= NL.beat )
-				wishCacheT(w, c.beat),  HB = { .ms = (uint64_t)c.beat,
-											  .cdx = (int64_t)(FIX(w.wX,8) + (w.wX-8) * 16),
-											  .cdy = (int64_t)(FIX(w.wY,4) + (w.wY-4) * 8) },
-				valueMap[HB.val].val |= c.hintSpecial;
-		if( std::erase_if(w.wishChilds, [N0](const N4::Child& c){ return c.beat <= N0.beat; }),  w.withDt )
-			for(auto& c : w.wishChilds)   {  c.beat = msToDt(c.beat);  }
-
 		for( auto [beat, isSpecial] : w.manualHints )
 			if( Body HB;  beat = beatToMs(beat),  beat >= 510  &&  beat > N0.beat  &&  beat <= NL.beat )
 				wishCacheT(w, beat),  HB = { .ms = (uint64_t)beat,
 											.cdx = (int64_t)(FIX(w.wX,8) + (w.wX-8) * 16),
-											.cdy = (int64_t)(FIX(w.wY,4) + (w.wY-4) * 8) },
-				valueMap[HB.val].val |= isSpecial;
+											.cdy = (int64_t)(FIX(w.wY,4) + (w.wY-4) * 16) },
+				valMap[HB.val].val |= isSpecial;
+
+		for( auto& c : w.wishChilds )   // Use valueMap to deduplicate & sort childs later
+			if( Body HB;  (c.beat = beatToMs(c.beat)) >= 510  &&  c.beat > N0.beat  &&  c.beat <= NL.beat )
+				wishCacheT(w, c.beat),  HB = { .ms = (uint64_t)c.beat,
+											  .cdx = (int64_t)(FIX(w.wX,8) + (w.wX-8) * 16),
+											  .cdy = (int64_t)(FIX(w.wY,4) + (w.wY-4) * 16) },
+				valMap.insert({ HB.val, {} });
+
+		if( const auto lastDelta = N.deltas.back();
+			std::erase_if(w.wishChilds, [N0](const N4::Child& c){ return c.beat <= N0.beat; }),  w.withDt )
+		/**/for( auto it = &N.deltas[0];  auto& c : w.wishChilds )
+				if( c.beat >= lastDelta.init )
+					c.beat = lastDelta.base + (c.beat - lastDelta.init) * lastDelta.value;
+				else while(
+					( c.beat <  it[0].init )  ?  --it  :
+					( c.beat >= it[1].init )  ?  ++it  :
+					( c.beat =  it->base + (c.beat - it->init) * it->value,  nullptr )
+				) {}
 	}
 
-	const size_t hintSize = valueMap.size();
+	const size_t hintSize = valMap.size();
 	if( hintSize > 32767 )   /* inout.cpp 2/8 */
 		return lua_pushboolean(L, false), lua_pushfstring(L, NEMESIS_SLE, "Hints", LI 32767), 2;
 	/**/F.hints.reserve( hintSize );
-	for( Body h;  const auto [val, s] : valueMap )
+	for( Body h;  const auto [val, s] : valMap )
 		F.hints.push_back(( h.val = val,  h.status = s.val,  h ));
 
 	/* Generate hIdx & eIdx, Count scored objects
@@ -678,28 +653,28 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 	int16_t iSize = (F.before >> 10) + 1;
 	F.idx.resize(iSize, { .hSince = hintSize, .eSince = echoSize });
 
-	valueMap.clear();
+	valMap.clear();
 	for( uint32_t i = 0;  i < hintSize;  ++i )
 		for( int ET = ( F.sHit < 31 ? (F.sHit += F.hints[i].status) : (F.hints[i].status = NJUDGED),
 						F.hints[i].ms + 470 ),  LG = ET >> 10,  GRP = (ET - 980) >> 10;  GRP <= LG;  ++GRP )
-			if( valueMap.contains(GRP) )  [[likely]]		valueMap[GRP].am += 1;
-			else											valueMap[GRP] = { .am = 1, .bm = i };
-	for( const auto [group, cnt_since] : valueMap )
+			if( valMap.contains(GRP) )  [[likely]]			valMap[GRP].am += 1;
+			else											valMap[GRP] = { .am = 1, .bm = i };
+	for( const auto [group, cnt_since] : valMap )
 		if( cnt_since.am > 511 )  [[unlikely]]
 			return lua_pushboolean(L, false),
 				   lua_pushfstring(L, NEMESIS_SLE, "Hints within 1024ms", LI 511), 2;   /* Arf4.h */
 		else if( F.idx[group].hSince = cnt_since.bm,  cnt_since.am > F.hgoRequired )
 			F.hgoRequired = cnt_since.am;
 
-	valueMap.clear();
+	valMap.clear();
 	for( uint32_t i = 0;  i < echoSize;  ++i )
-		if( const Body e = F.echoes[i];  F.objectCount  &&  !(F.objectCount += e.status) )   /* Arf4.h */
+		if( const Body e = F.echoes[i];  e.status  &&  F.objectCount++ == 65535 )   /* Arf4.h */
 			return lua_pushboolean(L, false), lua_pushfstring(L, NEMESIS_SLE, "Objects", LI 65535), 2;
 		else for( int initMs = e.ms - (e.radius ? 1011 : 637),  lastGrp = (e.ms + 470) >> 10,
 					   group = (initMs < 0 ? 0 : initMs) >> 10;  group <= lastGrp;  ++group )
-			if( valueMap.contains(group) )  [[likely]]		valueMap[group].am += 1;
-			else											valueMap[group] = { .am = 1, .bm = i };
-	for( const auto [group, cnt_since] : valueMap )
+			if( valMap.contains(group) )  [[likely]]		valMap[group].am += 1;
+			else											valMap[group] = { .am = 1, .bm = i };
+	for( const auto [group, cnt_since] : valMap )
 		if( cnt_since.am > 511 )  [[unlikely]]
 			return lua_pushboolean(L, false),
 				   lua_pushfstring(L, NEMESIS_SLE, "Echoes within 1024ms", LI 511), 2;   /* Arf4.h */
@@ -712,7 +687,7 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 	F.nodes.reserve(32767),  F.wishChilds.reserve(32767);
 	std::ranges::sort( N.wishes, [](auto& a, auto& b) {  return a.nodes[0].beat < b.nodes[0].beat;  } );
 	idxProto.clear(),  idxProto.resize(511);
-	
+
 	for( auto& w : N.wishes ) {
 		Wish wView = { .val = 0 };
 			 wView.nSince = F.nodes.size(),  wView.isSpecial = w.isSpecial,  wView.cIndex = 1;
@@ -722,26 +697,26 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 			return lua_pushboolean(L, false), lua_pushfstring(L, NEMESIS_SLE, "Wish Nodes", LI 262144), 2;
 		for( const auto [x, y, beat, radius, degree, ease] : w.nodes )
 			F.nodes.push_back({ .cdx = (int64_t)( FIX(x,8) + (x-8) * 16 ),   .ms = (uint64_t)beat,
-								.cdy = (int64_t)( FIX(y,4) + (y-4) * 8 ),	 .ease = ease,
+								.cdy = (int64_t)( FIX(y,4) + (y-4) * 16 ),	 .ease = ease,
 								.radius = (uint64_t)( 0.5 + radius * 4 ),
 								.deg = (int64_t)( FIX(degree,0) + degree) });
 		wView.nType = w.nodes.size() > 2  ?  (  F.nodes.push_back({ .val = 0 }),  1  ) : 0;
 
 		// Organize WishChilds
-		valueMap.clear();
+		valMap.clear();
 		for(Child c;  const auto& nC : w.wishChilds)
 			c = { .radius = (uint64_t)( 0.5 + nC.radius * 4 ),
 				  .initLoop = (uint64_t)( 0.5 + nC.initLoop * 64 ),
 				  .deltaLoop = (int64_t)( FIX(nC.deltaLoop,0) + nC.deltaLoop * 8 ),
 				  .zDt = (uint64_t)( nC.beat * 1024 ) },
-			valueMap[c.val] = {};
-		if( const size_t childCnt = valueMap.size();  childCnt > 8192 ) [[unlikely]]   /* Arf4.h */
+			valMap[c.val] = {};
+		if( const size_t childCnt = valMap.size();  childCnt > 8192 ) [[unlikely]]   /* Arf4.h */
 			return lua_pushboolean(L, false),
 				   lua_pushfstring(L, NEMESIS_SLE, "a Wish's WishChilds", LI 8192), 2;
 		else if( F.wishChilds.size() + childCnt + !!childCnt > 131072 ) [[unlikely]]   /* inout.cpp 6/8 */
 			return lua_pushboolean(L, false), lua_pushfstring(L, NEMESIS_SLE, "WishChilds", LI 131072), 2;
 		else if( childCnt ) [[likely]]  {
-			for(const auto [cVal, _]  :  wView.cSince = F.wishChilds.size(), valueMap)
+			for(const auto [cVal, _]  :  wView.cSince = F.wishChilds.size(), valMap)
 				F.wishChilds.push_back({ .val = cVal });
 
 			// Calculate wgoRequired for this Wish (Here the `.cIndex` field is borrowed)
@@ -762,7 +737,8 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 		const uint32_t lastMs = w.nodes.back().beat,  endGroup = lastMs >> 11;
 		for( uint32_t i = (uint32_t)w.nodes.front().beat >> 11;  i <= endGroup;  ++i )
 			idxProto[i].push_back( wView );
-		F.before = lastMs > F.before ? lastMs : F.before;
+		if( lastMs > F.before )
+			F.before = lastMs;
 	}
 
 	for(const int16_t wiSize = (F.before >> 11) + 1;  iSize < wiSize;  ++iSize)
@@ -794,7 +770,8 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 				F.wgoRequired = groupWgoUsed;
 		}
 	for( const auto wCnt = F.wishes.size();  auto& idx : F.idx )
-		idx.wSince = idx.wSince < 16777215 ? idx.wSince : wCnt;
+		if( idx.wSince == 16777215 )
+			idx.wSince = wCnt;
 
 	return  Arf = { .val = F.val },
 			F.deltas.swap(Arf.deltas),				F.nodes.swap(Arf.nodes),

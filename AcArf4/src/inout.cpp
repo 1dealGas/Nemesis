@@ -4,7 +4,6 @@
 #include <bitsery/traits/adapter_buffer.h>
 #include <bitsery/traits/container_vector.h>
 #include <bitsery/traits/compact_value.h>
-#include <dmsdk/dlib/crypt.h>
 
 /* Bitsery Settings */
 #define Inout(TYPE, DETAILS)	template<typename S> void serialize(S& s, Arf4:: TYPE &its) {			   \
@@ -30,10 +29,26 @@ namespace bitsery {
 	using A4Decoder = Deserializer< InputBufferAdapter<const uint8_t*, A4CONF> >;
 }
 
-/* Inout APIs */
+/* Inout Impls */
+static void UndiffArf() {
+	for( uint32_t cnt = Arf.hints.size(),  i = 1;  i < cnt;  ++i )
+		Arf.hints[i].ms += Arf.hints[i-1].ms;
+	for( uint32_t cnt = Arf.echoes.size(), i = 1;  i < cnt;  ++i )
+		Arf.echoes[i].ms += Arf.echoes[i-1].ms,
+		Arf.echoes[i].radius += Arf.echoes[i-1].radius,
+		Arf.echoes[i].initLoop += Arf.echoes[i-1].initLoop,
+		Arf.echoes[i].deltaLoop += Arf.echoes[i-1].deltaLoop;
+	for( uint32_t cnt = Arf.deltas.size(), i = 2;  i < cnt;  ++i )
+		Arf.deltas[i].dt += Arf.deltas[i-1].dt;
+	for( auto ls = Arf.wishChilds.begin(), tz = ls + 1;  tz < Arf.wishChilds.end();  ++ls, ++tz )
+		(ls->val && tz->val) ? (tz->zDt += ls->zDt) : 0;
+	for( auto ls = Arf.nodes.begin(), tz = ls + 1;  tz < Arf.nodes.end();  ++ls, ++tz )
+		(ls->val && tz->val) ? (tz->ms += ls->ms) : 0;
+}
+
 int Ar::LoadArf(lua_State* L) {
 	/* Usage:
-	 * local before, objcnt, wgo_req, hgo_req, ego_req = Arf4.LoadArf(path, is_auto, [proof])
+	 * local before, objcnt, wgo_req, hgo_req, ego_req = Arf4.LoadArf(path, [is_auto])
 	 */
 	struct PseudoContext { dmResource::HFactory _, pF; };			// LUA_GLOBALSINDEX == -10002
 	lua_pushnumber(L, 2744634527),  lua_rawget(L, -10002);			// Args -> hash"__script_context" | ctx
@@ -48,28 +63,18 @@ int Ar::LoadArf(lua_State* L) {
 			if( bSize = (fseek(pF, 0, 2), ftell(pF)),				// Size & Copying
 				 pBuf = (fseek(pF, 0, 0), (uint8_t*)malloc(bSize)),  fread(pBuf, 1, bSize, pF) == bSize )
 				(void)fclose(pF);
-			else return free(pBuf), fclose(pF), 0;
+			else return fclose(pF), free(pBuf), 0;
 		else return 0;
-
-	// Use Proof to Decrypt
-	if( size_t proofSize;  lua_type(L, 3) == LUA_TSTRING ) {
-		const auto proofStr = (const uint8_t*)lua_tolstring(L, 3, &proofSize);
-
-		uint8_t proofSha256[32];
-		dmCrypt::HashSha256( proofStr, (uint32_t)proofSize, proofSha256 );
-		Decrypt(dmCrypt::ALGORITHM_XTEA, pBuf, bSize, proofSha256+16, 16);
-		Decrypt(dmCrypt::ALGORITHM_XTEA, pBuf, bSize, proofSha256+8, 16);
-		Decrypt(dmCrypt::ALGORITHM_XTEA, pBuf, bSize, proofSha256, 16);
-	}
 
 	// Decode & Return
 	if( auto D = bitsery::A4Decoder(pBuf, bSize);  D.adapter().error() != bitsery::ReaderError::NoError )
 		return free(pBuf), 0;
 	else
-		D.object( Arf = {} );   // Lazy clear only when the buffer is loaded successfully
+		D.object( Arf = {} ), UndiffArf();   // Lazy clear only when the buffer is loaded successfully
 	#ifndef AR_BUILD_VIEWER
-		Arf.isAuto = lua_toboolean(L, 2),			Arf.maxDt = (InputDelta>63 ? 63 : InputDelta) + 37,
-													Arf.minDt = Arf.maxDt - 74;
+		Arf.isAuto = lua_toboolean(L, 2),
+		Arf.maxDt = (InputDelta > 63 ? 63 : InputDelta) + 37,
+		Arf.minDt = Arf.maxDt - 74;
 	#endif
 
 	return lua_pushinteger(L, Arf.before),			lua_pushinteger(L, Arf.objectCount),
@@ -79,27 +84,37 @@ int Ar::LoadArf(lua_State* L) {
 
 int Ar::ExportArf(lua_State* L) {
 	/* Usage:
-	 * local str_or_nil = Arf4.ExportArf([proof])
+	 * local str_or_nil = Arf4.ExportArf()
 	 */
 	for( auto& wish : Arf.wishes )
 		wish.nIndex = 0, wish.cIndex = 0;
+	Arf.deltas[0].val = 1;
+
+	/* Diff Fumen */
+	for( int i = Arf.hints.size() - 1;	 i > 0;  --i )
+		Arf.hints[i].ms -= Arf.hints[i-1].ms;
+	for( int i = Arf.echoes.size() - 1;  i > 0;  --i )
+		Arf.echoes[i].ms -= Arf.echoes[i-1].ms,
+		Arf.echoes[i].radius -= Arf.echoes[i-1].radius,
+		Arf.echoes[i].initLoop -= Arf.echoes[i-1].initLoop,
+		Arf.echoes[i].deltaLoop -= Arf.echoes[i-1].deltaLoop;
+	for( int i = Arf.deltas.size() - 1;  i > 1;  --i )
+		Arf.deltas[i].dt -= Arf.deltas[i-1].dt;
+	for( auto tz = Arf.wishChilds.end() - 1,  ls = tz - 1;  tz > Arf.wishChilds.begin();  --tz, --ls )
+		(tz->val && ls->val) ? (tz->zDt -= ls->zDt) : 0;
+	for( auto tz = Arf.nodes.end() - 1,  ls = tz - 1;  tz > Arf.nodes.begin();  --tz, --ls )
+		(tz->val && ls->val) ? (tz->ms -= ls->ms) : 0;
 
 	std::vector<uint8_t> buf;
 	auto E = bitsery::A4Encoder(buf);
 	E.object(Arf);
 
-	if( const size_t bufSize = ( E.adapter().flush(), E.adapter().writtenBytesCount() );  bufSize ) {
-		if( size_t proofSize;  lua_type(L, 1) == LUA_TSTRING ) {
-			const auto proofStr = (const uint8_t*)lua_tolstring(L, 1, &proofSize);
+	#ifdef AR_BUILD_VIEWER
+		UndiffArf();
+	#endif
 
-			uint8_t proofSha256[32];
-			dmCrypt::HashSha256( proofStr, (uint32_t)proofSize, proofSha256 );
-			Encrypt(dmCrypt::ALGORITHM_XTEA, &buf[0], bufSize, proofSha256, 16);
-			Encrypt(dmCrypt::ALGORITHM_XTEA, &buf[0], bufSize, proofSha256+8, 16);
-			Encrypt(dmCrypt::ALGORITHM_XTEA, &buf[0], bufSize, proofSha256+16, 16);
-		}
-		return lua_pushlstring(L, (char*)&buf[0], bufSize), 1;
-	}	return 0;
+	size_t bufSize = ( E.adapter().flush(), E.adapter().writtenBytesCount() );
+	return bufSize ? ( lua_pushlstring(L, (char*)&buf[0], bufSize), 1 ) : 0;
 }
 
 #ifdef AR_BUILD_VIEWER
@@ -107,8 +122,7 @@ int Ar::GetFileMtime(lua_State* L) noexcept {
 	/* Usage:
 	 * local modtime_or_nil = Arf4.GetFileMtime(path)
 	 */
-	if( struct stat S;  stat( luaL_checkstring(L,1), &S ) == 0 )
-		return lua_pushinteger(L, S.st_mtime), 1;
-	return 0;
+	struct stat FS;
+	return stat( luaL_checkstring(L,1), &FS ) ? 0 : ( lua_pushinteger(L, FS.st_mtime), 1 );
 }
 #endif

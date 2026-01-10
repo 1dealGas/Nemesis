@@ -9,9 +9,7 @@
     - name: path
       type: string
     - name: is_auto
-      type: boolean
-    - name: proof
-      type: [string, nil]
+      type: [boolean, nil]
     returns:
     - name: before
       type: [number, nil]
@@ -26,9 +24,6 @@
 
   - name: ExportArf
     type: function
-    parameters:
-    - name: proof
-      type: [string, nil]
     returns:
     - name: result
       type: [string, nil]
@@ -40,27 +35,9 @@
       type: number
     - name: delay
       type: [number, boolean]
-    - name: wish_gos
-      type: table
-    - name: hint_gos
-      type: table
-    - name: echo_gos
-      type: table
-    - name: echo_helper_gos
-      type: table
-    - name: left_anim_gos
-      type: table
-    - name: right_anim_gos
-      type: table
     - name: wish_tints
       type: table
-    - name: hint_tints
-      type: table
-    - name: echo_tints
-      type: table
     - name: echo_helper_tints
-      type: table
-    - name: anim_tints
       type: table
     returns:
     - name: wish_go_used
@@ -109,6 +86,28 @@
       type: number
     - name: sin
       type: number
+
+  - name: Bind
+    type: function
+    parameters:
+    - name: wish_gos
+      type: table
+    - name: hint_gos
+      type: table
+    - name: echo_gos
+      type: table
+    - name: echo_helper_gos
+      type: table
+    - name: left_anim_gos
+      type: table
+    - name: right_anim_gos
+      type: table
+    - name: hint_tints
+      type: table
+    - name: echo_tints
+      type: table
+    - name: anim_tints
+      type: table
 
   - name: Ease
     type: function

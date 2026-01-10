@@ -29,14 +29,15 @@ static constexpr luaL_Reg Arf4Lib[] = {
 		{"SetJudgeStat", Ar::SetJudgeStat},
 		{"GetJudgeStat", Ar::GetJudgeStat},
 	#endif
-		{Ar::LGC, freeSeries},
+		{"Bind", Ar::Bind},
+		{"Ease", Ar::Ease},
 		{"SetCam", Ar::SetCam},
 		{"LoadArf", Ar::LoadArf},
 		{"ExportArf", Ar::ExportArf},
 		{"UpdateArf", Ar::UpdateArf},
 		{"NewSeries", Ar::NewSeries},
 		{"CosSin", Ar::GetCosSin},
-		{"Ease", Ar::Ease},
+		{Ar::LGC, freeSeries},
 	{0,0}
 };
 static dmExtension::Result Arf4Init(dmExtension::Params* p) {

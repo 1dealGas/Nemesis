@@ -67,7 +67,9 @@ static bool testAnmitsuSafety(const int16_t cdx, const int16_t cdy, const bool i
 
 static Body scanHint(Body hint, const Duo validTouches[]) noexcept {
 	switch( hint.status ) {
-		case SPECIAL:		if(!hint.deltaMs)
+		case SPECIAL:
+			if( hint.deltaMs )
+		/**/return hint;
 		case NJUDGED:		case NJUDGED_LIT:		case SPECIAL_LIT:
 			hint.status  =  hasTouchNear(hint.cdx, hint.cdy, validTouches) + (hint.status & SPECIAL);
 			return hint;
@@ -83,11 +85,10 @@ static Body scanEcho(Body echo, const int32_t deltaMs, const Duo validTouches[])
 		echo.status & 2  ?  echo.status += hasTouchNear(echo.cdx, echo.cdy, validTouches) - HAD : 0;
 	else if( deltaMs < 101 )
 		 if( echo.status & NJUDGED_LIT )								 /* [2] Echo Behavior · Drag Path */
-			 hasTouchNear(echo.cdx, echo.cdy, validTouches) ? 0  :  (deltaMs > -88) ?
-				 Arf.eHit += echo.status & SPECIAL,  echo.status += 2,  echo.deltaMs = deltaMs:
-				 echo.status &= SPECIAL;
-		 else
-			 echo.status += hasTouchNear(echo.cdx, echo.cdy, validTouches);
+			 ( !hasTouchNear(echo.cdx, echo.cdy, validTouches)  &&  deltaMs > -88 ) ?
+				 ( echo.status += 2,  echo.deltaMs = deltaMs,  Arf.eHit += echo.status & SPECIAL ):
+				 ( echo.status &= SPECIAL );
+		 else	   echo.status += hasTouchNear(echo.cdx, echo.cdy, validTouches);
 	return echo;
 }
 
@@ -161,18 +162,17 @@ int Ar::JudgeArf(lua_State* L) noexcept {
 	Duo validTouches[33];
 	uint8_t touchCount = 0, anyPressed = false, anyReleased = false;
 	for( uint8_t i = 1;  i < 33;  i++ )
-		switch( lua_rawgeti(L, 3, i), lua_tointeger(L, -1) ) {
+		switch( lua_rawgeti(L,3,i), lua_tointeger(L,4) ) {
 			case 1:
 				anyPressed = true;
 			case 2:
-				validTouches[touchCount].a = ( lua_rawgeti(L, 1, i), lua_tonumber(L,-1) );
-				validTouches[touchCount].b = ( lua_rawgeti(L, 2, i), lua_tonumber(L,-1) );
-				lua_pop(L, 3), touchCount++;
-				break;
+				validTouches[touchCount].a = ( lua_rawgeti(L,1,i), lua_tonumber(L,5) );
+				validTouches[touchCount].b = ( lua_rawgeti(L,2,i), lua_tonumber(L,6) ),  touchCount++;
+				goto CLEAR;
 			case 3:
 				anyReleased = true;
 			[[likely]] default:
-				lua_pop(L, 1);
+				CLEAR: lua_settop(L,3);
 		}
 	return validTouches[touchCount].val = ~(0ll),
 		   judgeArfInternal(validTouches, anyPressed, anyReleased), 0;
