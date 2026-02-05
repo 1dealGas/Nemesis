@@ -17,12 +17,12 @@ namespace Arf4 {
 	struct Child {
 		Ar64(
 			u64  radius:5, initLoop:6;		i64  deltaLoop:5;
-			u64  zDt:33;													// zDt = ms * v
+			u64  ms:20;
 		)
 	};
 	struct Wish {
 		Ar64(																// Limits:
-			u64  nType:1, isSpecial:1;		u64  cType:1, withDt:1;			// Node	  [1] 4096	[T] (262144)
+			u64  nType:1, isSpecial:1;		u64  cType:1, withCs:1;			// Node	  [1] 4096	[T] (262144)
 			u64  nSince:18, cSince:17;		u64  nIndex:12, cIndex:13;		// Child  [1] 8192	[T] (131072)
 		)																	// Wish   [X] 1023	[T] 16777215
 	};
@@ -36,21 +36,15 @@ namespace Arf4 {
 	};
 
 /* Misc */
-	struct Delta {
-		Ar64(																// v [-8,8)      1/1024
-			u64  t:20;														// t [0,1048576) 1/1ms
-			u64  dt:33;														// dt = t * v
-		)
-	};
 	struct Index {
 		Ar64(
-			u64  hSince:15 = 0,  eSince:17 = 0;								// [OI] 1024ms, ABCDEF···
-			u64  wSince:24 = 0;												// [WI] 2048ms, ABC000···
+			u64  hSince:15, eSince:17;										// [OI] 1024ms, ABCDEF···
+			u64  wSince:24;													// [WI] 2048ms, ABC000···
 		)
 	};
 	struct Duo {
 		Ar64(
-			union  {  float a;  struct{ uint32_t am:23, ae:8, as:1; };  float v;  };
+			union  {  float a;  struct{ uint32_t am:23, ae:8, as:1; };  };
 			union  {  float b;  struct{ uint32_t bm:23, be:8, bs:1; };  struct{ uint32_t es:2, ms:30; };  };
 		)
 	};
@@ -59,7 +53,6 @@ namespace Arf4 {
 	struct Fumen {
 		std::vector<Index>		idx;
 		std::vector<Point>		nodes;										// [Dif] 19+ (val > 0)
-		std::vector<Delta>		deltas;										// [Dif] dt  [Max] Idx~262143
 		std::vector<Child>		wishChilds;									// [Dif] zDt (val > 0)
 		std::vector<Wish>		wishes;
 		std::vector<Body>		hints, echoes;								// [Dif] ms, echo.40+
@@ -70,12 +63,11 @@ namespace Arf4 {
 		uint64_t				msTime:20, judgeRange:7 = 37;
 		uint64_t				sHit:6, hHit:15, eHit:15, early:15, late:15, lost:16;
 		uint64_t				isAuto:1, isAnyX:1, isAnyY:1;
-		/*------------------------*/
 		float					xScale = 112.5 / 16, yScale = 7.03125;
-		float					xDelta, cSpeed = 1;							// cS ∈ [0,1.25]  pS ∈ [0.5,10]
+		float					xDelta, cSpeed = 1;
 	};
 }
-extern  float					PlayerSpeed;								// Finally  (pS*cS + 11) / 1500
+extern  float					PlayerSpeed;								// [0.5,15]
 extern  int8_t					InputDelta;
 extern  Arf4::Fumen				Arf;
 
@@ -85,7 +77,6 @@ namespace Ar {
 
 	/* Build */
 	int  NewBuild(lua_State*) noexcept;
-	int  SetDelta(lua_State*) noexcept;
 	int  NewWish(lua_State*) noexcept;
 	int  NewHint(lua_State*) noexcept;
 	int  NewEcho(lua_State*) noexcept;
@@ -95,7 +86,7 @@ namespace Ar {
 	int  ConvTime(lua_State*) noexcept;
 
 	/* Internal */
-  float  Eased(double, uint8_t) noexcept;
+  float  Eased(float, uint8_t) noexcept;
    void  JudgeArfSweep() noexcept;
 	Duo  CosSin(Duo) noexcept;
 

@@ -10,15 +10,15 @@
 			  s.enableBitPacking( [&its](typename S::BPEnabledType& inout) { DETAILS ; } ); }
 namespace bitsery {
 	static constexpr auto CV = ext::CompactValueAsObject{};
-	Inout( Index, inout.ext(its.val, CV); )		Inout( Point, inout.ext(its.val, CV); )
-	Inout( Child, inout.ext(its.val, CV); )		Inout( Delta, inout.ext(its.val, CV); )
 	Inout( Wish,  inout.ext(its.val, CV); )		Inout( Body,  inout.ext(its.val, CV); )
+	Inout( Point, inout.ext(its.val, CV); )		Inout( Index, inout.ext(its.val, CV); )
+	Inout( Child, inout.ext(its.val, CV); )
 
 	Inout( Fumen,
-		inout.container(its.deltas, 262144);	inout.container(its.nodes, 262144);		// Consider "Equal"
-		inout.container(its.echoes, 131072);	inout.container(its.wishes, 16777215);	// Wishes
-		inout.container(its.hints, 32767);		inout.container(its.wishChilds, 131072);
-		inout.container(its.idx, 1024);			inout.value8b(its.val);
+		inout.container(its.echoes, 131072);	inout.container(its.nodes, 262144);		// Consider "Equal"
+		inout.container(its.hints, 32767);		inout.container(its.wishes, 16777216);	// Wishes
+		inout.container(its.idx, 1024);			inout.container(its.wishChilds, 131072);
+		inout.value8b(its.val);
 	)
 
 	struct A4CONF {
@@ -38,10 +38,8 @@ static void UndiffArf() {
 		Arf.echoes[i].radius += Arf.echoes[i-1].radius,
 		Arf.echoes[i].initLoop += Arf.echoes[i-1].initLoop,
 		Arf.echoes[i].deltaLoop += Arf.echoes[i-1].deltaLoop;
-	for( uint32_t cnt = Arf.deltas.size(), i = 2;  i < cnt;  ++i )
-		Arf.deltas[i].dt += Arf.deltas[i-1].dt;
 	for( auto ls = Arf.wishChilds.begin(), tz = ls + 1;  tz < Arf.wishChilds.end();  ++ls, ++tz )
-		(ls->val && tz->val) ? (tz->zDt += ls->zDt) : 0;
+		(ls->val && tz->val) ? (tz->ms += ls->ms) : 0;
 	for( auto ls = Arf.nodes.begin(), tz = ls + 1;  tz < Arf.nodes.end();  ++ls, ++tz )
 		(ls->val && tz->val) ? (tz->ms += ls->ms) : 0;
 }
@@ -88,7 +86,6 @@ int Ar::ExportArf(lua_State* L) {
 	 */
 	for( auto& wish : Arf.wishes )
 		wish.nIndex = 0, wish.cIndex = 0;
-	Arf.deltas[0].val = 1;
 
 	/* Diff Fumen */
 	for( int i = Arf.hints.size() - 1;	 i > 0;  --i )
@@ -98,10 +95,8 @@ int Ar::ExportArf(lua_State* L) {
 		Arf.echoes[i].radius -= Arf.echoes[i-1].radius,
 		Arf.echoes[i].initLoop -= Arf.echoes[i-1].initLoop,
 		Arf.echoes[i].deltaLoop -= Arf.echoes[i-1].deltaLoop;
-	for( int i = Arf.deltas.size() - 1;  i > 1;  --i )
-		Arf.deltas[i].dt -= Arf.deltas[i-1].dt;
 	for( auto tz = Arf.wishChilds.end() - 1,  ls = tz - 1;  tz > Arf.wishChilds.begin();  --tz, --ls )
-		(tz->val && ls->val) ? (tz->zDt -= ls->zDt) : 0;
+		(tz->val && ls->val) ? (tz->ms -= ls->ms) : 0;
 	for( auto tz = Arf.nodes.end() - 1,  ls = tz - 1;  tz > Arf.nodes.begin();  --tz, --ls )
 		(tz->val && ls->val) ? (tz->ms -= ls->ms) : 0;
 

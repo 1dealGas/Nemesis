@@ -2,7 +2,7 @@
 #include <Arf4.h>
 Arf4::Fumen		Arf;
 int8_t			InputDelta;
-float			PlayerSpeed = 6;
+float			PlayerSpeed = 0.032f;   // 12÷375
 
 static int freeSeries(lua_State* L) {
 	( (std::vector<Arf4::Duo>*)lua_touserdata(L, 1) ) -> ~vector();
@@ -12,7 +12,6 @@ static int freeSeries(lua_State* L) {
 static constexpr luaL_Reg Arf4Lib[] = {
 	#ifdef AR_BUILD_VIEWER
 		{"NewBuild", Ar::NewBuild},
-		{"SetDelta", Ar::SetDelta},
 		{"NewWish", Ar::NewWish},
 		{"NewHint", Ar::NewHint},
 		{"NewEcho", Ar::NewEcho},
@@ -25,7 +24,7 @@ static constexpr luaL_Reg Arf4Lib[] = {
 	#else
 		{"JudgeArf", Ar::JudgeArf},
 		{"SetOptions", Ar::SetOptions},
-		{"SetJudgeZone", Ar::SetJudgeZone},		
+		{"SetJudgeZone", Ar::SetJudgeZone},
 		{"SetJudgeStat", Ar::SetJudgeStat},
 		{"GetJudgeStat", Ar::GetJudgeStat},
 	#endif

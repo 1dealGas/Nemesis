@@ -35,9 +35,7 @@
       type: number
     - name: delay
       type: [number, boolean]
-    - name: wish_tints
-      type: table
-    - name: echo_helper_tints
+    - name: wish_special
       type: table
     returns:
     - name: wish_go_used
@@ -101,12 +99,6 @@
     - name: left_anim_gos
       type: table
     - name: right_anim_gos
-      type: table
-    - name: hint_tints
-      type: table
-    - name: echo_tints
-      type: table
-    - name: anim_tints
       type: table
 
   - name: Ease
@@ -187,18 +179,6 @@
 
 
   - name: NewBuild
-    type: function
-    desc: Viewer Only
-    parameters:
-    - name: args
-      type: table
-    returns:
-    - name: ok
-      type: boolean
-    - name: err
-      type: [string, nil]
-
-  - name: SetDelta
     type: function
     desc: Viewer Only
     parameters:

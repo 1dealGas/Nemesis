@@ -37,26 +37,11 @@ Time {                       -- For 4/4-only tracks
 }
 Time {                       -- For tracks with Tempo Variations
     Offset = 1,              -- Offset must be positive
-    Tempo = {
-        0, 4, 4,             -- Bar, Beat Count of a Bar, Tone Divisor
-        1, 3, 4,
-        25, 4, 4
-    },
+    Tempo = { 0, 4, 4,       -- Bar, Beat Count of a Bar, Tone Divisor
+              1, 3, 4,
+              25, 4, 4 },
     0, 0, 201,               -- Bar(to be converted to Beat), Additional Beats, BPM
     ···                      -- Negative BPM as Linear BPM
-}
-```
-
-#### `Delta {}`
-
-```lua
---[ Example: ]--
-Delta {
-    {0},        1,           -- Bar 0, Ratio: 1
-    {2, 1/32},  -1,          -- Bar 2, then 1/32 Tone, Ratio: -1
-    {2, -1},    0.9,         -- Bar 2, then 1/16 Tone, Ratio: 0.9
-    -15,        1,           -- Bar 2(Cached), then 15/16 Tone, Ratio: 1
-    ···                      -- The last Ratio must be 1
 }
 ```
 
@@ -88,7 +73,7 @@ Xs {                         -- Okay to omit the "Bar 0" frame.
 ```lua
 --[ Example: ]--
 local myWish = Wish {        -- When failed, a nil will be returned.
-    WithDt = true,           -- true by default
+    WithCs = true,           -- true by default
     Special = true,          -- false by default
     {1}, 4, 3, LINEAR,       -- Bar 1, X=4, Y=3, Linear Ease
 
@@ -140,8 +125,8 @@ Hint {
 Echo {
     Radius = 7.0,            -- 0 by Default
     Special = false,         -- Scored if true. false by default
-    InitLoop = 0.25,         -- 0.25 by default, ignored if Radius is 0
-    DeltaLoop = 1.25,        -- 0 by default, ignored if Radius is 0
+    InitLoop = 0.25,         -- 0.25 by default (0 when Radius is 0)
+    DeltaLoop = 1.25,        -- 0 by default (0 when Radius is 0)
     {1}, 8, 0.5,             -- T1, X1, Y1
     -12, 8, 0.5,             -- T2, X2, Y2
     ···
@@ -173,23 +158,21 @@ Official addons are as follows, **under the `Apache-2.0` License**. Considering 
 -- Duo
 --
 local DUO_RADIUS = 3
-local DUO_WITHDT = false
+local DUO_WITHCS = false
 local DUO_BEFORE_TONE = 0.5
-local DUO_HINT_SPECIAL = false
+local DUO_WISH_SPECIAL = true
 
 local function Duo(t, x, y, ...)
     t = Toneof(t)
-    local S, t0, degs = SinceTone(), SinceTone(0) or (t - DUO_BEFORE_TONE), {...}
+    local degs, t0, S = {...}, (t - DUO_BEFORE_TONE), SinceTone() ; SinceTone(0)
     if t0 > 0 and degs[1] then
-        Wish { Special = true, WithDt = DUO_WITHDT, t0, x, y, 0, t, x, y }
+        Wish { Special = DUO_WISH_SPECIAL, WithCs = DUO_WITHCS, t0, x, y, 0, t, x, y }
         for i = 1, #degs do
             local D = degs[i]
             if type(D) == "number" then
-                Child { Radius = DUO_RADIUS, Special = DUO_HINT_SPECIAL,
-                        InitLoop = D/360, t }
+                Child { t, Radius = DUO_RADIUS, InitLoop = D/360 }
             else
-                Child { Radius = DUO_RADIUS, Special = DUO_HINT_SPECIAL,
-                        InitLoop = D[1]/360, DeltaLoop = D[2], t }
+                Child { t, Radius = DUO_RADIUS, InitLoop = D[1]/360, DeltaLoop = D[2] }
             end
         end
     end SinceTone(S)
@@ -205,7 +188,7 @@ local RAIL_DELTALOOP = 0
 local RAIL_BEFORE_TONE = 0.75
 local RAIL_CHILD_SPECIAL = false
 local RAIL_WISH_SPECIAL = false
-local RAIL_WISH_WITHDT = true
+local RAIL_WISH_WITHCS = true
 
 local function Rail(x, ...)
     local args = {...}
@@ -229,11 +212,11 @@ local function Rail(x, ...)
             for i = 1, gsl do
                 local tsi = gs[i] ; tsi.Radius, tsi.Special = RAIL_RADIUS, RAIL_CHILD_SPECIAL
                                     tsi.InitLoop, tsi.DeltaLoop = RAIL_INITLOOP, RAIL_DELTALOOP
-                gs[i] = Wish {  Special = RAIL_WISH_SPECIAL, WithDt = RAIL_WISH_WITHDT,
+                gs[i] = Wish {  Special = RAIL_WISH_SPECIAL, WithCs = RAIL_WISH_WITHCS,
                                 tsi[1]-RAIL_BEFORE_TONE, x, RAIL_Y, STATIC,
                                 tsi[#tsi], x, RAIL_Y  }
                 Child(tsi) end
-            return SinceTone(S) or gs
+            return gs, SinceTone(S)
         end
     end
 end
@@ -293,7 +276,7 @@ local function Arc(T)
         W[wi], W[wi+1], W[wi+2], W[wi+3] = T[ti], px, py, {r, d0, T[ti+4]}
         W[wi+4], W[wi+5], W[wi+6], W[wi+7] = T[ti+5], px, py, {r, d1, 0}
     end SinceTone(S)
-        W.WithDt, W.Special = T.WithDt, T.Special
+        W.WithCs, W.Special = T.WithCs, T.Special
     return T.Helper and Helper(W) or Wish(W)
 end
 ```
@@ -309,187 +292,98 @@ Time {
               1, 4, 4 },
     0, 0, 180
 }
-Delta {
-    {0}, 1,
-    {24.251}, 1011,
-    {24.255}, 0.6,
-    {24.5}, 0.7,
-    {24.75}, 0.8,
-    {24.875}, 0.9,
-    {25}, 1,
-    {31.001}, 4.37,
-    {31.005}, 1,
-    {36.252}, 1011,
-    {36.256}, 0.25,
-    {36,-5}, 5/16,
-    -6, 6/16,
-    -7, 7/16,
-    -8, 8/16,
-    -9, 9/16,
-    -10, 10/16,
-    -11, 11/16,
-    -12, 12/16,
-    -13, 13/16,
-    -14, 14/16,
-    -15, 15/16,
-    {37}, 1,
-    {43.001}, 6,
-    {43.005}, 1,
-    {48.251}, 30,
-    {48.255}, 0,
-    {48.376}, 30,
-    {48.38}, 0,
-    {48.501}, 30,
-    {48.505}, 1/9,
-    {48,-9}, 2/9,
-    -10, 3/9,
-    -11, 4/9,
-    -12, 5/9,
-    -13, 6/9,
-    -14, 7/9,
-    -15, 8/9,
-    {49.001}, 3,
-    {49.005}, 1,
-    {55.001}, 3,
-    {55.005}, 1,
-    {60.25}, 0.5,
-    {60.3}, 0.6,
-    {60.35}, 0.7,
-    {60.4}, 0.8,
-    {60.45}, 0.9,
-    {60.5}, 1,
-    {61.751}, 20,
-    {61.755}, 0.25,
-    {61.876}, 20,
-    {61.88}, 0.625,
-    {62.001}, 20,
-    {62.005}, 1/9,
-    {62,-1}, 2/9,
-    -2, 3/9,
-    -3, 4/9,
-    -4, 5/9,
-    -5, 6/9,
-    -6, 7/9,
-    -7, 8/9,
-    {62.501}, 3.7,
-    {62.505}, 1,
-    {64.001}, 6,
-    {64.005}, 1,
-    {64.626}, 6,
-    {64.63}, 1,
-    {64.751}, 3.7,
-    {64.755}, 1,
-    {65.126}, 3.7,
-    {65.13}, 1,
-    {65.501}, 1011,
-    {65.505}, 4/16,
-    {65,-9}, 5/16,
-    -10, 6/16,
-    -11, 7/16,
-    -12, 8/16,
-    -13, 9/16,
-    -14, 10/16,
-    -15, 11/16,
-    -16, 12/16,
-    -17, 13/16,
-    -18, 14/16,
-    -19, 15/16,
-    {66.251}, 0.73,
-    {66.75, 1/64}, -0.85,
-    2/64, 1.7,
-    3/64, -0.8,
-    4/64, 1.6,
-    5/64, -0.75,
-    6/64, 1.5,
-    7/64, -0.7,
-    8/64, 1.4,
-    9/64, -0.65,
-    10/64, 1.3,
-    11/64, -0.6,
-    12/64, 1.2,
-    13/64, -0.55,
-    14/64, 1.1,
-    15/64, -0.5,
-    16/64, 1,
-    {71.751}, 3.7,
-    {71.755}, 1,
-    {72.001}, 3.7,
-    {72.01}, 0.88,
-    {73}, 0.5,
-    -13, 13/24,
-    -14, 14/24,
-    -15, 15/24,
-    -16, 16/24,
-    -17, 17/24,
-    -18, 18/24,
-    -19, 19/24,
-    -20, 20/24,
-    -21, 21/24,
-    -22, 22/24,
-    -23, 23/24,
-    -24, 1,
-    {74.626}, 0.88,
-    {74.751}, 6,
-    {74.755}, 0.88,
-    {74.875}, 1,
-    {75.001}, 0.87,
-    {75.126}, 6,
-    {75.13}, 0.87,
-    {75.25}, 1,
-    {75.376}, 0.86,
-    {75.501}, 6,
-    {75.505}, 0.86,
-    {75.625}, 1,
-    {75.751}, 0.85,
-    {75.876}, 6,
-    {75.88}, 0.85,
-    {76}, 1,
-    {76.126}, 0.84,
-    {76.251}, 6,
-    {76.255}, 0.84,
-    {76.375}, 1,
-    {76.501}, 0.83,
-    {76.626}, 6,
-    {76.63}, 0.83,
-    {76.75}, 1,
-    {76.876}, 0.82,
-    {77.001}, 6,
-    {77.005}, 0.82,
-    {77.125}, 1,
-    {77.251}, 0.81,
-    {77.376}, 6,
-    {77.38}, 0.81,
-    {77.5}, 1,
-    {77.626}, 0.8,
-    {77.751}, 6,
-    {77.755}, 0.8,
-    {77.875}, 1,
-    {78.001}, 0.79,
-    {78.126}, 6,
-    {78.13}, 0.79,
-    {78.25}, 1,
-    {78.376}, 0.78,
-    {78.501}, 6,
-    {78.505}, 0.78,
-    {78.625}, 1,
-    {78.751}, 0.77,
-    {78.876}, 6,
-    {78.88}, 0.77,
-    {79}, 1,
-    {79.126}, 0.76,
-    {79.251}, 6,
-    {79.255}, 0.76,
-    {79.375}, 1,
-    {79.501}, 0.75,
-    {79.626}, 6,
-    {79.63}, 0.75,
-    {79.75}, 1,
-    {79.876}, 0.74,
-    {80.001}, 6,
-    {80.005}, 0.74,
-    {80.125}, 1,
-    {80.251}, 0.73,
-    {83.376}, 1
+Cs {
+         {0}, 1,    STATIC,
+    {24.251}, 1011, STATIC,
+    {24.255}, 0.6,  LINEAR,
+        {25}, 1,    STATIC,
+        {31}, 0.88, STATIC,
+        1/48, 1,    STATIC,
+    {36.251}, 0,    OUTSINE,
+        {37}, 1,    STATIC,
+        {43}, 0.88, STATIC,
+        1/64, 1,    STATIC,
+     {48.25}, 0.5,  STATIC,
+    {48.375}, 0.73, STATIC,
+      {48.5}, 0.5,  LINEAR,
+        {49}, 1,    STATIC,
+    {49.001}, 0.88, STATIC,
+        1/64, 1,    STATIC,
+        {55}, 0.88, STATIC,
+        1/64, 1,    STATIC,
+     {60.25}, 1,    LINEAR,
+      {60.5}, 0.73, STATIC,
+     {61.75}, 0.5,  STATIC,
+    {61.875}, 0.73, STATIC,
+        {62}, 0.5,  LINEAR,
+      {62.5}, 1,    STATIC,
+    {62.501}, 0.88, STATIC,
+        1/64, 1,    STATIC,
+        {64}, 0.88, STATIC,
+        1/64, 1,    STATIC,
+    {64.375}, 0.88, STATIC,
+        1/64, 1,    STATIC,
+     {64.75}, 0.80, STATIC,
+        1/64, 1.04, STATIC,
+    {65.125}, 0.80, STATIC,
+        1/64, 1.08, STATIC,
+      {65.5}, 0.37, INSINE,
+     {66.25}, 1,    STATIC,
+    {66.251}, 0.73, STATIC,
+     {66.75}, 0.76, STATIC,
+        1/64, 1011, STATIC,
+        2/64, 0.79, STATIC,
+        3/64, 1011, STATIC,
+        4/64, 0.82, STATIC,
+        5/64, 1011, STATIC,
+        6/64, 0.85, STATIC,
+        7/64, 1011, STATIC,
+        8/64, 0.88, STATIC,
+        9/64, 1011, STATIC,
+       10/64, 0.91, STATIC,
+       11/64, 1011, STATIC,
+       12/64, 0.94, STATIC,
+       13/64, 1011, STATIC,
+       14/64, 0.97, STATIC,
+       15/64, 1011, STATIC,
+       16/64, 1,    STATIC,
+     {71.75}, 1,    LINEAR,
+        5/16, 2,    STATIC,
+       21/64, 0.88, STATIC,
+     {73.75}, 0.5,  INSINE,
+      {74.5}, 0.88, STATIC,
+     {74.75}, 1,    STATIC,
+        1/48, 0.87, STATIC,
+    {75.125}, 1.01, STATIC,
+        1/48, 0.86, STATIC,
+      {75.5}, 1.02, STATIC,
+        1/48, 0.85, STATIC,
+    {75.875}, 1.03, STATIC,
+        1/48, 0.84, STATIC,
+     {76.25}, 1.04, STATIC,
+        1/48, 0.83, STATIC,
+    {76.625}, 1.05, STATIC,
+        1/48, 0.82, STATIC,
+        {77}, 1.06, STATIC,
+        1/48, 0.81, STATIC,
+    {77.375}, 1.07, STATIC,
+        1/48, 0.8,  STATIC,
+     {77.75}, 1.08, STATIC,
+        1/48, 0.79, STATIC,
+    {78.125}, 1.09, STATIC,
+        1/48, 0.78, STATIC,
+      {78.5}, 1.1,  STATIC,
+        1/48, 0.77, STATIC,
+    {78.875}, 1.11, STATIC,
+        1/48, 0.76, STATIC,
+     {79.25}, 1.12, STATIC,
+        1/48, 0.75, STATIC,
+    {79.625}, 1.13, STATIC,
+        1/48, 0.74, STATIC,
+        {80}, 1.14, STATIC,
+        1/48, 0.73, STATIC,
+      {80.5}, 0.37, OUTSINE,
+        {81}, 0.73, STATIC
 }
 
 -- Since {0}
@@ -563,7 +457,7 @@ Wish {   -- B2
     {11.5}, 10, 2.5, {2, 270, LINEAR},
     {12.25}, 10, 2.5, {2, 180, STATIC},
     {12.25}, 8, 2.5, {0, 90, OUTSINE},
-    {13}, 8, 9, {6.5, 90}
+    {13}, 8, 2.5, {6.5, 90}
 }
 Wish {
     Special = true,
@@ -575,9 +469,7 @@ Wish {   -- B3
     {7}, 8, 0.5, STATIC,
     {11.25}, 8, 0.5
 }
-Child {
-    {10.5}, {11.25}
-}
+Child { {10.5}, {11.25} }
 
 Duo({7}, 8,4, 0,90,180,270)
 Duo({11.5}, 8,5.5, 45,135,225,315)
@@ -760,17 +652,17 @@ Rail(8.5,
     {60}
 )
 Rail(8.875,
-    {44.25}, {52.75}, {53.25}
+    {52.75}, {53.25}
 )
 
 Rail(9,
     {38},
-    {41}, 0.75, 1.125, 1.75, {45.125}, -4, {46.625}, {47.125}, {47.875},
+    {41}, 0.75, 1.125, 1.75, {44.25}, {45.125}, -4, {46.625}, {47.125}, {47.875},
     {50, 7/24}, 9/24, {51.875}, {52.875}, {54.375},
     {55.25}, {55.75}, {56.375}, {58.125}, -8, {59.125}, -5
 )
 Rail(9.125,
-    {44.25}, {52.75}, {53.25}
+    {52.75}, {53.25}
 )
 Rail(9.5,
     {38.5}, {60.125}
@@ -974,7 +866,6 @@ Rail(12,
 
 RAIL_Y = 4.25
 RAIL_RADIUS = 3.5
-RAIL_BEFORE_TONE = 0.75
 
 Rail(5, {77.5}, -2)
 Child{ Radius = 3.5, InitLoop = 0.75, 0, -2 }
@@ -1028,7 +919,7 @@ Duo({68.125}, 8,2.25, 85,95)
 Duo({69.625}, 8,2.25, 83,97)
 
 DUO_RADIUS = 5
-DUO_WITHDT = true
+DUO_WITHCS = true
 Duo({71.5}, 8,1.125, 90) ; Child{ Radius = 5.5, {71.5} }
 Duo({73}, 8,4, 0,180)
 
@@ -1104,6 +995,6 @@ Wish {
     {83.5}, 8, 0.5
 }
 Child {
-    {81}, -4, -8, -12, -16, -20, -24, -28, -32, -36
+    {81}, -4, -8, -12, -16, -20, -24, -28, -32, -36, -40
 }
 ```

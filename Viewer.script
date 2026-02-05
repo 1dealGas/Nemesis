@@ -5,8 +5,8 @@ local HEADER, NIL = [[
 local A = Arf4
 local STATIC, LINEAR, INSINE, OUTSINE,_NA = 0,1,2,3, assert
 local function _NW(x) return function(y) return _NA(x(y)) end end
-local Helper, Delta, Time =_NW(A.NewHelper),_NW(A.SetDelta),_NW(A.NewBuild)
-local Wish, Child, Hint, Echo =_NW(A.NewWish),_NW(A.NewChild),_NW(A.NewHint),_NW(A.NewEcho)
+local Time, Hint, Echo =_NW(A.NewBuild),_NW(A.NewHint),_NW(A.NewEcho)
+local Wish, Child, Helper =_NW(A.NewWish),_NW(A.NewChild),_NW(A.NewHelper)
 local SinceTone, Toneof, CosSin, Log, A = A.SinceTone, A.ConvTime, A.CosSin, Log;
 ]], function() end
 
@@ -37,14 +37,13 @@ local CanvasMs, ObjectCount = 0, 0
 local CamSeries, CamVals, LogQueue = {}, {}, {}
 
 local Wcnt, Hcnt, Ecnt, Acnt, Vcnt = 0, 0, 0, 0, 0
-local WGOs, HGOs, EGOs, XGOs, AlGOs, ArGOs = {}, {}, {}, {}, {}, {}
-local WishSprites, HintSprites, EchoSprites, HelpSprites, AlSprites, ArSprites = {}, {}, {}, {}, {}, {}
-local WishTints, WishSpecial, HintTints, EchoTints, HelpTints, AnimTints = {}, {}, {}, {}, {}, {}
 local LastWused, LastHused, LastEused, LastEhused, LastAused = 0, 0, 0, 0, 0
+local WGOs, HGOs, EGOs, XGOs, AlGOs, ArGOs = {}, {}, {}, {}, {}, {}
+local WishSprites, WishSP, LastSP = {}, {}, {}
 
-local ETS, S0, S1 = { [0] = "STATIC", "LINEAR", "INSINE", "OUTSINE" }, Arf4.NewSeries{0,0}, Arf4.NewSeries{0,1}
-local ENABLE, DISABLE, TINTW, TINT, NM = hash "enable", hash "disable", hash "tint.w", hash "tint", hash "Nm"
-local SPRITE, WISHSP, WISH, ECHO, ANIM = hash "Sprite", hash "WishSP", hash "Wish", hash "Echo", hash "Anim"
+local S0, S1 = Arf4.NewSeries{0,0}, Arf4.NewSeries{0,1}
+local ENABLE, DISABLE, TINTW = hash "enable", hash "disable", hash "tint.w"
+local SPRITE, WISHSP, WISH = hash "Sprite", hash "WishSP", hash "Wish"
 
 local ConvTime, UpdateArf, SetCam, Ease = Arf4.ConvTime, Arf4.UpdateArf, Arf4.SetCam, Arf4.Ease
 local go_set, msg_post, sprite_play_flipbook = go.set, msg.post, sprite.play_flipbook
@@ -71,7 +70,7 @@ end
 local function UpdateCanvas(MS, playHs)
 	Ease(MS, CamSeries, CamVals)
 	SetCam(CamVals[1], CamVals[2], CamVals[3], CamVals[4])
-	local wu, hu, eu, xu, au, hp, ep = UpdateArf(MS, 30, WishTints, HelpTints)
+	local wu, hu, eu, xu, au, hp, ep = UpdateArf(MS, 30, WishSP)
 
 	-- Args
 	--
@@ -80,40 +79,31 @@ local function UpdateCanvas(MS, playHs)
 	end
 
 	for i = 1, wu do
-		local wishSprite, wishTint = WishSprites[i], WishTints[i]
-		local isSpecial, lastSpecial = wishTint < 0, WishSpecial[i]
-		go_set(wishSprite, TINTW, isSpecial and -wishTint or wishTint)
-
-		if isSpecial ~= lastSpecial then
-			sprite_play_flipbook(wishSprite, isSpecial and WISHSP or WISH)
-			WishSpecial[i] = isSpecial
+		local isSpecial = WishSP[i]
+		if isSpecial ~= LastSP[i] then
+			sprite_play_flipbook(WishSprites[i], isSpecial and WISHSP or WISH)
+			LastSP[i] = isSpecial
 		end
 	end
 
-	for i = 1, hu do	go_set(HintSprites[i], TINT, HintTints[i])		end
-	for i = 1, eu do	go_set(EchoSprites[i], TINT, EchoTints[i])		end
-	for i = 1, xu do	go_set(HelpSprites[i], TINTW, HelpTints[i])		end
-	for i = 1, au do	go_set(AlSprites[i], TINT, AnimTints[i])
-						go_set(ArSprites[i], TINT, AnimTints[i])		end
-
 	-- Enable / Disable, Misc
 	--
-	for i = LastWused+1, wu do	msg_post(WishSprites[i], ENABLE)		end
-	for i = wu+1, LastWused do	msg_post(WishSprites[i], DISABLE)		end
+	for i = LastWused+1, wu do	msg_post(WishSprites[i], ENABLE)	end
+	for i = wu+1, LastWused do	msg_post(WishSprites[i], DISABLE)	end
 
-	for i = LastHused+1, hu do	msg_post(HintSprites[i], ENABLE)		end
-	for i = hu+1, LastHused do	msg_post(HintSprites[i], DISABLE)		end
+	for i = LastHused+1, hu do	msg_post(HGOs[i], ENABLE)			end
+	for i = hu+1, LastHused do	msg_post(HGOs[i], DISABLE)			end
 
-	for i = LastEused+1, eu do	msg_post(EchoSprites[i], ENABLE)		end
-	for i = eu+1, LastEused do	msg_post(EchoSprites[i], DISABLE)		end
+	for i = LastEused+1, eu do	msg_post(EGOs[i], ENABLE)			end
+	for i = eu+1, LastEused do	msg_post(EGOs[i], DISABLE)			end
 
-	for i = LastEhused+1, xu do	msg_post(HelpSprites[i], ENABLE)		end
-	for i = xu+1, LastEhused do	msg_post(HelpSprites[i], DISABLE)		end
+	for i = LastEhused+1, xu do	msg_post(XGOs[i], ENABLE)			end
+	for i = xu+1, LastEhused do	msg_post(XGOs[i], DISABLE)			end
 
-	for i = LastAused+1, au do	msg_post(AlSprites[i], ENABLE)
-								msg_post(ArSprites[i], ENABLE)			end
-	for i = au+1, LastAused do	msg_post(AlSprites[i], DISABLE)
-								msg_post(ArSprites[i], DISABLE)			end
+	for i = LastAused+1, au do	msg_post(AlGOs[i], ENABLE)
+								msg_post(ArGOs[i], ENABLE)			end
+	for i = au+1, LastAused do	msg_post(AlGOs[i], DISABLE)
+								msg_post(ArGOs[i], DISABLE)			end
 
 	CanvasMs, LastWused, LastHused, LastEused, LastEhused, LastAused = MS, wu, hu, eu, xu, au
 	label_set_text(Info, string_format(
@@ -127,51 +117,46 @@ local function UpdateCanvas(MS, playHs)
 	end
 end
 
-local function AllocCanvas(wReq, hReq, eReq)
-	local create, vector4, url = factory.create, vmath.vector4, msg.url
-	local Wishc, Hintc, Helc = url("Viewer#Wishc"), url("Viewer#Hintc"), url("Viewer#Helc")
-	local aReq, dels, dx = hReq + eReq, {}, 1
+local function AllocCanvas(wreq, hreq, ereq)
+	local Nm, Mat, Emat, url = hash "Nm", hash "material", hash "/System/Hint.materialc", msg.url
+	local Anim, Echo, Wishc, Hintc, Helc = hash "Anim", hash "Echo", url "#Wishc", url "#Hintc", url "#Helc"
+	local areq, create, dels, dx = hreq + ereq, factory.create, {}, 1
 --------
-	for i = Wcnt+1, wReq do
+	for i = Wcnt+1, wreq do
 		local W = create(Wishc)
-		WGOs[i], WishSprites[i] = W, url(NM, W, SPRITE)								end
-	for i = wReq+1, Wcnt do
+		WGOs[i], WishSprites[i], LastSP[i] = W, url(Nm, W, SPRITE), false			end
+	for i = wreq+1, Wcnt do
 		dels[dx], dx = WGOs[i], (dx+1)												end
 
-	for i = Hcnt+1, hReq do
-		local H = create(Hintc, nil, nil, nil, 1.237)
-		HGOs[i], HintSprites[i], HintTints[i] = H, url(NM, H, SPRITE), vector4(1)	end
-	for i = hReq+1, Hcnt do
+	for i = Hcnt+1, hreq do
+		HGOs[i] = create(Hintc, nil, nil, nil, 1.237)								end
+	for i = hreq+1, Hcnt do
 		dels[dx], dx = HGOs[i], (dx+1)												end
 
-	for i = Ecnt+1, eReq do
-		local EH, ES = create(Helc), url( NM, create(Wishc), SPRITE )
-		EGOs[i], EchoSprites[i], EchoTints[i] = ES.path, ES, vector4()
-		XGOs[i], HelpSprites[i] = EH, url(NM, EH, SPRITE)
-		sprite_play_flipbook(ES, ECHO)												end
-	for i = eReq+1, Ecnt do
+	for i = Ecnt+1, ereq do
+		local ES = url(Nm, create(Wishc), SPRITE)  ;  sprite_play_flipbook(ES, Echo)
+		EGOs[i], XGOs[i] = ES.path, create(Helc)   ;  go_set(ES, Mat, Emat)			end
+	for i = ereq+1, Ecnt do
 		dels[dx], dels[dx+1], dx = EGOs[i], XGOs[i], (dx+2)							end
 
-	for i = Acnt+1, aReq do
-		local ALS = url(NM, create(Hintc), SPRITE)
-		local ARS = url(NM, create(Hintc), SPRITE)
-		AlGOs[i], AlSprites[i] = ALS.path, ALS  ;  sprite_play_flipbook(ALS, ANIM)
-		ArGOs[i], ArSprites[i] = ARS.path, ARS  ;  sprite_play_flipbook(ARS, ANIM)
-		AnimTints[i] = vector4()													end
-	for i = aReq+1, Acnt do
+	for i = Acnt+1, areq do
+		local ALS = url(Nm, create(Hintc), SPRITE)
+		local ARS = url(Nm, create(Hintc), SPRITE)
+		AlGOs[i] = ALS.path  ;  sprite_play_flipbook(ALS, Anim)
+		ArGOs[i] = ARS.path  ;  sprite_play_flipbook(ARS, Anim)						end
+	for i = areq+1, Acnt do
 		dels[dx], dels[dx+1], dx = AlGOs[i], ArGOs[i], (dx+2)						end
 --------
-	Wcnt, Hcnt, Ecnt, Acnt, Vcnt = wReq, hReq, eReq, aReq, wReq + aReq ; go.delete(dels)
-	LastWused, LastHused, LastEused, LastEhused, LastAused = wReq, hReq, eReq, eReq, aReq
-	Arf4.Bind(WGOs, HGOs, EGOs, XGOs, AlGOs, ArGOs, HintTints, EchoTints, AnimTints)
+	Wcnt, Hcnt, Ecnt, Acnt, Vcnt = wreq, hreq, ereq, areq, wreq + areq ; go.delete(dels)
+	LastWused, LastHused, LastEused, LastEhused, LastAused = wreq, hreq, ereq, ereq, areq
+	Arf4.Bind(WGOs, HGOs, EGOs, XGOs, AlGOs, ArGOs)
 	UpdateCanvas(CanvasMs)
 end
 
 local function CreateNlenv()
 	local G = {}
-	G.Arf4, G.bit, G.math, G.string, G.table = Arf4, bit, math, string, table
-	G.assert, G.pairs, G.ipairs, G.next, G.pprint = assert, pairs, ipairs, next, pprint
-	G.print, G.select, G.tonumber, G.tostring, G.type, G.unpack = print, select, tonumber, tostring, type, unpack
+	G.Arf4, G.bit, G.math, G.next, G.string, G.table, G.assert = Arf4, bit, math, next, string, table, assert
+	G.type, G.pairs, G.ipairs, G.select, G.unpack, G.tostring = type, pairs, ipairs, select, unpack, tostring
 	G.Log, G.Xs, G.Ys, G.Xd, G.Cs = EnqueueLog, Cam(1, "Xs"), Cam(2, "Ys"), Cam(3, "Xd"), Cam(4, "Cs")
 	CamSeries, LogQueue = {S1, S1, S0, S1}, {}
 	return G
@@ -198,7 +183,7 @@ local function LoadFumenAr(PATH, isBoot)
 		return false, "·][· Arf4: Failed to Load the Fumen"
 	end
 
-	ObjectCount, CamSeries = o, {S1, S1, S0, S1} ; AllocCanvas(w, h, e)
+	ObjectCount, CamSeries, LogQueue = o, {S1, S1, S0, S1}, {} ; AllocCanvas(w, h, e)
 	return isBoot and CreateReload(PATH, LoadFumenAr) or true
 end
 
@@ -289,7 +274,7 @@ local ButtonFns = {
 					for name, kf in pairs(LogQueue) do
 						io.write( name .. " {" )
 							for i = 1, #kf, 3 do
-								io.write(string_format( "\n	%u, %s, %s,", kf[i], kf[i+1], ETS[ kf[i+2] ] or "UNKNOWN" ))
+								io.write(string_format( "\n	%u, %s, %u,", kf[i], kf[i+1], kf[i+2] or 0 ))
 							end
 						io.write( "\n}\n" )
 					end

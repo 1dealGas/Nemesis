@@ -41,7 +41,7 @@ static uint8_t hasTouchNear(const int16_t cdx, const int16_t cdy, const Duo vali
 static std::vector<Duo> blockedPos;
 static bool testAnmitsuSafety(const int16_t cdx, const int16_t cdy, const bool isScored) noexcept {
 	const float x = 900.0f + cdx * Arf.xScale + Arf.xDelta,  y = 540.0f + cdy * Arf.yScale,
-				l = x-OBJECT_SIZE,  r = x+OBJECT_SIZE,  d = y-OBJECT_SIZE,  u = y+OBJECT_SIZE;
+				l = x - OBJECT_SIZE,  r = x + OBJECT_SIZE,   d = y - OBJECT_SIZE,  u = y + OBJECT_SIZE;
 	switch( Arf.isAnyX | Arf.isAnyY<<1 ) {
 		case 3:
 			return false;
@@ -83,12 +83,13 @@ static Body scanHint(Body hint, const Duo validTouches[]) noexcept {
 static Body scanEcho(Body echo, const int32_t deltaMs, const Duo validTouches[]) noexcept {
 	if( echo.status & HIT )
 		echo.status & 2  ?  echo.status += hasTouchNear(echo.cdx, echo.cdy, validTouches) - HAD : 0;
-	else if( deltaMs < 101 )
-		 if( echo.status & NJUDGED_LIT )								 /* [2] Echo Behavior · Drag Path */
-			 ( !hasTouchNear(echo.cdx, echo.cdy, validTouches)  &&  deltaMs > -88 ) ?
-				 ( echo.status += 2,  echo.deltaMs = deltaMs,  Arf.eHit += echo.status & SPECIAL ):
-				 ( echo.status &= SPECIAL );
-		 else	   echo.status += hasTouchNear(echo.cdx, echo.cdy, validTouches);
+	else if( echo.status & NJUDGED_LIT )								 /* [2] Echo Behavior · Drag Path */
+		hasTouchNear(echo.cdx, echo.cdy, validTouches) ? 0 :
+			( deltaMs > -88  &&  deltaMs < 101 ) ?
+				( echo.status += 2,  echo.deltaMs = deltaMs,  Arf.eHit += echo.status & SPECIAL ):
+				( echo.status &= SPECIAL );
+	else
+		echo.status += hasTouchNear(echo.cdx, echo.cdy, validTouches);
 	return echo;
 }
 
@@ -101,24 +102,23 @@ static void judgeArfInternal(const Duo validTouches[], const bool anyPressed, co
 		for(Body& E : std::span(Arf.echoes).subspan(I.eSince))
 			if( const int32_t DM = Arf.msTime - E.ms;  DM < -370 )		break;
 			else if									 ( DM > +470 )		{}			  /* [1] Tap Behavior */
-			else if( (E = scanEcho(E, DM, validTouches)).status >> 1 == 1  &&  DM > -101  &&  DM < 101 ) {
+			else if( E = scanEcho(E, DM, validTouches),  E.status >> 1 == 1  &&  DM > -101  &&  DM < 101 ) {
 				const bool safeToAnmitsu = testAnmitsuSafety(E.cdx, E.cdy, E.status & SPECIAL);
 				if( !minJudgedMs )
 					minJudgedMs = E.ms;
-				else if( minJudgedMs != E.ms )			 // Consider if maxDt < 0
-					if( !safeToAnmitsu || DM < Arf.minDt || DM > Arf.maxDt )
-						continue;
+				else if( minJudgedMs != E.ms  &&  !safeToAnmitsu )
+					continue;
 				Arf.eHit += E.status & SPECIAL,  E.status |= HIT;
 				E.deltaMs = DM;
 			}
 		for(Body& H : std::span(Arf.hints).subspan(I.hSince))
 			if( const int32_t DM = Arf.msTime - H.ms;  DM < -370 )		break;
 			else if									 ( DM > +470 )		{}
-			else if( (H = scanHint(H, validTouches)).status >> 1 == 1  &&  DM > -101  &&  DM < 101 ) {
+			else if( H = scanHint(H, validTouches),  H.status >> 1 == 1  &&  DM > -101  &&  DM < 101 ) {
 				const bool safeToAnmitsu = testAnmitsuSafety(H.cdx, H.cdy, true);
 				if( !minJudgedMs  ||  minJudgedMs >= H.ms )
 					minJudgedMs = H.ms;
-				else if( !safeToAnmitsu || DM < Arf.minDt || DM > Arf.maxDt )
+				else if( !safeToAnmitsu )
 					continue;
 				Arf.sHit += H.status & SPECIAL;
 
@@ -151,7 +151,7 @@ void Ar::JudgeArfSweep() noexcept {
 			Arf.lost++, E.deltaMs = 2;
 	for( Body& H : std::span(Arf.hints).subspan(I.hSince) )
 		if( Arf.msTime - H.ms > 100 )
-			(H.status & HIT) || (H.deltaMs) ? 0 : (Arf.lost++,  H.status = H.deltaMs = 1);
+			(H.status & HIT) || (H.deltaMs) ? 0 : ( ++Arf.lost,  H.status = H.deltaMs = 1 );
 		else break;
 }
 

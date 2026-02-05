@@ -4,7 +4,7 @@
 
 /* Ease Utils */
 #include <constants.h>
-float Ar::Eased(const double ratio, const uint8_t type) noexcept {
+float Ar::Eased(const float ratio, const uint8_t type) noexcept {
 	switch(type) {
 	  default:	case STATIC:	return 0;
 	[[likely]]	case LINEAR:	return ratio;
@@ -14,29 +14,13 @@ float Ar::Eased(const double ratio, const uint8_t type) noexcept {
 }
 
 Ar::Duo Ar::CosSin(Duo d) noexcept {   // Pass Degree into d.a
-	switch( d.as ) {
-		case 0: default: {
-			uint64_t deg16  = (d.ae+=4, d.a);		 const uint64_t deg16div1440 = deg16 / 1440;
-					 deg16 -= deg16div1440 * 1440;
-			switch( deg16div1440 & 0b11 ) {
-				default:
-				case 0: return d.b =  degreeSin[     deg16], d.a =  degreeSin[1440-deg16], d;   // 0~90
-				case 1: return d.b =  degreeSin[1440-deg16], d.a = -degreeSin[     deg16], d;   // 90~180
-				case 2: return d.b = -degreeSin[     deg16], d.a = -degreeSin[1440-deg16], d;   // 180~270
-				case 3: return d.b = -degreeSin[1440-deg16], d.a =  degreeSin[     deg16], d;   // 270~360
-			}
-		}
-		case 1: {   // d.f < 0, sin(-x) = -sin(x), cos(-x) = cos(x)
-			uint64_t deg16  = (d.ae+=4, -d.a);		 const uint64_t deg16div1440 = deg16 / 1440;
-					 deg16 -= deg16div1440 * 1440;
-			switch( deg16div1440 & 0b11 ) {
-				default:
-				case 0: return d.b = -degreeSin[     deg16], d.a =  degreeSin[1440-deg16], d;
-				case 1: return d.b = -degreeSin[1440-deg16], d.a = -degreeSin[     deg16], d;
-				case 2: return d.b =  degreeSin[     deg16], d.a = -degreeSin[1440-deg16], d;
-				case 3: return d.b =  degreeSin[1440-deg16], d.a =  degreeSin[     deg16], d;
-			}
-		}
+	switch( uint32_t D16 = ( d.ae += 4, (d.as ? -d.a : d.a) ),	Qdt  = D16 / 1440;
+																D16 -= Qdt * 1440,	Qdt & 0b11 ) {
+		default:
+		case 0: return d.b = degreeSin[     D16], d.bs =  d.as, d.a =  degreeSin[1440-D16], d;   // 0~90
+		case 1: return d.b = degreeSin[1440-D16], d.bs =  d.as, d.a = -degreeSin[     D16], d;   // 90~180
+		case 2: return d.b = degreeSin[     D16], d.bs = ~d.as, d.a = -degreeSin[1440-D16], d;   // 180~270
+		case 3: return d.b = degreeSin[1440-D16], d.bs = ~d.as, d.a =  degreeSin[     D16], d;   // 270~360
 	}
 }
 
@@ -58,7 +42,7 @@ int Ar::NewSeries(lua_State* L) noexcept {
 	 */
 	for( uint32_t ms, inputLen = lua_objlen(L,1),  i = 1;  i < inputLen;  i += 3 )
 		ms = ( lua_rawgeti(L, 1, i), lua_tointeger(L, 2) ),
-		SM[ms] = { .v = (float)   ( lua_rawgeti(L, 1, i+1), lua_tonumber(L,3) ),	.ms = ms,
+		SM[ms] = { .a = (float)   ( lua_rawgeti(L, 1, i+1), lua_tonumber(L,3) ),	.ms = ms,
 				  .es = (uint32_t)( lua_rawgeti(L, 1, i+2), lua_tonumber(L,4) ) },  lua_settop(L,1);
 	if( const auto SZ = SM.size();  lua_settop(L,0),  SZ )
 		for( auto& S = *new(lua_newuserdata(L, sizeof(std::vector<Duo>))) std::vector<Duo> {{.val = 1}};
@@ -73,9 +57,9 @@ int Ar::Ease(lua_State* L) noexcept {
 	 */
 	for( size_t T = lua_tointeger(L,1), i = lua_objlen(L,2);  i;  lua_rawseti(L,3,i--), lua_settop(L,3) )
 		if( auto& S = *(std::vector<Duo>*)(lua_rawgeti(L,2,i), lua_touserdata(L,4));  T < S[1].ms )
-			lua_pushnumber(L, S[1].v);
+			lua_pushnumber(L, S[1].a);
 		else if( Duo l, r = S.back();  T >= r.ms )
-			lua_pushnumber(L, r.v);
+			lua_pushnumber(L, r.a);
 		else if( auto& idx = S[0].val;  l = S[idx],  T < l.ms ) {
 			do {--idx;}  while( l = S[idx],    T < l.ms );
 								r = S[idx+1];  goto IP;			}
@@ -83,7 +67,7 @@ int Ar::Ease(lua_State* L) noexcept {
 			do {++idx;}  while( r = S[idx+1],  T >= r.ms );
 								l = S[idx];    goto IP;			}
 		else IP:
-			lua_pushnumber( L, l.v + (r.v-l.v) * Eased( (double)(T-l.ms)/(r.ms-l.ms), l.es ) );
+			lua_pushnumber( L, l.a + (r.a-l.a) * Eased( (float)(T-l.ms)/(r.ms-l.ms), l.es ) );
 	return 0;
 }
 
@@ -97,7 +81,7 @@ int Ar::SetCam(lua_State* L) noexcept {
 	Arf.xDelta = lua_tonumber(L, 3);
 
 	const lua_Number cSpeed = lua_tonumber(L, 4);
-		Arf.cSpeed = cSpeed < 0  ?  0 : cSpeed;
+		Arf.cSpeed = cSpeed > 0 ? cSpeed : 0;
 	return 0;
 }
 
@@ -109,7 +93,7 @@ int Ar::SetOptions(lua_State* L) noexcept {
 	InputDelta = lua_tointeger(L, 1);   // [-63, 63]
 	 Arf.minDt = InputDelta - Arf.judgeRange;		Arf.minDt = Arf.minDt < -100 ? -100 : Arf.minDt;
 	 Arf.maxDt = InputDelta + Arf.judgeRange;		Arf.maxDt = Arf.maxDt >  100 ?  100 : Arf.maxDt;
-	PlayerSpeed = lua_tonumber(L, 1);   // [0.5, 10]
+	PlayerSpeed = lua_tonumber(L, 2) / 375;
 	return 0;
 }
 

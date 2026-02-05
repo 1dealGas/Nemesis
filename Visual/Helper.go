@@ -2,7 +2,7 @@ embedded_components {
   id: "Sprite"
   type: "sprite"
   data: "default_animation: \"Anim\"\n"
-  "material: \"/System/Ehl.material\"\n"
+  "material: \"/builtins/materials/sprite.material\"\n"
   "slice9 {\n"
   "  x: 15.0\n"
   "  y: 15.0\n"
