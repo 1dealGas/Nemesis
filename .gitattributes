@@ -18,7 +18,6 @@ ext.manifest linguist-language=YAML
 *.input_binding linguist-language=text proto
 *.texture_profiles linguist-language=text proto
 
-AcArf4/include/bitsery/** linguist-vendored
 AcArf4/include/constants.h linguist-generated
 AcAudio/src/miniaudio.cpp linguist-vendored
 AcAudio/src/opusfile/** linguist-vendored

@@ -2,7 +2,6 @@
   type: table
   desc: Aerials Chart[Fumen] Format v4
   members:
-
   - name: LoadArf
     type: function
     parameters:
@@ -21,7 +20,6 @@
       type: [number, nil]
     - name: ego_required
       type: [number, nil]
-
   - name: ExportArf
     type: function
     returns:
@@ -52,7 +50,6 @@
       type: boolean
     - name: echo_play_hitsound
       type: boolean
-
   - name: NewSeries
     type: function
     parameters:
@@ -61,7 +58,6 @@
     returns:
     - name: series
       type: [table, nil]
-
   - name: SetCam
     type: function
     parameters:
@@ -73,7 +69,8 @@
       type: number
     - name: camera_speed
       type: number
-
+    - name: visual_ms
+      type: number
   - name: CosSin
     type: function
     parameters:
@@ -84,7 +81,6 @@
       type: number
     - name: sin
       type: number
-
   - name: Bind
     type: function
     parameters:
@@ -100,7 +96,6 @@
       type: table
     - name: right_anim_gos
       type: table
-
   - name: Ease
     type: function
     parameters:
@@ -110,8 +105,6 @@
       type: table
     - name: results
       type: table
-
-
   - name: JudgeArf
     type: function
     desc: Player Only
@@ -122,7 +115,6 @@
       type: table
     - name: phases
       type: table
-
   - name: SetOptions
     type: function
     desc: Player Only
@@ -131,7 +123,6 @@
       type: number
     - name: player_speed
       type: number
-
   - name: SetJudgeZone
     type: function
     desc: Player Only
@@ -142,31 +133,11 @@
       type: boolean
     - name: is_any_y
       type: boolean
-
-  - name: SetJudgeStat
-    type: function
-    desc: Player Only
-    parameters:
-    - name: hint_hit
-      type: number
-    - name: echo_hit
-      type: number
-    - name: early
-      type: number
-    - name: late
-      type: number
-    - name: lost
-      type: number
-    - name: special_hint_hit
-      type: number
-
   - name: GetJudgeStat
     type: function
     desc: Player Only
     returns:
-    - name: hint_hit
-      type: number
-    - name: echo_hit
+    - name: hit
       type: number
     - name: early
       type: number
@@ -174,10 +145,12 @@
       type: number
     - name: lost
       type: number
+    - name: hint_hit
+      type: boolean
+    - name: echo_hit
+      type: boolean
     - name: special_hint_hit
       type: number
-
-
   - name: NewBuild
     type: function
     desc: Viewer Only
@@ -189,7 +162,6 @@
       type: boolean
     - name: err
       type: [string, nil]
-
   - name: NewWish
     type: function
     desc: Viewer Only
@@ -201,7 +173,6 @@
       type: [table, nil]
     - name: err
       type: [string, nil]
-
   - name: NewHint
     type: function
     desc: Viewer Only
@@ -213,7 +184,6 @@
       type: boolean
     - name: err
       type: [string, nil]
-
   - name: NewEcho
     type: function
     desc: Viewer Only
@@ -225,7 +195,6 @@
       type: boolean
     - name: err
       type: [string, nil]
-
   - name: NewChild
     type: function
     desc: Viewer Only
@@ -237,7 +206,6 @@
       type: boolean
     - name: err
       type: [string, nil]
-
   - name: NewHelper
     type: function
     desc: Viewer Only
@@ -249,7 +217,6 @@
       type: [table, nil]
     - name: err
       type: [string, nil]
-
   - name: SinceTone
     type: function
     desc: Viewer Only
@@ -259,7 +226,6 @@
     returns:
     - name: since_tone
       type: [number, nil]
-
   - name: OrganizeArf
     type: function
     desc: Viewer Only
@@ -274,7 +240,6 @@
       type: [number, nil]
     - name: ego_required
       type: [number, nil]
-
   - name: GetFileMtime
     type: function
     desc: Viewer Only
@@ -284,7 +249,6 @@
     returns:
     - name: modification_time
       type: [number, nil]
-
   - name: ConvTime
     type: function
     desc: Viewer Only

@@ -1,7 +1,8 @@
 ﻿// Nemesis, the Aerials Fumen Compiler. //
 #ifdef AR_BUILD_VIEWER
-#include <algorithm>
 #include <Arf4.h>
+#include <algorithm>
+#include <vector>
 #include <map>
 
 /* Strings & Error Reasons */
@@ -144,9 +145,9 @@ static N4::Point checkPointArg(lua_State* L, const int where) noexcept {   // St
 				e = ( lua_rawgeti(L, where, 3), lua_tointeger(L, -1) ),						lua_pop(L, 1),
 				N4::Point { .radius = r < 0 ? 0  :  r > 15.75 ? 15.75  :  r,
 							.degree = d < -1024 ? -1024  :  d > 1023 ? 1023  :  d,
-							.ease = (uint8_t)(e > Arf4::OUTSINE ? Arf4::LINEAR : e) };
+							.ease = (uint8_t)(e > Ar::OUTSINE ? Ar::LINEAR : e) };
 	const auto e = lua_tointeger(L, where);
-	return { .ease = (uint8_t)(e > Arf4::OUTSINE  ?  Arf4::LINEAR : e) };
+	return { .ease = (uint8_t)(e > Ar::OUTSINE  ?  Ar::LINEAR : e) };
 }
 
 static std::map<double, N4::Point> nodeMap;
@@ -297,12 +298,12 @@ int Ar::NewBuild(lua_State* L) noexcept {
 
 	// Provide Metatables
 	if( luaL_newmetatable(L, N_WISH) )
-		lua_pushcfunction(L, wishAdd),			lua_setfield(L, -2, LADD),
 		lua_pushcfunction(L, wishGetInfo),		lua_setfield(L, -2, LCALL);
+		lua_pushcfunction(L, wishAdd),			lua_setfield(L, -2, LADD);
 	if( luaL_newmetatable(L, N_HELPER) )
-		lua_pushcfunction(L, wishAdd),			lua_setfield(L, -2, LADD),
+		lua_pushcfunction(L, freeHelper),		lua_setfield(L, -2, "__gc"),
 		lua_pushcfunction(L, wishGetInfo),		lua_setfield(L, -2, LCALL),
-		lua_pushcfunction(L, freeHelper),		lua_setfield(L, -2, LGC);
+		lua_pushcfunction(L, wishAdd),			lua_setfield(L, -2, LADD);
 	return lua_pushboolean(L, true), 1;
 }
 
@@ -495,14 +496,21 @@ int Ar::ConvTime(lua_State* L) noexcept {
 
 
 /* Arf Compile Fn */
-static std::map<uint64_t, Arf4::Duo> valMap;
-static std::vector< std::vector<Arf4::Wish> > idxProto;
+static std::map<uint64_t, Ar::Duo> valMap;
+static std::vector< std::vector<Ar::Wish> > idxProto;
 int Ar::OrganizeArf(lua_State* L) noexcept {
 	/* Usage:
 	 * local before_or_false, objcnt, wgo_required, hgo_required, ego_required = Arf4.OrganizeArf()
 	 */
-	#define FIX(a,b)  ( (a)<(b) ? -0.5 : 0.5 )
-	Fumen F = {};
+	struct {
+		std::vector<Index>  idx;
+		std::vector<Point>  node;			std::vector<Wish>  wish;
+		std::vector<Child>  child;			std::vector<Body>  hint, echo;
+		//------------------------//
+		#define FIX(a,b)  ( (a)<(b) ? -0.5 : 0.5 )
+		uint64_t  wgoRequired:10, hgoRequired:9, egoRequired:9,
+				  before:20, objectCount:16;
+	} F = {};
 
 	// Organize Echoes
 	valMap.clear();
@@ -519,15 +527,15 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 	if( echoSize > 131072 )   /* Inout */
 		return lua_pushboolean(L, false),
 			   lua_pushfstring(L, NEMESIS_SLE, "Echoes", LI 131072), 2;
-	/**/F.echoes.reserve( echoSize );
+	/**/F.echo.reserve( echoSize );
 	for( Body e;  const auto [val, s] : valMap )
-		F.echoes.push_back(( e.val = val,  e.status = s.val,  e ));
-	std::ranges::sort( F.echoes, [](const Body a, const Body b) {
+		F.echo.push_back(( e.val = val,  e.status = s.val,  e ));
+	std::ranges::sort( F.echo, [](const Body a, const Body b) {
 		if( auto amsyx = a.val << 27,  bmsyx = b.val << 27;  amsyx != bmsyx )		return amsyx < bmsyx;
 		else																		return a.val < b.val;
 	} );
 
-	// Organize Times of Wishes, Add Hints into `F.hints`
+	// Organize Times of Wishes, Add Hints into `F.hint`
 	valMap.clear();
 	for( auto& w : N.wishes ) {
 		if( w.nodes.size() > 4096 )  [[unlikely]]  /* Arf4.h */
@@ -559,70 +567,70 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 	if( hintSize > 32767 )   /* Inout */
 		return lua_pushboolean(L, false),
 			   lua_pushfstring(L, NEMESIS_SLE, "Hints", LI 32767), 2;
-	/**/F.hints.reserve( hintSize );
+	/**/F.hint.reserve( hintSize );
 	for( Body h;  const auto [val, s] : valMap )
-		F.hints.push_back(( h.val = val,  h.status = s.val,  h ));
+		F.hint.push_back(( h.val = val,  h.status = s.val,  h ));
 
 	/* Generate hIdx & eIdx, Count scored objects
 	 * Metadata: before, objectCount, hgoRequired, egoRequired
 	 */
 	if( hintSize )
 		F.objectCount = hintSize,
-		F.before = F.hints.back().ms + 470;
+		F.before = F.hint.back().ms + 470;
 	if( uint32_t efinalMs;  echoSize )
-		efinalMs = F.echoes.back().ms + 470,
+		efinalMs = F.echo.back().ms + 470,
 		F.before < efinalMs ? (F.before = efinalMs) : 0;
 	F.idx.resize( (F.before >> 10) + 1,  { .hSince = hintSize, .eSince = echoSize } );
 
 	valMap.clear();
-	for( uint32_t i = 0;  i < hintSize;  ++i )
-		for( int ET = ( F.sHit < 31 ? (F.sHit += F.hints[i].status) : (F.hints[i].status = NJUDGED),
-						F.hints[i].ms + 470 ),  LG = ET >> 10,  GRP = (ET - 980) >> 10;  GRP <= LG;  ++GRP )
-			if( valMap.contains(GRP) )  [[likely]]			valMap[GRP].am += 1;
-			else											valMap[GRP] = { .am = 1, .bm = i };
+	for( uint32_t sCnt = 0,  i = 0;  i < hintSize;  ++i )
+		for( int ET = ( sCnt < 16383 ? (sCnt += F.hint[i].status) : (F.hint[i].status = NJUDGED),
+						F.hint[i].ms + 470 ),  LG = ET >> 10,  GP = (ET - 980) >> 10;  GP <= LG;  ++GP )
+			if( valMap.contains(GP) )  [[likely]]		valMap[GP].am += 1;
+			else										valMap[GP] = { .am = 1, .ms = i };
 	for( const auto [group, cnt_since] : valMap )
 		if( cnt_since.am > 511 )  [[unlikely]]  /* Arf4.h */
 			return lua_pushboolean(L, false),
 				   lua_pushfstring(L, NEMESIS_SLE, "Hints within 1024ms", LI 511), 2;
-		else if( F.idx[group].hSince = cnt_since.bm,  cnt_since.am > F.hgoRequired )
+		else if( F.idx[group].hSince = cnt_since.ms,  cnt_since.am > F.hgoRequired )
 			F.hgoRequired = cnt_since.am;
 
 	valMap.clear();
 	for( uint32_t i = 0;  i < echoSize;  ++i )
-		if( const Body e = F.echoes[i];  e.status  &&  F.objectCount++ == 65535 ) [[unlikely]] /* Arf4.h */
+		if( const Body e = F.echo[i];  e.status  &&  F.objectCount++ == 65535 ) [[unlikely]] /* Arf4.h */
 			return lua_pushboolean(L, false),
 				   lua_pushfstring(L, NEMESIS_SLE, "Objects", LI 65535), 2;
 		else for( int ET = e.ms - (e.radius ? 75 * fmax(e.radius, 24) : 637.0),  LG = (e.ms + 470) >> 10,
 					 GRP = (ET < 0 ? 0 : ET) >> 10;  GRP <= LG;  ++GRP )   // Lowest DBPM 50
 			if( valMap.contains(GRP) )  [[likely]]			valMap[GRP].am += 1;
-			else											valMap[GRP] = { .am = 1, .bm = i };
+			else											valMap[GRP] = { .am = 1, .ms = i };
 	for( const auto [group, cnt_since] : valMap )
 		if( cnt_since.am > 511 )  [[unlikely]]  /* Arf4.h */
 			return lua_pushboolean(L, false),
 				   lua_pushfstring(L, NEMESIS_SLE, "Echoes within 1024ms", LI 511), 2;
-		else if( F.idx[group].eSince = cnt_since.bm,  cnt_since.am > F.egoRequired )
+		else if( F.idx[group].eSince = cnt_since.ms,  cnt_since.am > F.egoRequired )
 			F.egoRequired = cnt_since.am;
 
 	/* Flatten Nodes & WishChilds
 	 * Metadata: before
 	 */
 	std::ranges::sort( N.wishes, [](auto& a, auto& b) {  return a.nodes[0].beat < b.nodes[0].beat;  } );
-	F.wishChilds.reserve(32767),	idxProto.clear(),
-	F.nodes.reserve(32767),			idxProto.resize(512);
+	F.child.reserve(32767),			idxProto.clear(),
+	F.node.reserve(32767),			idxProto.resize(512);
 
 	for( auto& w : N.wishes ) {
-		Wish wView = { .nSince = F.nodes.size(),  .isSpecial = w.isSpecial,  .cIndex = 1 };
+		Wish wView = { .nSince = F.node.size(),  .isSpecial = w.isSpecial,  .cIndex = 1 };
 
 		// Organize Nodes
 		if( const auto wNs = w.nodes.size();  wView.nSince + wNs + (wNs>2) > 262144 )   /* Inout */
 			return lua_pushboolean(L, false),
 				   lua_pushfstring(L, NEMESIS_SLE, "Wish Nodes", LI 262144), 2;
 		for( const auto [x, y, beat, radius, degree, ease] : w.nodes )
-			F.nodes.push_back({ .cdx = (int64_t)( FIX(x,8) + (x-8) * 16 ),   .ms = (uint64_t)beat,
+			F.node.push_back({  .cdx = (int64_t)( FIX(x,8) + (x-8) * 16 ),   .ms = (uint64_t)beat,
 								.cdy = (int64_t)( FIX(y,4) + (y-4) * 16 ),	 .ease = ease,
 								.deg = (int64_t)( FIX(degree,0) + degree),
-								.radius = (uint64_t)( 0.5 + radius * 4 ) });
-		wView.nType = w.nodes.size() > 2 ? ( F.nodes.push_back({ }), 1 ) : 0;
+								.radius = (uint64_t)( 0.5 + radius * 4 )							});
+		wView.nType = w.nodes.size() > 2 ? ( F.node.push_back({ }), 1 ) : 0;
 
 		// Organize WishChilds
 		valMap.clear();
@@ -634,12 +642,12 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 		if( const size_t childCnt = valMap.size();  childCnt > 8192 ) [[unlikely]]   /* Arf4.h */
 			return lua_pushboolean(L, false),
 				   lua_pushfstring(L, NEMESIS_SLE, "a Wish's WishChilds", LI 8192), 2;
-		else if( F.wishChilds.size() + childCnt + !!childCnt > 131072 ) [[unlikely]]   /* Inout */
+		else if( F.child.size() + childCnt + !!childCnt > 131072 ) [[unlikely]]   /* Inout */
 			return lua_pushboolean(L, false),
 				   lua_pushfstring(L, NEMESIS_SLE, "WishChilds", LI 131072), 2;
 		else if( childCnt ) [[likely]] {
-			for(const auto [cVal, _]  :  wView.cSince = F.wishChilds.size(), valMap)
-				F.wishChilds.push_back({ .val = cVal });
+			for(const auto [cVal, _]  :  wView.cSince = F.child.size(), valMap)
+				F.child.push_back({ .val = cVal });
 			doubleMap.clear();
 				for( constexpr double LOWEST_SPEED_RCP = 15000 / 50;  const auto& c : w.wishChilds )
 					/* From */  doubleMap[ fmax(0, c.beat - fmax(c.radius, 6) * LOWEST_SPEED_RCP) ] += 1,
@@ -647,7 +655,7 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 				for( int16_t currentStep = 1 /* the Wish itself */ ;  const auto [_, stepIncr] : doubleMap )
 					if( (currentStep += stepIncr) > wView.cIndex )
 						wView.cIndex = currentStep;   // Borrowed to be wgoRequired for this Wish
-			wView.cType = 1,  wView.withCs = w.withCs,  F.wishChilds.push_back({ });
+			wView.cType = 1,  wView.withCs = w.withCs,  F.child.push_back({ });
 		}
 
 		/* Push this Wish into idxProto
@@ -666,28 +674,39 @@ int Ar::OrganizeArf(lua_State* L) noexcept {
 		idxProto.resize( wiSize );
 	for( int16_t iSize = F.idx.size();  iSize < wiSize;  ++iSize )
 		F.idx.push_back({ .hSince = hintSize,  .eSince = echoSize });
-	F.wishes.reserve(16384);   // Seems Okay
+	F.wish.reserve(16384);   // Seemed Okay
 
 	for( uint16_t i = 0;  auto& group : idxProto )
-		if( uint16_t groupWgoUsed = 0;  F.idx[i++].wSince = F.wishes.size(),  group.size() ) {
+		if( uint16_t groupWgoUsed = 0;  F.idx[i++].wSince = F.wish.size(),  group.size() ) {
 			for( auto wish : group )
 				groupWgoUsed += wish.cIndex,  wish.cIndex = 0 /* End of the borrowing */,
-				F.wishes.push_back( wish );
-			if( F.wishes.size() > 16777216 )   /* Inout */
+				F.wish.push_back( wish );
+			if( F.wish.size() > 1048576 )   /* Inout */
 				return lua_pushboolean(L, false),
-					   lua_pushfstring(L, NEMESIS_SLE, "Wishes", LI 16777216), 2;
+					   lua_pushfstring(L, NEMESIS_SLE, "Wishes", LI 1048576), 2;
 			if( groupWgoUsed > 1023 )   /* Arf4.h */
 				return lua_pushboolean(L, false),
 					   lua_pushfstring(L, NEMESIS_SLE, WISHES_2048, LI 1023), 2;
 			(F.wgoRequired < groupWgoUsed) ? (F.wgoRequired = groupWgoUsed) : 0;
 		}
 
-	return  Arf = { .val = F.val },					F.wishes.swap(Arf.wishes),
-			lua_pushinteger(L, F.before),			F.nodes.swap(Arf.nodes),
-			lua_pushinteger(L, F.objectCount),		F.hints.swap(Arf.hints),
-			lua_pushinteger(L, F.wgoRequired),		F.wishChilds.swap(Arf.wishChilds),
-			lua_pushinteger(L, F.hgoRequired),		F.echoes.swap(Arf.echoes),
-			lua_pushinteger(L, F.egoRequired),		F.idx.swap(Arf.idx),
+	// Update Global Arf
+	Arf.idx = (Index*)( free(Arf.idx), malloc( sizeof(uint64_t) * (
+		F.idx.size() + F.node.size() + F.wish.size() + F.child.size() + hintSize + echoSize
+	)) );
+
+	Arf.ceil  = (Body*) ( Arf.idx );	for( const auto idx   : F.idx )		*(Index*)(Arf.ceil++) = idx;
+	Arf.node  = (Point*)( Arf.ceil );	for( const auto node  : F.node )	*(Point*)(Arf.ceil++) = node;
+	Arf.wish  = (Wish*) ( Arf.ceil );	for( const auto wish  : F.wish )	*(Wish*) (Arf.ceil++) = wish;
+	Arf.child = (Child*)( Arf.ceil );	for( const auto child : F.child )	*(Child*)(Arf.ceil++) = child;
+	Arf.hint  = (Body*) ( Arf.ceil );	for( const auto hint  : F.hint )	*(Body*) (Arf.ceil++) = hint;
+	Arf.echo  = (Body*) ( Arf.ceil );	for( const auto echo  : F.echo )	*(Body*) (Arf.ceil++) = echo;
+
+	return  Arf.before = F.before,					lua_pushinteger(L, F.before),
+			Arf.objectCount = F.objectCount,		lua_pushinteger(L, F.objectCount),
+			Arf.wgoRequired = F.wgoRequired,		lua_pushinteger(L, F.wgoRequired),
+			Arf.hgoRequired = F.hgoRequired,		lua_pushinteger(L, F.hgoRequired),
+			Arf.egoRequired = F.egoRequired,		lua_pushinteger(L, F.egoRequired),
 	5;
 }
 #endif

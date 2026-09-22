@@ -42,24 +42,40 @@ local WGOs, HGOs, EGOs, XGOs, AlGOs, ArGOs = {}, {}, {}, {}, {}, {}
 local WishSprites, WishSP, LastSP = {}, {}, {}
 
 local S0, S1 = Arf4.NewSeries{0,0}, Arf4.NewSeries{0,1}
-local ENABLE, DISABLE, TINTW = hash "enable", hash "disable", hash "tint.w"
+local ENABLE, DISABLE, TINTW, TEXT = hash "enable", hash "disable", hash "tint.w", hash "text"
 local SPRITE, WISHSP, WISH = hash "Sprite", hash "WishSP", hash "Wish"
 
 local ConvTime, UpdateArf, SetCam, Ease = Arf4.ConvTime, Arf4.UpdateArf, Arf4.SetCam, Arf4.Ease
-local go_set, msg_post, sprite_play_flipbook = go.set, msg.post, sprite.play_flipbook
-local label_set_text, string_format = label.set_text, string.format
+local msg_post, sprite_play_flipbook = msg.post, sprite.play_flipbook
+local go_set, string_format = go.set, string.format
 
 local function EnqueueLog(t, name)
 	if t[2] then
-		LogQueue[ t.Name or name or os.clock() ] = t
-			for i = 1, #t, 3 do
-				t[i] = ConvTime(  ConvTime( t[i] ),  2  )   -- [0] toTone  [1] barToMs  [2] toneToMs
+		local a, ms, oms, ums, series = 3, 0, {}, {}, {}
+		for i = 1, #t/3 do
+			ms = ConvTime(  ConvTime( t[a-2] ),  2  )   -- [0] toTone  [1] barToMs  [2] toneToMs
+			a, oms[i], series[ms], t[a-2], t[a-1], t[a] = (a+3), ms, { t[a-1], t[a] }
+		end
+
+		a = 1, table.sort(oms)
+		for i = 2, #oms do
+			if oms[i] ~= oms[i-1] then
+				a, ums[a] = (a+1), oms[i]
 			end
+		end
+
+		a, ums[1] = 3, oms[1]
+		for i = 1, #ums do
+			ms = ums[i] ; oms = series[ms]
+			a, t[a-2], t[a-1], t[a] = (a+3), ms, oms[1], oms[2]
+		end
+
+		LogQueue[ t.Name or name or os.clock() ] = t
 		return true
 	end
 end
 
-local function Cam(i, name)
+local function Cx(i, name)
 	return function(t)
 		if EnqueueLog(t, name) then
 			CamSeries[i] = Arf4.NewSeries(t)
@@ -69,7 +85,7 @@ end
 
 local function UpdateCanvas(MS, playHs)
 	Ease(MS, CamSeries, CamVals)
-	SetCam(CamVals[1], CamVals[2], CamVals[3], CamVals[4])
+	SetCam(CamVals[1], CamVals[2], CamVals[3], CamVals[4], CamVals[5])
 	local wu, hu, eu, xu, au, hp, ep = UpdateArf(MS, 30, WishSP)
 
 	-- Args
@@ -79,10 +95,9 @@ local function UpdateCanvas(MS, playHs)
 	end
 
 	for i = 1, wu do
-		local isSpecial = WishSP[i]
-		if isSpecial ~= LastSP[i] then
-			sprite_play_flipbook(WishSprites[i], isSpecial and WISHSP or WISH)
-			LastSP[i] = isSpecial
+		if WishSP[i] ~= LastSP[i] then
+			sprite_play_flipbook(WishSprites[i], WishSP[i] and WISHSP or WISH)
+			LastSP[i] = WishSP[i]
 		end
 	end
 
@@ -106,7 +121,7 @@ local function UpdateCanvas(MS, playHs)
 								msg_post(ArGOs[i], DISABLE)			end
 
 	CanvasMs, LastWused, LastHused, LastEused, LastEhused, LastAused = MS, wu, hu, eu, xu, au
-	label_set_text(Info, string_format(
+	go_set(Info, TEXT, string_format(
 		"·][·  %u of %u ms · %u Object(s) : %u", MS, AudioLen, ObjectCount, Vcnt
 	))
 
@@ -157,8 +172,8 @@ local function CreateNlenv()
 	local G = {}
 	G.Arf4, G.bit, G.math, G.next, G.string, G.table, G.assert = Arf4, bit, math, next, string, table, assert
 	G.type, G.pairs, G.ipairs, G.select, G.unpack, G.tostring = type, pairs, ipairs, select, unpack, tostring
-	G.Log, G.Xs, G.Ys, G.Xd, G.Cs = EnqueueLog, Cam(1, "Xs"), Cam(2, "Ys"), Cam(3, "Xd"), Cam(4, "Cs")
-	CamSeries, LogQueue = {S1, S1, S0, S1}, {}
+	G.Log, G.Xs, G.Ys, G.Xd, G.Cs, G.Vs = EnqueueLog, Cx(1,"Xs"), Cx(2,"Ys"), Cx(3,"Xd"), Cx(4,"Cs"), Cx(5,"Vs")
+	CamSeries, LogQueue = {S1, S1, S0, S1, S0}, {}
 	return G
 end
 
@@ -183,7 +198,7 @@ local function LoadFumenAr(PATH, isBoot)
 		return false, "·][· Arf4: Failed to Load the Fumen"
 	end
 
-	ObjectCount, CamSeries, LogQueue = o, {S1, S1, S0, S1}, {} ; AllocCanvas(w, h, e)
+	ObjectCount, CamSeries, LogQueue = o, {S1, S1, S0, S1, S0}, {} ; AllocCanvas(w, h, e)
 	return isBoot and CreateReload(PATH, LoadFumenAr) or true
 end
 
@@ -226,7 +241,7 @@ local ButtonFns = {
 	[1] = function()   -- Args Input
 		InputMode, InputText = true, ""
 		go_set(Panels[1], TINTW, 0.88) ; go_set(InputLabel, COLOR, GREY)
-		label_set_text(InputLabel, "Args Input")
+		go_set(InputLabel, TEXT, "Args Input")
 	end,
 
 	[2] = function()   -- Load
@@ -235,7 +250,7 @@ local ButtonFns = {
 	--------
 		local A1, A2 = LoadAudio(pBase)
 			if not A1 then
-				label_set_text(Info, "·][· Audio (*.opus/*.mp3/*.wav) Not Loaded")
+				go_set(Info, TEXT, "·][· Audio (*.opus/*.mp3/*.wav) Not Loaded")
 			return end
 		Audio, AudioLen, CanvasMs = A1, A2, 0
 	--------
@@ -247,12 +262,12 @@ local ButtonFns = {
 					window.set_title( string_format("%s -- %s%s", Title, ProjectName, Ext) )
 				else
 					Audio, AudioLen = nil, nil
-					label_set_text(Info, L2)
+					go_set(Info, TEXT, L2)
 				end
 			return end
 		end
 	--------
-		label_set_text(Info, "·][· Script File Not Found")
+		go_set(Info, TEXT, "·][· Script File Not Found")
 	end,
 
 	[3] = function()   -- Bar
@@ -338,7 +353,7 @@ local InputModeFns = {
 			go_set(InputLabel, COLOR, BLACK)
 		end
 		InputText = InputText .. action.text
-		label_set_text( InputLabel, #InputText>13 and InputText:sub(1,11).."··" or InputText )
+		go_set( InputLabel, TEXT, #InputText>13 and InputText:sub(1,11).."··" or InputText )
 	end,
 
 	[hash"backspace"] = function(action)
@@ -346,9 +361,9 @@ local InputModeFns = {
 			InputText = string.sub(InputText, 1, -2)
 			if InputText == "" then
 				go_set(InputLabel, COLOR, GREY)
-				label_set_text(InputLabel, "Args Input")
+				go_set(InputLabel, TEXT, "Args Input")
 			else
-				label_set_text( InputLabel, #InputText>13 and InputText:sub(1,11).."··" or InputText )
+				go_set( InputLabel, TEXT, #InputText>13 and InputText:sub(1,11).."··" or InputText )
 			end
 		end
 	end,
@@ -409,7 +424,7 @@ function init()
 			WindowRatio = 1 / math.min( WindowCenterX / 900, WindowCenterY / 540 )
 		elseif event == 1 and FumenLoaded then   -- File Listening
 			local _, einf = FumenLoaded()
-			if einf then	label_set_text( Info, einf )
+			if einf then	go_set( Info, TEXT, einf )
 			end
 		end
 	end )
@@ -430,7 +445,7 @@ function init()
 	timer.delay( 0.2, true, function()																-- Play(Pause) Button
 		if AudioPlaying ~= LastPlaying then
 			sys.set_engine_throttle(not AudioPlaying, 0.25)
-			label_set_text("Nm:/Buttons#L7-Play", AudioPlaying and "Pause" or "Play")
+			go_set("Nm:/Buttons#L7-Play", TEXT, AudioPlaying and "Pause" or "Play")
 			LastPlaying = AudioPlaying
 		end
 	end )
@@ -451,8 +466,8 @@ function init()
 
 	if pcall( io.input, sys.get_save_file("Nemesis Works", "[Addon]") ) then						-- Addon
 		local newHeader = table.concat{ HEADER, io.read("*a"), "\n" }
-		if pcall(loadstring(newHeader)) then
-			HEADER, Title = newHeader, "Nemesis with Addon"
+		if pcall( loadstring(newHeader) ) then
+			Title, HEADER = "Nemesis with Addon", newHeader
 			window.set_title(Title)
 		end
 	end

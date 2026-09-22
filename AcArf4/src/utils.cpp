@@ -1,15 +1,14 @@
 ﻿//  Arf4 Utils  //
 #include <Arf4.h>
-#include <map>
+#include <constants.h>
 
 /* Ease Utils */
-#include <constants.h>
 float Ar::Eased(const float ratio, const uint8_t type) noexcept {
 	switch(type) {
 	  default:	case STATIC:	return 0;
 	[[likely]]	case LINEAR:	return ratio;
-				case INSINE:	return inSine [(uint16_t)(ratio * 1024)];
-				case OUTSINE:	return outSine[(uint16_t)(ratio * 1024)];
+				case INSINE:	return 1 - xSin[ 1440 - (int)(ratio * 1440) ];
+				case OUTSINE:	return 0 + xSin[		(int)(ratio * 1440) ];
 	}
 }
 
@@ -17,10 +16,10 @@ Ar::Duo Ar::CosSin(Duo d) noexcept {   // Pass Degree into d.a
 	switch( uint32_t D16 = ( d.ae += 4, (d.as ? -d.a : d.a) ),	Qdt  = D16 / 1440;
 																D16 -= Qdt * 1440,	Qdt & 0b11 ) {
 		default:
-		case 0: return d.b = degreeSin[     D16], d.bs =  d.as, d.a =  degreeSin[1440-D16], d;   // 0~90
-		case 1: return d.b = degreeSin[1440-D16], d.bs =  d.as, d.a = -degreeSin[     D16], d;   // 90~180
-		case 2: return d.b = degreeSin[     D16], d.bs = ~d.as, d.a = -degreeSin[1440-D16], d;   // 180~270
-		case 3: return d.b = degreeSin[1440-D16], d.bs = ~d.as, d.a =  degreeSin[     D16], d;   // 270~360
+		case 0: return d.b = xSin[	   D16], d.bs =  d.as, d.a =  xSin[1440-D16], d;   // 0~90
+		case 1: return d.b = xSin[1440-D16], d.bs =  d.as, d.a = -xSin[		D16], d;   // 90~180
+		case 2: return d.b = xSin[	   D16], d.bs = ~d.as, d.a = -xSin[1440-D16], d;   // 180~270
+		case 3: return d.b = xSin[1440-D16], d.bs = ~d.as, d.a =  xSin[		D16], d;   // 270~360
 	}
 }
 
@@ -33,55 +32,50 @@ int Ar::GetCosSin(lua_State* L) noexcept {
 		   lua_pushnumber(L, cosSin.b), 2;
 }
 
-static std::map<uint32_t, Ar::Duo> SM;
 int Ar::NewSeries(lua_State* L) noexcept {
 	/* Example:
-	 * local S = Arf4.NewSeries {	-- When failed, a nil will be returned.
+	 * local S = Arf4.NewSeries {	-- Internal Fn, No Error Checking
 	 *     0, 1, LINEAR,			-- 0 ms, Val=1, Linear Ease
 	 *     100, 2, LINEAR, ...  }
 	 */
-	for( uint32_t ms, inputLen = lua_objlen(L,1),  i = 1;  i < inputLen;  i += 3 )
-		ms = ( lua_rawgeti(L, 1, i), lua_tointeger(L, 2) ),
-		SM[ms] = { .a = (float)   ( lua_rawgeti(L, 1, i+1), lua_tonumber(L,3) ),	.ms = ms,
-				  .es = (uint32_t)( lua_rawgeti(L, 1, i+2), lua_tonumber(L,4) ) },  lua_settop(L,1);
-	if( const auto SZ = SM.size();  lua_settop(L,0),  SZ )
-		for( auto& S = *new(lua_newuserdata(L, sizeof(std::vector<Duo>))) std::vector<Duo> {{.val = 1}};
-			 auto  [_,K] : lua_getglobal(L, Ar::f4), lua_setmetatable(L,1), S.reserve(SZ), SM )
-			S.push_back(K);
-	return SM.clear(), 1;
+	const auto C = lua_objlen(L,1), sSize = (C+1) / 3;
+	const auto S = (Duo*)lua_newuserdata(L, (sSize << 3) + 8);
+	for( uint32_t n = 0, i = 1;  i < C;  i += 3 )
+		S[++n] = {  .a  = (float)	( lua_rawgeti(L, 1, i+1), lua_tonumber (L,3) ),
+					.ms = (uint32_t)( lua_rawgeti(L, 1, i  ), lua_tointeger(L,4) ),
+					.es = (uint32_t)( lua_rawgeti(L, 1, i+2), lua_tointeger(L,5) )  },
+		lua_settop(L,2);
+	return (*S = S[sSize]), (S->es = 1);
 }
 
 int Ar::Ease(lua_State* L) noexcept {
 	/* Usage:
 	 * Arf4.Ease(t, series, results)
 	 */
-	for( size_t T = lua_tointeger(L,1), i = lua_objlen(L,2);  i;  lua_rawseti(L,3,i--), lua_settop(L,3) )
-		if( auto& S = *(std::vector<Duo>*)(lua_rawgeti(L,2,i), lua_touserdata(L,4));  T < S[1].ms )
-			lua_pushnumber(L, S[1].a);
-		else if( Duo l, r = S.back();  T >= r.ms )
+	for( size_t  T = lua_tointeger(L,1), i = lua_objlen(L,2);  i;  lua_rawseti(L,3,i--), lua_settop(L,3) )
+		if( Duo *S = (Duo*)( lua_rawgeti(L,2,i), lua_touserdata(L,4) ),  l = S[1];  T < l.ms )
+			lua_pushnumber(L, l.a);
+		else if( Duo r = *S;  T >= r.ms )
 			lua_pushnumber(L, r.a);
-		else if( auto& idx = S[0].val;  l = S[idx],  T < l.ms ) {
-			do {--idx;}  while( l = S[idx],    T < l.ms );
-								r = S[idx+1];  goto IP;			}
+		else if( auto idx = r.es;	l = S[idx],  T < l.ms )		{
+			do { --idx; }	 while( l = S[idx],  T < l.ms );
+									r = S[idx+1];  goto CAL;	}
 		else if( r = S[idx+1],  T >= r.ms )						{
-			do {++idx;}  while( r = S[idx+1],  T >= r.ms );
-								l = S[idx];    goto IP;			}
-		else IP:
-			lua_pushnumber( L, l.a + (r.a-l.a) * Eased( (float)(T-l.ms)/(r.ms-l.ms), l.es ) );
+			do { ++idx; }	 while( r = S[idx+1],  T >= r.ms );
+									l = S[idx];    goto CAL;	}
+		else CAL:   // Calculate the Eased Value
+			S->es = idx,  lua_pushnumber( L, l.a + (r.a-l.a) * Eased( (float)(T-l.ms)/(r.ms-l.ms), l.es ) );
 	return 0;
 }
 
 /* Misc Utils */
 int Ar::SetCam(lua_State* L) noexcept {
-	/* Usage:										 -- xScale / yScale: Mainly for Runtime Mirroring
-	 * Arf4.SetCam(xscale, yscale, xdelta, camspd)   --			 xDelta: Mainly for Options Panel
+	/* Usage:												 -- xScale / yScale: Mainly for Mirroring
+	 * Arf4.SetCam(xscale, yscale, xdelta, cspeed, vstime)   --			 xDelta: Mainly for Options Panel
 	 */
-	Arf.xScale = lua_tonumber(L, 1) * 7.03125;
-	Arf.yScale = lua_tonumber(L, 2) * 7.03125;
-	Arf.xDelta = lua_tonumber(L, 3);
-
-	const lua_Number cSpeed = lua_tonumber(L, 4);
-		Arf.cSpeed = cSpeed > 0 ? cSpeed : 0;
+	Arf.xScale = lua_tonumber(L, 1) * 7.03125;		Arf.xDelta = lua_tonumber(L, 3);
+	Arf.yScale = lua_tonumber(L, 2) * 7.03125;		Arf.cSpeed = lua_tonumber(L, 4);
+	Arf.vsTime = lua_tonumber(L, 5);				Arf.cSpeed < 0 ? Arf.cSpeed = 0 : 0;
 	return 0;
 }
 
@@ -91,8 +85,6 @@ int Ar::SetOptions(lua_State* L) noexcept {
 	 * Arf4.SetOptions(input_delta_ms, player_speed)
 	 */
 	InputDelta = lua_tointeger(L, 1);   // [-63, 63]
-	 Arf.minDt = InputDelta - Arf.judgeRange;		Arf.minDt = Arf.minDt < -100 ? -100 : Arf.minDt;
-	 Arf.maxDt = InputDelta + Arf.judgeRange;		Arf.maxDt = Arf.maxDt >  100 ?  100 : Arf.maxDt;
 	PlayerSpeed = lua_tonumber(L, 2) / 375;
 	return 0;
 }
@@ -101,28 +93,18 @@ int Ar::SetJudgeZone(lua_State* L) noexcept {
 	/* Usage:
 	 * Arf4.SetJudgeZone(ms, is_any_x, is_any_y)   -- ms ∈ [0,100]
 	 */
-	Arf.judgeRange = lua_tointeger(L, 1);
-	Arf.minDt = InputDelta - Arf.judgeRange;		Arf.minDt = Arf.minDt < -100 ? -100 : Arf.minDt ;
-	Arf.maxDt = InputDelta + Arf.judgeRange;		Arf.maxDt = Arf.maxDt >  100 ?  100 : Arf.maxDt ;
-
-	Arf.isAnyX = lua_toboolean(L, 2);
-	Arf.isAnyY = lua_toboolean(L, 3);
+	Arf.isAnyX = lua_toboolean(L, 2);				Arf.judgeZone = lua_tointeger(L, 1);
+	Arf.isAnyY = lua_toboolean(L, 3);				Arf.judgeZone > 100  ?  Arf.judgeZone = 100 : 0;
 	return 0;
-}
-
-int Ar::SetJudgeStat(lua_State* L) noexcept {
-	/* Usage:
-	 * Arf4.SetJudgeStat(hint_hit, echo_hit, early, late, lost, special_hint_hit)
-	 */
-	return Arf.hHit = lua_tointeger(L,1),  Arf.eHit = lua_tointeger(L,2),  Arf.early = lua_tointeger(L,3),
-		   Arf.sHit = lua_tointeger(L,6),  Arf.lost = lua_tointeger(L,5),  Arf.late  = lua_tointeger(L,4), 0;
 }
 
 int Ar::GetJudgeStat(lua_State* L) noexcept {
 	/* Usage:
-	 * local hint_hit, echo_hit, early, late, lost, special_hint_hit = Arf4.GetJudgeStat()
+	 * local hit, early, late, lost, hint_hit, echo_hit, special_hit = Arf4.GetJudgeStat()
 	 */
-	return lua_pushinteger(L, Arf.hHit),  lua_pushinteger(L, Arf.eHit),  lua_pushinteger(L, Arf.early),
-		   lua_pushinteger(L, Arf.late),  lua_pushinteger(L, Arf.lost),  lua_pushinteger(L, Arf.sHit), 6;
+	return lua_pushinteger(L, Arf.hit),   lua_pushinteger(L, Arf.early),	lua_pushinteger(L, Arf.late),
+		   lua_pushinteger(L, Arf.lost),  lua_pushboolean(L, Arf.hintHit),	lua_pushboolean(L, Arf.echoHit),
+		   lua_pushinteger(L, Arf.sHit),  (Arf.hintHit = Arf.echoHit = 0),
+	7;
 }
 #endif

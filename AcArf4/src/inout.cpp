@@ -1,50 +1,45 @@
 //  Arf4 Inout  //
 #include <Arf4.h>
 #include <sys/stat.h>
-#include <bitsery/traits/adapter_buffer.h>
-#include <bitsery/traits/container_vector.h>
-#include <bitsery/traits/compact_value.h>
 
-/* Bitsery Settings */
-#define Inout(TYPE, DETAILS)	template<typename S> void serialize(S& s, Arf4:: TYPE &its) {			   \
-			  s.enableBitPacking( [&its](typename S::BPEnabledType& inout) { DETAILS ; } ); }
-namespace bitsery {
-	static constexpr auto CV = ext::CompactValueAsObject{};
-	Inout( Wish,  inout.ext(its.val, CV); )		Inout( Body,  inout.ext(its.val, CV); )
-	Inout( Point, inout.ext(its.val, CV); )		Inout( Index, inout.ext(its.val, CV); )
-	Inout( Child, inout.ext(its.val, CV); )
+struct Awinfo {
+	uint64_t  fmtNumber:12 = 0xA2F,
+			  ceilDst:21, idxBys:13, hintBys:18, wishBys:23, childBys:20, nodeBys:21,
+			  eGo:9, objectCount:16, echoBys:20, wGo:10, hGo:9;
+};
 
-	Inout( Fumen,
-		inout.container(its.echoes, 131072);	inout.container(its.nodes, 262144);		// Consider "Equal"
-		inout.container(its.hints, 32767);		inout.container(its.wishes, 16777216);	// Wishes
-		inout.container(its.idx, 1024);			inout.container(its.wishChilds, 131072);
-		inout.value8b(its.val);
-	)
-
-	struct A4CONF {
-		static constexpr bool			 CheckAdapterErrors = false, CheckDataErrors = false;
-		static constexpr EndiannessType  Endianness = DefaultConfig::Endianness;
-	};
-	using A4Encoder = Serializer< OutputBufferAdapter< std::vector<uint8_t>, A4CONF > >;
-	using A4Decoder = Deserializer< InputBufferAdapter<const uint8_t*, A4CONF> >;
+static void* loadVzbuf(uint8_t* thiz, uint64_t num, uint64_t* out) noexcept {
+	for( uint8_t *to = (thiz + num), ord = (num = 0);  thiz < to;  ++thiz )
+		if( const uint8_t tnum = *thiz;  tnum & 0x80 )
+			num |= ( tnum & 127 ) << ord,
+			ord += 7;
+		else
+			*(out++) = num | (tnum << ord),
+				 ord = num = 0;
+	return out;
 }
 
-/* Inout Impls */
-static void UndiffArf() {
-	for( uint32_t cnt = Arf.hints.size(),  i = 1;  i < cnt;  ++i )
-		Arf.hints[i].ms += Arf.hints[i-1].ms;
-	for( uint32_t cnt = Arf.echoes.size(), i = 1;  i < cnt;  ++i )
-		Arf.echoes[i].ms += Arf.echoes[i-1].ms,
-		Arf.echoes[i].radius += Arf.echoes[i-1].radius,
-		Arf.echoes[i].initLoop += Arf.echoes[i-1].initLoop,
-		Arf.echoes[i].deltaLoop += Arf.echoes[i-1].deltaLoop;
-	for( auto ls = Arf.wishChilds.begin(), tz = ls + 1;  tz < Arf.wishChilds.end();  ++ls, ++tz )
-		(ls->val && tz->val) ? (tz->ms += ls->ms) : 0;
-	for( auto ls = Arf.nodes.begin(), tz = ls + 1;  tz < Arf.nodes.end();  ++ls, ++tz )
-		(ls->val && tz->val) ? (tz->ms += ls->ms) : 0;
+static uint8_t* writeVzbuf(void* thiz, const void* to, uint8_t* bufit) noexcept {
+	for( uint64_t val;  thiz < to;  thiz = (uint64_t*)(thiz) + 1 )	{
+		for( val = *(uint64_t*)(thiz);  val > 127;  val >>= 7 )
+			*(bufit++) = (val & 127) | 0x80;
+		*(bufit++) = (val);											}
+	return bufit;
 }
 
-int Ar::LoadArf(lua_State* L) {
+static void UndiffArf() noexcept {
+	for( auto ls = Arf.node,  tz = (ls+1);  tz < (Ar::Point*)(Arf.wish);  ++ls, ++tz )
+		(tz->val) ? (tz->ms += ls->ms) : 0;
+	for( auto ls = Arf.child, tz = (ls+1);  tz < (Ar::Child*)(Arf.hint);  ++ls, ++tz )
+		(tz->val) ? (tz->ms += ls->ms) : 0;
+	for( auto ls = Arf.echo,  tz = (ls+1);  tz < Arf.ceil;  ++ls, ++tz )
+		(tz) -> ms	   -= (ls) -> ms,		(tz) -> initLoop  -= (ls) -> initLoop,
+		(tz) -> radius -= (ls) -> radius,	(tz) -> deltaLoop -= (ls) -> deltaLoop;
+	for( auto ht = (Arf.hint) + 1;  ht < Arf.echo;  ++ht )
+		(ht) -> ms  +=  (ht-1) -> ms;
+}
+
+int Ar::LoadArf(lua_State* L) noexcept {
 	/* Usage:
 	 * local before, objcnt, wgo_req, hgo_req, ego_req = Arf4.LoadArf(path, [is_auto])
 	 */
@@ -54,8 +49,8 @@ int Ar::LoadArf(lua_State* L) {
 	const auto path = luaL_checkstring(L, 1);
 
 	// Acquire Buffer
-	uint8_t* pBuf;													// free() this.
 	uint32_t bSize;													// [0] SEEK_SET  [2] SEEK_END
+	 uint8_t *pBuf, *cBuf;											// pBuf to be released via free()
 	if( dmResource::GetRaw(pCtx->pF, path, (void**)&pBuf, &bSize) != dmResource::RESULT_OK )
 		if( FILE* pF = fopen(path, "rb");  pF )						// Open
 			if( bSize = (fseek(pF, 0, 2), ftell(pF)),				// Size & Copying
@@ -64,15 +59,35 @@ int Ar::LoadArf(lua_State* L) {
 			else return fclose(pF), free(pBuf), 0;
 		else return 0;
 
-	// Decode & Return
-	if( auto D = bitsery::A4Decoder(pBuf, bSize);  D.adapter().error() != bitsery::ReaderError::NoError )
+	// Decode Varint-Zipped Buffer
+	Awinfo H;
+	if( bSize < 24 || ( H = *(Awinfo*)pBuf ).fmtNumber != 0xA2F
+				   || bSize < 24 + H.idxBys + H.wishBys + H.nodeBys + H.childBys + H.hintBys + H.echoBys )
 		return free(pBuf), 0;
-	else
-		D.object( Arf = {} ), UndiffArf();   // Lazy clear only when the buffer is loaded successfully
+	free( Arf.idx );
+
+	Arf = {  .idx = (Index*)malloc( H.ceilDst << 3 ),
+			.node = (Point*)loadVzbuf( cBuf  = pBuf + 24,  H.idxBys,   (uint64_t*)(Arf.idx)  ),
+			.wish = (Wish*) loadVzbuf( cBuf += H.idxBys,   H.nodeBys,  (uint64_t*)(Arf.node) ),
+		   .child = (Child*)loadVzbuf( cBuf += H.nodeBys,  H.wishBys,  (uint64_t*)(Arf.wish) ),
+			.hint = (Body*) loadVzbuf( cBuf += H.wishBys,  H.childBys, (uint64_t*)(Arf.child)),
+			.echo = (Body*) loadVzbuf( cBuf += H.childBys, H.hintBys,  (uint64_t*)(Arf.hint) ),
+			.ceil = (Body*) loadVzbuf( cBuf += H.hintBys,  H.echoBys,  (uint64_t*)(Arf.echo) ),
+			.wgoRequired = H.wGo,				.hgoRequired = H.hGo,
+			.egoRequired = H.eGo,				.objectCount = H.objectCount					};
+	UndiffArf();
+
+	// Config & Return
+	const uint32_t LH = (Arf.hint < Arf.echo ? Arf.echo[-1].ms + 470 : 0),
+				   LE = (Arf.echo < Arf.ceil ? Arf.ceil[-1].ms + 470 : 0);
+		   Arf.before = ( LH > LE ? LH : LE );
+
+	for( auto nit = Arf.node;  nit < (Point*)Arf.wish;  ++nit )
+		if( const auto ms = nit->ms;  Arf.before < ms )
+			Arf.before = ms;
+
 	#ifndef AR_BUILD_VIEWER
-		Arf.isAuto = lua_toboolean(L, 2),
-		Arf.maxDt = (InputDelta > 63 ? 63 : InputDelta) + 37,
-		Arf.minDt = Arf.maxDt - 74;
+		Arf.isAuto = lua_toboolean(L, 2);
 	#endif
 
 	return lua_pushinteger(L, Arf.before),			lua_pushinteger(L, Arf.objectCount),
@@ -80,36 +95,46 @@ int Ar::LoadArf(lua_State* L) {
 		   lua_pushinteger(L, Arf.egoRequired),		free(pBuf), 5;
 }
 
-int Ar::ExportArf(lua_State* L) {
+int Ar::ExportArf(lua_State* L) noexcept {
 	/* Usage:
 	 * local str_or_nil = Arf4.ExportArf()
 	 */
-	for( auto& wish : Arf.wishes )
-		wish.nIndex = 0, wish.cIndex = 0;
+	for( auto wit = Arf.wish;  wit < (Wish*)Arf.child;  ++wit )
+		wit->val &= 0x7F'FFFF'FFFF;
+	const uint32_t ceilDst = Arf.ceil - (Body*)Arf.idx;
 
-	/* Diff Fumen */
-	for( int i = Arf.hints.size() - 1;	 i > 0;  --i )
-		Arf.hints[i].ms -= Arf.hints[i-1].ms;
-	for( int i = Arf.echoes.size() - 1;  i > 0;  --i )
-		Arf.echoes[i].ms -= Arf.echoes[i-1].ms,
-		Arf.echoes[i].radius -= Arf.echoes[i-1].radius,
-		Arf.echoes[i].initLoop -= Arf.echoes[i-1].initLoop,
-		Arf.echoes[i].deltaLoop -= Arf.echoes[i-1].deltaLoop;
-	for( auto tz = Arf.wishChilds.end() - 1,  ls = tz - 1;  tz > Arf.wishChilds.begin();  --tz, --ls )
-		(tz->val && ls->val) ? (tz->ms -= ls->ms) : 0;
-	for( auto tz = Arf.nodes.end() - 1,  ls = tz - 1;  tz > Arf.nodes.begin();  --tz, --ls )
-		(tz->val && ls->val) ? (tz->ms -= ls->ms) : 0;
+	// Diff Fumen
+	for( auto tz = (Point*)(Arf.wish) - 1,  ls = (tz-1);  tz > Arf.node;   --tz, --ls )
+		(tz->val) ? (tz->ms -= ls->ms) : 0;
+	for( auto tz = (Child*)(Arf.hint) - 2,  ls = (tz-1);  tz > Arf.child;  --tz, --ls )   // Child End 0
+		(tz->val) ? (tz->ms -= ls->ms) : 0;
+	for( auto tz = (Arf.ceil) - 1,  ls = (tz-1);  tz > Arf.echo;  --tz, --ls )
+		(tz) -> ms	   -= (ls) -> ms,		(tz) -> initLoop  -= (ls) -> initLoop,
+		(tz) -> radius -= (ls) -> radius,	(tz) -> deltaLoop -= (ls) -> deltaLoop;
+	for( auto ht = (Arf.echo) - 1;  ht > Arf.hint;  --ht )
+		(ht) -> ms  -=  (ht-1) -> ms;
 
-	std::vector<uint8_t> buf;
-	auto E = bitsery::A4Encoder(buf);
-	E.object(Arf);
-
+	// Write & Return
+	uint8_t* oIs[8] = { (uint8_t*) malloc( (ceilDst << 3) + 24 ) };		oIs[1] = oIs[0] + 24;
+			 oIs[2] = writeVzbuf( Arf.idx,	 Arf.node,  oIs[1] );
+			 oIs[3] = writeVzbuf( Arf.node,  Arf.wish,  oIs[2] );
+			 oIs[4] = writeVzbuf( Arf.wish,  Arf.child, oIs[3] );
+			 oIs[5] = writeVzbuf( Arf.child, Arf.hint,  oIs[4] );
+			 oIs[6] = writeVzbuf( Arf.hint,  Arf.echo,  oIs[5] );
+			 oIs[7] = writeVzbuf( Arf.echo,  Arf.ceil,  oIs[6] );
 	#ifdef AR_BUILD_VIEWER
 		UndiffArf();
 	#endif
 
-	size_t bufSize = ( E.adapter().flush(), E.adapter().writtenBytesCount() );
-	return bufSize ? ( lua_pushlstring(L, (char*)&buf[0], bufSize), 1 ) : 0;
+	*(Awinfo*)(*oIs) = { .ceilDst = ceilDst,
+						  .idxBys = (uint64_t)(oIs[2] - oIs[1]),	.hintBys = (uint64_t)(oIs[6] - oIs[5]),
+						 .wishBys = (uint64_t)(oIs[4] - oIs[3]),   .childBys = (uint64_t)(oIs[5] - oIs[4]),
+						 .nodeBys = (uint64_t)(oIs[3] - oIs[2]),		.eGo = Arf.egoRequired,
+					 .objectCount = Arf.objectCount,				.echoBys = (uint64_t)(oIs[7] - oIs[6]),
+							 .wGo = Arf.wgoRequired,					.hGo = Arf.hgoRequired			  };
+	return lua_pushlstring( L, (char*)(*oIs), oIs[7] - (*oIs) ),
+		   free( *oIs ),
+		   1;
 }
 
 #ifdef AR_BUILD_VIEWER

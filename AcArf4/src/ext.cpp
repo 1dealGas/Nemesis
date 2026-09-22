@@ -1,13 +1,9 @@
 ﻿//  Arf4 Ext  //
 #include <Arf4.h>
-Arf4::Fumen		Arf;
-int8_t			InputDelta;
-float			PlayerSpeed = 0.032f;   // 12÷375
 
-static int freeSeries(lua_State* L) {
-	( (std::vector<Arf4::Duo>*)lua_touserdata(L, 1) ) -> ~vector();
-	return 0;
-}
+  Ar::Fumen		Arf;
+  int8_t		InputDelta;
+  float			PlayerSpeed = 0.032f;   // 12÷375
 
 static constexpr luaL_Reg Arf4Lib[] = {
 	#ifdef AR_BUILD_VIEWER
@@ -25,7 +21,6 @@ static constexpr luaL_Reg Arf4Lib[] = {
 		{"JudgeArf", Ar::JudgeArf},
 		{"SetOptions", Ar::SetOptions},
 		{"SetJudgeZone", Ar::SetJudgeZone},
-		{"SetJudgeStat", Ar::SetJudgeStat},
 		{"GetJudgeStat", Ar::GetJudgeStat},
 	#endif
 		{"Bind", Ar::Bind},
@@ -36,13 +31,14 @@ static constexpr luaL_Reg Arf4Lib[] = {
 		{"UpdateArf", Ar::UpdateArf},
 		{"NewSeries", Ar::NewSeries},
 		{"CosSin", Ar::GetCosSin},
-		{Ar::LGC, freeSeries},
 	{0,0}
 };
+
 static dmExtension::Result Arf4Init(dmExtension::Params* p) {
-	return luaL_register(p->m_L, Ar::f4, Arf4Lib),  lua_pop(p->m_L, 1),  dmExtension::RESULT_OK;
+	return luaL_register(p->m_L, "Arf4", Arf4Lib),  lua_pop(p->m_L, 1),
+		   dmExtension::RESULT_OK;
 }
 static dmExtension::Result Arf4OK(dmExtension::Params*) {
 	return dmExtension::RESULT_OK;
 }
-DM_DECLARE_EXTENSION(AcArf4, Ar::f4, nullptr, nullptr, Arf4Init, nullptr, nullptr, Arf4OK)
+DM_DECLARE_EXTENSION(AcArf4, "Arf4", nullptr, nullptr, Arf4Init, nullptr, nullptr, Arf4OK)
