@@ -2,16 +2,13 @@
 main_collection = /Viewer.collectionc
 render = /System/Viewer.renderc
 
-[script]
-shared_state = 1
-
 [display]
 width = 1800
 height = 1080
 
 [project]
 title = Nemesis
-version = 0.3
+version = 0.3.1
 publisher = 1dealGas
 developer = 1dealGas
 custom_resources = Viewer.wav, Viewer.license

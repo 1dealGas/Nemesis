@@ -1,7 +1,6 @@
 - name: AcAudio
   type: table
   members:
-
   - name: CreateSource
     type: function
     parameters:
@@ -11,7 +10,6 @@
     returns:
     - name: src_or_msg
       type: [table, string]
-
   - name: CreateUnit
     type: function
     parameters:
@@ -23,7 +21,6 @@
       type: [table, nil]
     - name: mslen_or_errmsg
       type: [number, string]
-
   - name: CheckPlaying
     type: function
     parameters:
@@ -32,13 +29,11 @@
     returns:
     - name: status
       type: boolean
-
   - name: GetDeviceName
     type: function
     returns:
     - name: device_name
       type: string
-
   - name: PlayUnit
     type: function
     parameters:
@@ -49,7 +44,6 @@
     returns:
     - name: OK
       type: boolean
-
   - name: StopUnit
     type: function
     parameters:
@@ -60,7 +54,6 @@
     returns:
     - name: OK
       type: boolean
-
   - name: SetTime
     type: function
     parameters:
@@ -71,7 +64,6 @@
     returns:
     - name: OK
       type: boolean
-
   - name: GetTime
     type: function
     parameters:
